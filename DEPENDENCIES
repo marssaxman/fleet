@@ -3,3 +3,5 @@ grub
 xorriso
 qemu
 
+on a 64-bit machine, you'll need to do this so there's a 32-bit lib to link
+sudo apt-get install g++-multilib libc6-dev-i386

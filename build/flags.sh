@@ -1,7 +1,7 @@
 # A crosscompiler might make our lives easier, but in the meantime we'll just
 # tell GCC not to use any of the services intended for the host platform.
-CCFLAGS="$CCFLAGS -ffreestanding -nostdlib -nostdinc"
-LDFLAGS="$LDFLAGS -static -nostdlib -static-libgcc"
+CCFLAGS="$CCFLAGS -ffreestanding -nostdlib -nostdinc -m32"
+LDFLAGS="$LDFLAGS -static -nostdlib -static-libgcc -m32"
 LIBRARIES="$LIBRARIES -lgcc"
 
 # Point the way to the C runtime.
