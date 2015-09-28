@@ -1,11 +1,13 @@
-# Name of executable boot image to build:
-: ${NAME=executable}
+# Root directory for all build files
+FLEETBASE=`dirname $0`/..
+# Name of program to build:
+: ${NAME=out}
 # Directory for .o and .d files:
 : ${OBJDIR=./obj}
 # Source tree location:
 : ${SRCDIR=./src}
 # Path to the system library directory
-: ${LIBDIR=../lib}
+: ${LIBDIR=$FLEETBASE/lib}
 # List of system libraries to link against
 : ${LIBS=}
 # Compiler to invoke:

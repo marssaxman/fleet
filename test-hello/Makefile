@@ -1,5 +1,5 @@
 NAME := "test-hello"
-LIBS := crt
+LIBS := vga
 CCFLAGS := -Wall -g
 LDFLAGS :=
 

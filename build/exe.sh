@@ -9,12 +9,14 @@
 source `dirname $0`/any.sh
 
 # If we successfully compiled all of the source files, link the executable.
-LDFLAGS="$LDFLAGS -T ../build/linker.ld"
+LDFLAGS="-T ../build/linker.ld $LDFLAGS"
 BINFILE=$NAME.bin
 if (( !errorfound )) ; then
 	echo "linking..."
 	# use gcc to link an executable
-	if $CPP -o $BINFILE $(find $OBJDIR -name "*.o") $LDFLAGS; then
+	objfiles=$(find $OBJDIR -name "*.o")
+	LDFLAGS="$LDFLAGS -Wl,--start-group $LIBRARIES -Wl,--end-group"
+	if $CPP -o $BINFILE $objfiles $LDFLAGS; then
 		echo "done."
 	else
 		errorfound=1

@@ -1,11 +1,12 @@
 NAME := "crt"
+LIBS := ""
 
 all: library
 
 library:
 	@NAME="$(NAME)" LIBS="$(LIBS)" \
 	CCFLAGS="$(CCFLAGS)" LDFLAGS="$(LDFLAGS)" \
-	../../build/lib.sh
+	../build/lib.sh
 
 clean:
 	@rm -rf lib$(NAME).a ./obj/*
