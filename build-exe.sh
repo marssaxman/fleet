@@ -136,12 +136,7 @@ if (( !errorfound )) ; then
 fi
 
 if (( !errorfound )) ; then
-	echo -e "#!/bin/sh\nqemu-system-i386 -kernel $BINFILE\n" > $NAME
-	chmod +x $NAME
-fi
-
-if (( !errorfound )) ; then
-	ls -l $NAME
+	ls -l $BINFILE
 fi
 
 exit $errorfound
