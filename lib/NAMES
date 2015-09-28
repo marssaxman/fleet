@@ -1,0 +1,10 @@
+A library directory must have this structure:
+
+foo/
+	Makefile
+	include/
+	libfoo.a
+	obj/
+	src/
+
+
