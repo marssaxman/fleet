@@ -32,7 +32,7 @@
 # in order to ensure that we don't accidentally link against host libraries.
 # We'll add them onto whatever optional flags the user requested.
 CCFLAGS="$CCFLAGS -ffreestanding -nostdlib -nostdinc"
-LDFLAGS="$LDFLAGS -static -nostdlib -static-libgcc -lgcc"
+LDFLAGS="$LDFLAGS -static -nostdlib -static-libgcc -lgcc -T ../linker.ld"
 
 # Add the relevant flags for any libraries we must link against.
 for lib in $LIBS
