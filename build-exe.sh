@@ -31,7 +31,7 @@
 # Since we're not using a cross-compiler, there are flags we must always set
 # in order to ensure that we don't accidentally link against host libraries.
 # We'll add them onto whatever optional flags the user requested.
-CCFLAGS="$CCFLAGS -ffreestanding -nostdlib" #-nostdinc
+CCFLAGS="$CCFLAGS -ffreestanding -nostdlib -nostdinc"
 LDFLAGS="$LDFLAGS -static -nostdlib -static-libgcc -lgcc"
 
 # Add the relevant flags for any libraries we must link against.
