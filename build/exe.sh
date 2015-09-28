@@ -91,6 +91,7 @@ for src in $(find $SRCDIR -type f -name "*.cpp" -o -name "*.c"); do
 	# make up an obj file path in our obj subdirectory
 	# Strip off any leading "./" which might happen to be present
 	src="${src#\./}"
+	extension="${src##*.}"
 	relpath="${src%/*.*}"
 	mkdir -p "$OBJDIR/$relpath"
 	objname="${src%.*}.o"
@@ -108,13 +109,13 @@ for src in $(find $SRCDIR -type f -name "*.cpp" -o -name "*.c"); do
 		echo "compiling $src..."
 
 		# only specify C99 if we are not compiling a c++ file
-		if [[ ${src##*.} != "cpp" ]]; then
-			std=$STDC
-		else
-			std=$STDCPP
+		if [[ $extension == "c" ]]; then
+			stdarg="-std=$STDC"
+		elif [[ $extension == "cpp" ]]; then
+			stdarg="-std=$STDCPP"
 		fi
 
-		if $CPP $CCFLAGS -MD -std=$std -I$SRCDIR -c $src -o $obj
+		if $CPP $CCFLAGS -MD $stdarg -I$SRCDIR -c $src -o $obj
 		then
 			echo -n ""
 		else
