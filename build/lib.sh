@@ -5,7 +5,7 @@
 # Run this from the main target in a makefile.
 
 CCFLAGS="$CCFLAGS -I ./include"
-source `dirname $0`/any.sh
+source `dirname $0`/compile.sh
 objfiles=$(find $OBJDIR -name "*.o")
 OUTFILE=lib$NAME.a
 ar rcs $OUTFILE $objfiles

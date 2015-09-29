@@ -6,7 +6,7 @@
 # recompile anything that needs an update. If we succeeded, link it together.
 # This would generally be invoked from the main build target in a makefile.
 
-source `dirname $0`/any.sh
+source `dirname $0`/compile.sh
 
 # If we successfully compiled all of the source files, link the executable.
 LDFLAGS="-T ../build/linker.ld $LDFLAGS"
