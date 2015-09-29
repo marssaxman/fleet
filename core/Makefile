@@ -1,4 +1,4 @@
-NAME := "crt"
+NAME := "core"
 LIBS := ""
 
 all: library

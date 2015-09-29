@@ -5,9 +5,9 @@ LDFLAGS="$LDFLAGS -static -nostdlib -static-libgcc -m32"
 LIBRARIES="$LIBRARIES -lgcc"
 
 # Point the way to the C runtime.
-CCFLAGS="$CCFLAGS -I $FLEETBASE/crt/include"
-LDFLAGS="$LDFLAGS -L $FLEETBASE/crt/"
-LIBRARIES="$LIBRARIES -lcrt"
+CCFLAGS="$CCFLAGS -I $FLEETBASE/core/include"
+LDFLAGS="$LDFLAGS -L $FLEETBASE/core/"
+LIBRARIES="$LIBRARIES -lcore"
 
 # Add the relevant include/link flags for all libraries this build will use.
 for lib in $LIBS; do

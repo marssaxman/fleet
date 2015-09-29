@@ -9,7 +9,7 @@
 source `dirname $0`/compile.sh
 
 # If we successfully compiled all of the source files, link the executable.
-LDFLAGS="-T $FLEETBASE/crt/linker.ld $LDFLAGS"
+LDFLAGS="-T $FLEETBASE/core/linker.ld $LDFLAGS"
 BINFILE=$NAME.bin
 if (( !errorfound )) ; then
 	echo "linking..."
