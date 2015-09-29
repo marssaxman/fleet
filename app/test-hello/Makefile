@@ -13,7 +13,11 @@ executable:
 clean:
 	@rm -rf $(NAME).iso ./obj/*
 
+run: executable
+	@../run.sh $(NAME).bin
 
+debug: executable
+	@../debug.sh $(NAME).bin
 
 
 

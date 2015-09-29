@@ -22,8 +22,8 @@ SECTIONS
 	/* Make sure the GNU notes information is placed after .text. Failure to
 	   to do so may push the GRUB multiboot information beyond the first 8k
 	   and GRUB will not identify this kernel as multiboot capable.
-	   Alternative to this is to compile the final binary with this linker 
-	   option to exclude this unqiue header:
+	   Alternative to this is to compile the final binary with this linker
+	   option to exclude this unique header:
 	   -Wl,--build-id=none */
 
 	.note.gnu.build-id BLOCK(4K) : ALIGN(4K)

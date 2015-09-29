@@ -20,9 +20,12 @@ stack_top:
 # stack, initialize globals, then jump into the C world via main().
 .section .text
 .global _start
+.global _gdt_init
 .type _start, @function
 _start:
+	cli
 	movl $stack_top, %esp
+	call _gdt_init
 	call main
 	# The program ends when main returns; halt the machine.
 	cli
