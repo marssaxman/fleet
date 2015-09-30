@@ -29,3 +29,18 @@ _hlt:
 	hlt
 	ret
 
+.global _outb
+.type _outb, @function
+_outb:
+	movl 4(%esp), %edx	# port address
+	movl 8(%esp), %eax	# value to poke
+	outb %al, %dx
+	ret
+
+.global _inb
+.type _inb, @function
+_inb:
+	movl 4(%esp), %edx	# port address
+	xorl %eax, %eax
+	inb %dx, %al
+	ret

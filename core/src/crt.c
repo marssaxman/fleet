@@ -1,7 +1,7 @@
 #include <i386/isr.h>
 #include <i386/idt.h>
 #include <i386/cpu.h>
-#include "i386/brutal_log.h"
+#include "syslog.h"
 
 // Somewhere out there, the user has implemented a main function.
 extern void main(void);
@@ -9,8 +9,7 @@ extern void main(void);
 // The ISR module expects us to provide a master service routine.
 void _isr(struct _isr_state *regs)
 {
-	brutal_puts("the _isr was fired");
-	brutal_newline();
+	syslog_puts("the _isr was fired");
 	_hlt();
 	while (1) {}
 }
@@ -35,6 +34,8 @@ static void idt_init()
 // is ready to hand things over to the C world.
 void _crt(void)
 {
+	syslog_init();
+	syslog_printf("Hello, fleet %i %i\n", 42, 0x0F0F);
 	idt_init();
 	_sti();
 	main();
