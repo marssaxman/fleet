@@ -1,4 +1,4 @@
-#include <sys/syslog.h>
+#include <sys/log.h>
 #include <i386/cpu.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -7,7 +7,7 @@
 
 static uint16_t COM1 = 0x03F8;
 
-void syslog_init()
+void _log_init()
 {
 	_outb(COM1 + 3, 0x80); // enable DLAB
 	_outb(COM1 + 0, 0x01); // set divisor to 1 (115200baud)
@@ -16,7 +16,7 @@ void syslog_init()
 	_outb(COM1 + 2, 0xC7); // enable FIFO
 }
 
-void syslog_putchar(char ch)
+void _log_putchar(char ch)
 {
 	// Wait until the port is ready to receive
 	while (0 == (_inb(COM1 + 5) & 0x20)) { /*wait*/ }
@@ -24,24 +24,24 @@ void syslog_putchar(char ch)
 	_outb(COM1, ch);
 }
 
-void syslog_print(const char *str)
+void _log_print(const char *str)
 {
 	while (*str) {
-		syslog_putchar(*str++);
+		_log_putchar(*str++);
 	}
 }
 
-void syslog_puts(const char *str)
+void _log_puts(const char *str)
 {
-	syslog_print(str);
-	syslog_putchar('\n');
+	_log_print(str);
+	_log_putchar('\n');
 }
 
-static void syslog_puthex(char ch)
+static void puthex(char ch)
 {
 	static const char digits[] = "0123456789ABCDEF";
-	syslog_putchar(digits[(ch >> 4) & 0x0F]);
-	syslog_putchar(digits[ch & 0x0F]);
+	_log_putchar(digits[(ch >> 4) & 0x0F]);
+	_log_putchar(digits[ch & 0x0F]);
 }
 
 static const char *handle_sizemod(const char *fmt, int *sizemod)
@@ -57,44 +57,7 @@ static const char *handle_sizemod(const char *fmt, int *sizemod)
 	return fmt;
 }
 
-static const char *handle_escape(const char *fmt, va_list args)
-{
-	// A doubled escape is just an ordinary percent char.
-	if (*fmt == '%') { // escape char
-		syslog_putchar(*fmt++);
-		return fmt;
-	}
-	// If it's an actual escape, look for a numeric size prefix.
-	int sizemod = 0;
-	fmt = handle_sizemod(fmt, &sizemod);
-	// Now see what the actual type code might happen to be.
-	switch (*fmt) {
-		case 's': {
-			char *str = va_arg(args, char*);
-			syslog_print(str);
-		} break;
-		case 'c': {
-			char str[2] = {va_arg(args, int), '\0'};
-			syslog_print(str);
-		} break;
-		case 'd':
-		case 'i': {
-			int value = va_arg(args, int);
-			if (sizemod >= 0) {
-				syslog_puthex((value >> 24) & 0x00FF);
-				syslog_puthex((value >> 16) & 0x00FF);
-			}
-			if (sizemod >= -1) {
-				syslog_puthex((value >> 8) & 0x00FF);
-			}
-			syslog_puthex(value & 0x00FF);
-		} break;
-		default: return fmt;
-	}
-	return ++fmt;
-}
-
-void syslog_printf(const char *fmt,...)
+void _log_printf(const char *fmt,...)
 {
 	va_list args;
 	va_start(args,fmt);
@@ -102,7 +65,7 @@ void syslog_printf(const char *fmt,...)
 		// handle the simple case first: the character stands for itself,
 		// and a doubled % escapes itself.
 		if (*fmt != '%' || *++fmt == '%') {
-			syslog_putchar(*fmt++);
+			_log_putchar(*fmt++);
 			continue;
 		}
 
@@ -113,25 +76,25 @@ void syslog_printf(const char *fmt,...)
 		switch (*fmt) {
 			case 's': {
 				char *str = va_arg(args, char*);
-				syslog_print(str);
+				_log_print(str);
 				fmt++;
 			} break;
 			case 'c': {
 				char str[2] = {va_arg(args, int), '\0'};
-				syslog_print(str);
+				_log_print(str);
 				fmt++;
 			} break;
 			case 'd':
 			case 'i': {
 				int value = va_arg(args, int);
 				if (sizemod >= 0) {
-					syslog_puthex((value >> 24) & 0x00FF);
-					syslog_puthex((value >> 16) & 0x00FF);
+					puthex((value >> 24) & 0x00FF);
+					puthex((value >> 16) & 0x00FF);
 				}
 				if (sizemod >= -1) {
-					syslog_puthex((value >> 8) & 0x00FF);
+					puthex((value >> 8) & 0x00FF);
 				}
-				syslog_puthex(value & 0x00FF);
+				puthex(value & 0x00FF);
 				fmt++;
 			} break;
 		}
