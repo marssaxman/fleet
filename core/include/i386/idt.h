@@ -9,7 +9,7 @@ struct _idt_entry
 	uint16_t selector;
 	uint8_t zero;
 	uint8_t flags;
-	uint8_t offset_high;
+	uint16_t offset_high;
 };
 
 // Macros for flags value subfields
@@ -32,6 +32,6 @@ struct _idt_entry
 #define _IDT_GATE_TYPE_INTR32 0xE
 #define _IDT_GATE_TYPE_TRAP32 0xF
 
-extern void _idt_load(uint8_t size, _idt_entry[] table);
+extern void _idt_load(uint32_t size, struct _idt_entry table[]);
 
 #endif //_I386_IDT_H

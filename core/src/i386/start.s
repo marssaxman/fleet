@@ -17,16 +17,15 @@ stack_bottom:
 stack_top:
 
 # Implement the entrypoint. Finish configuring the processor, set up the call
-# stack, initialize globals, then jump into the C world via main().
+# stack, initialize globals, then jump into the C world via _crt().
 .section .text
 .global _start
 .global _gdt_init
 .type _start, @function
 _start:
-	cli
 	movl $stack_top, %esp
 	call _gdt_init
-	call main
+	call _crt
 	# The program ends when main returns; halt the machine.
 	cli
 	hlt

@@ -5,9 +5,9 @@
 .align 8
 idt_descriptor:
 idt_descriptor_limit:
-	.hword 1535
+	.hword 0
 idt_descriptor_base:
-	.long idt
+	.long 0
 
 .section .text
 .global _idt_load
@@ -18,7 +18,7 @@ _idt_load:
 	movl 8(%esp), %eax
 	mull 6					# entry count * size of entry
 	decl %eax				# because that's how it works
-	movw %ax, idt
+	movw %ax, idt_descriptor_limit
 	lidtl (idt_descriptor)
 	ret
 
