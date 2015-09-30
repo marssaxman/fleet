@@ -1,7 +1,9 @@
-gcc
-grub
-xorriso
-qemu
+You will need gcc and build tools, configured for i386 or x86-64.
+	build-essential
 
-on a 64-bit machine, you'll need to do this so there's a 32-bit lib to link
-sudo apt-get install g++-multilib libc6-dev-i386
+If you are using an x86-64 machine, you will need i386 libc.
+	g++-multilib libc6-dev-i386
+
+You will need qemu, since that's what makes the whole thing run.
+	qemu
+
