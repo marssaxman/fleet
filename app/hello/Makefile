@@ -1,5 +1,5 @@
-NAME := "test-idt"
-LIBS := vga interrupt
+NAME := "hello"
+LIBS := vga
 CCFLAGS := -Wall -g
 LDFLAGS :=
 
@@ -11,9 +11,13 @@ executable:
 	../../build/exe.sh
 
 clean:
-	@rm -rf $(NAME).iso ./obj/*
+	@rm -rf $(NAME).bin ./obj/*
 
+run: executable
+	@../run.sh $(NAME).bin
 
+debug: executable
+	@../debug.sh $(NAME).bin
 
 
 
