@@ -9,7 +9,16 @@ extern void main(void);
 // The ISR module expects us to provide a master service routine.
 void _isr(struct _isr_state *regs)
 {
-	_log_puts("the _isr was fired");
+	_log_printf("_isr:\n\tedi = %d, esi = %d, ebp = %d, esp = %d\n"
+			"\tebx = %d, edx = %d, ecx = %d, eax = %d\n"
+			"\tinterrupt_number = %d\n"
+			"\terror_code = %d\n"
+			"\teip = %d, cs = %d, eflags = %d\n",
+			regs->edi, regs->esi, regs->ebp, regs->esp,
+			regs->ebx, regs->edx, regs->ecx, regs->eax,
+			regs->interrupt_number,
+			regs->error_code,
+			regs->eip, regs->cs, regs->eflags);
 	_hlt();
 	while (1) {}
 }
@@ -35,7 +44,6 @@ static void idt_init()
 void _crt(void)
 {
 	_log_init();
-	_log_printf("Hello, fleet %i %i\n", 42, 0x0F0F);
 	idt_init();
 	_sti();
 	main();

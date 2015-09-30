@@ -7,10 +7,17 @@
 // layout and invoke the master ISR, which should be defined in a C module.
 // The master ISR will get a pointer to the saved register state on the stack.
 struct _isr_state {
+	// Registers saved with PUSHAL. Note that esp here is the old value of
+	// esp, which should be the address of the interrupt_number field.
 	uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+	// Vector number pushed by stub routine
 	uint32_t interrupt_number;
+	// Error data pushed by interrupt, or dummy pushed by stub routine
 	uint32_t error_code;
-	uint32_t return_address;
+	// Previous execution state, saved by interrupt gate
+	uint32_t eip;
+	uint32_t cs;
+	uint32_t eflags;
 };
 extern void _isr(struct _isr_state*);
 

@@ -48,11 +48,10 @@ _isr_stubs:
 .type _isr, @function
 common:
 	pushal				# save all registers
-	movl %esp, %ebp		# set up the stack frame chain
 	cld					# voodoo - SysV calling conventions?
 	pushl %esp			# pointer to the saved register data on the stack
 	call _isr			# let the C world handle things
-	addl 0xC, %esp		# clear off data ptr, vector number, and error code
+	addl $0xC, %esp		# clear off data ptr, vector number, and error code
 	popal				# restore registers from stack
 	iret				# return from interrupt state
 
