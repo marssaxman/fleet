@@ -86,8 +86,12 @@ for src in $srcfiles; do
 		stdarg="-std=$STDCPP"
 	fi
 
-	if $CPP $CCFLAGS -MD $stdarg -I$SRCDIR -c $src -o $obj; then
+	$CPP $CCFLAGS -MD $stdarg -I$SRCDIR -c $src -o $obj
+	if [ $? -ne 0 ]; then
 		errorfound=1
 	fi
 done
+if [ $errorfound -ne 0 ]; then
+	exit 1
+fi
 
