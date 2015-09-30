@@ -10,7 +10,7 @@ struct _idt_entry
 	uint8_t zero;
 	uint8_t flags;
 	uint16_t offset_high;
-};
+} __attribute__((packed));
 
 // Macros for flags value subfields
 #define _IDT_GATE_PRESENT_MASK 0x80
@@ -32,6 +32,12 @@ struct _idt_entry
 #define _IDT_GATE_TYPE_INTR32 0xE
 #define _IDT_GATE_TYPE_TRAP32 0xF
 
-extern void _idt_load(uint32_t size, struct _idt_entry table[]);
+struct _idt_descriptor
+{
+	uint16_t size;
+	uint32_t offset;
+} __attribute__((packed));
+
+extern void _idt_load(struct _idt_descriptor*);
 
 #endif //_I386_IDT_H

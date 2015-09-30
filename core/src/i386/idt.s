@@ -1,24 +1,10 @@
-# Configure an IDT descriptor with the address and size of an IDT table,
-# then tell the cpu to load it.
-
-.section .data
-.align 8
-idt_descriptor:
-idt_descriptor_limit:
-	.hword 0
-idt_descriptor_base:
-	.long 0
+# Tell the CPU where the new IDT descriptor lives.
 
 .section .text
 .global _idt_load
 .type _idt_load, @function
 _idt_load:
-	movl 4(%esp), %eax		# table address
-	movl %eax, idt_descriptor_base
-	movl 8(%esp), %eax
-	mull 6					# entry count * size of entry
-	decl %eax				# because that's how it works
-	movw %ax, idt_descriptor_limit
-	lidtl (idt_descriptor)
+	movl 4(%esp), %eax		# descriptor address
+	lidtl (%eax)
 	ret
 

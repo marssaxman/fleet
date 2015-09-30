@@ -11,9 +11,9 @@
 .endm
 
 .macro coded_stub index
-	push \index
+	push $\index
 	jmp common
-	.align
+	.align 16
 .endm
 
 .macro stub_sequence index count
@@ -38,7 +38,8 @@ _isr_stubs:
 	coded_stub 17
 	stub_sequence index=18, count=12
 	coded_stub 30
-	stub_sequence index=31, count=33
+	stub 31
+	stub_sequence index=32, count=33
 	stub_sequence index=64, count=32
 	stub_sequence index=96, count=32
 
