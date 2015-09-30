@@ -1,4 +1,4 @@
-#include "syslog.h"
+#include <sys/syslog.h>
 #include <i386/cpu.h>
 #include <stdint.h>
 #include <stdarg.h>

@@ -1,7 +1,7 @@
 #include <i386/isr.h>
 #include <i386/idt.h>
 #include <i386/cpu.h>
-#include "syslog.h"
+#include "sys/syslog.h"
 
 // Somewhere out there, the user has implemented a main function.
 extern void main(void);
