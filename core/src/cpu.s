@@ -44,3 +44,19 @@ _inb:
 	xorl %eax, %eax
 	inb %dx, %al
 	ret
+
+.global _outl
+.type _outl, @function
+_outl:
+	movl 4(%esp), %edx	# port address
+	movl 8(%esp), %eax	# value to poke
+	outl %eax, %dx
+	ret
+
+.global _inl
+.type _inl, @function
+_inl:
+	movl 4(%esp), %edx	# port address
+	inl %dx, %eax
+	ret
+
