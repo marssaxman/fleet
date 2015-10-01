@@ -1,0 +1,60 @@
+At present this project exclusively targets i386.
+
+In the future, I hope to add support for x86_64, AArch64, and possibly also
+various 32-bit ARM microcontrollers.
+
+In order to keep from getting distracted right now and building a lot of
+infrastructure I don't actually need, I'm going to write out the cross platform
+plan here and move on. Perhaps the idea will still be useful when it comes
+time to actually implement it.
+
+Let's divide things up as follows:
+
+include/		Public interface for fleet apps/libs
+	stdlib.h
+	stdbool.h
+	stdarg.h
+	...etc
+	system/		Low level device communication interfaces
+		dma.h
+		messagequeue.h
+		interrupts.h
+		...etc
+stdlib/			Common C library source files
+	foo.c
+	bar.c
+	...etc
+kernel/			Common kernel source files
+	foo.c
+	bar.c
+	...etc
+virtio/			Common device drivers for standard VirtIO interfaces
+	network.c
+	block.c
+	serial.c
+	9p.c
+	queue.c
+	...etc
+arch/			Common interface for architecture-specific functions
+	 pci.h
+	 interrupts.h
+i386/			Target specific implementations of headers in arch
+	Makefile
+	build/
+		flags.sh
+		linker.ld
+	src/
+		start.s
+		kernel.c
+		idt.s
+		irq.h
+		...etc
+x86_64/			Target specific implementations of headers in arch
+	Makefile
+	build/
+		flags.sh
+		linker.ld
+	src/
+AArch64/		Implementations of AArch64-specific routines
+	...etc
+
