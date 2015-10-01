@@ -9,7 +9,7 @@
 // The ISR module expects us to provide a master service routine.
 void _isr(struct _isr_state *regs)
 {
-	_log_printf("_isr:\n\tedi = %d, esi = %d, ebp = %d, esp = %d\n"
+	_log(ISR, "edi = %d, esi = %d, ebp = %d, esp = %d\n"
 			"\tebx = %d, edx = %d, ecx = %d, eax = %d\n"
 			"\tinterrupt_number = %d\n"
 			"\terror_code = %d\n"
@@ -19,7 +19,7 @@ void _isr(struct _isr_state *regs)
 			regs->interrupt_number,
 			regs->error_code,
 			regs->eip, regs->cs, regs->eflags);
-	panic("unhandled interrupt");
+	_panic("unhandled interrupt");
 }
 
 static void idt_init()

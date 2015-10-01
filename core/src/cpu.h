@@ -1,5 +1,5 @@
-#ifndef _I386_CPU_H
-#define _I386_CPU_H
+#ifndef _CPU_H
+#define _CPU_H
 
 // Disable or enable hardware interrupts.
 extern void _cli();

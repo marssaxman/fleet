@@ -1,5 +1,5 @@
-#ifndef _I386_ISR_H
-#define _I386_ISR_H
+#ifndef _ISR_H
+#define _ISR_H
 
 #include <stdint.h>
 
@@ -27,4 +27,4 @@ struct _isr_stub {
 };
 extern struct _isr_stub _isr_stubs[256];
 
-#endif //_I386_ISR_H
+#endif //_ISR_H

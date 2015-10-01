@@ -57,10 +57,8 @@ static const char *handle_sizemod(const char *fmt, int *sizemod)
 	return fmt;
 }
 
-void _log_printf(const char *fmt,...)
+void _log_vprintf(const char *fmt, va_list args)
 {
-	va_list args;
-	va_start(args,fmt);
 	while (*fmt) {
 		// handle the simple case first: the character stands for itself,
 		// and a doubled % escapes itself.
@@ -99,6 +97,12 @@ void _log_printf(const char *fmt,...)
 			} break;
 		}
 	}
-	va_end(args);
 }
 
+void _log_printf(const char *fmt, ...)
+{
+	va_list args;
+	va_start(args,fmt);
+	_log_vprintf(fmt, args);
+	va_end(args);
+}

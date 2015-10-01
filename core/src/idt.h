@@ -1,5 +1,5 @@
-#ifndef _I386_IDT_H
-#define _I386_IDT_H
+#ifndef _IDT_H
+#define _IDT_H
 
 #include <stdint.h>
 
@@ -40,4 +40,4 @@ struct _idt_descriptor
 
 extern void _idt_load(struct _idt_descriptor*);
 
-#endif //_I386_IDT_H
+#endif //_IDT_H

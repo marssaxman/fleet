@@ -1,5 +1,5 @@
-#ifndef _SYS_PCI_H
-#define _SYS_PCI_H
+#ifndef _PCI_H
+#define _PCI_H
 
 #include <stdint.h>
 
