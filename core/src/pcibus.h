@@ -16,6 +16,8 @@ struct _pcibus_id
 {
 	uint16_t vendor_id;
 	uint16_t device_id;
+	uint8_t class_code;
+	uint8_t subclass;
 };
 
 // Search the PCI bus, looking for devices and secondary buses. Configure each

@@ -8,6 +8,8 @@
 static const uint32_t config_address = 0xCF8;
 static const uint32_t config_data = 0xCFC;
 
+#define PCIOFFSET(x) offsetof(struct _pci_header_common, x)
+
 // Compute the PCI configuration space address we must send in order to read
 // or write some register.
 static uint32_t pci_config_address(struct _pcibus_addr addr, uint8_t offset)
@@ -39,10 +41,18 @@ static bool scan(struct _pcibus_addr addr, _pcibus_callback proc)
 {
 	// Read this slot's vendor ID to see if there is a device attached.
 	struct _pcibus_id id;
-	id.vendor_id = read16(addr, offsetof(struct _pci_header_common, vendor_id));
+	id.vendor_id = read16(addr, PCIOFFSET(vendor_id));
 	if (0xFFFF == id.vendor_id) return false;
-	id.device_id = read16(addr, offsetof(struct _pci_header_common, device_id));
+	id.device_id = read16(addr, PCIOFFSET(device_id));
+	id.class_code = read8(addr, PCIOFFSET(class_code));
+	id.subclass = read8(addr, PCIOFFSET(subclass));
 	proc(addr, id);
+	// Is this device a PCI bridge? If so, add its bus number to our list.
+	uint8_t header_type = read8(addr, PCIOFFSET(header_type));
+	header_type &= _PCI_HEADER_TYPE_MASK;
+	if (header_type != _PCI_HEADER_TYPE_BRIDGE) return true;
+	uint32_t off = offsetof(struct _pci_config_bridge, secondary_bus_number);
+	bus_list[bus_count++] = read8(addr, off);
 	return true;
 }
 
@@ -51,11 +61,10 @@ static void scan_slot(uint8_t bus, uint8_t slot, _pcibus_callback proc)
 	struct _pcibus_addr addr = {bus, slot, 0};
 	if (!scan(addr, proc)) return;
 	// this device exists; check to see if it is a multifunction device.
-	uint32_t offset = offsetof(struct _pci_header_common, header_type);
-	uint8_t header_type = read8(addr, offset);
+	uint8_t header_type = read8(addr, PCIOFFSET(header_type));
 	if (0 == header_type & _PCI_HEADER_TYPE_MULTIFUNCTION_FLAG) return;
 	// it is a multifunction device, so we must check its other functions.
-	for (++addr.function; addr.function < 7; ++addr.function) {
+	for (addr.function = 1; addr.function < 8; ++addr.function) {
 		scan(addr, proc);
 	}
 }
