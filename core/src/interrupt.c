@@ -1,8 +1,8 @@
 #include "interrupt.h"
-#include <i386/isr.h>
-#include <i386/cpu.h>
-#include <i386/idt.h>
-#include <sys/log.h>
+#include "isr.h"
+#include "cpu.h"
+#include "idt.h"
+#include "log.h"
 #include "pic.h"
 #include "panic.h"
 

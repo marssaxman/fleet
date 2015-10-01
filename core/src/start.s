@@ -25,7 +25,7 @@ stack_top:
 _start:
 	movl $stack_top, %esp
 	call _gdt_init
-	call _crt
+	call _kernel
 	# The program ends when main returns; halt the machine.
 	cli
 	hlt

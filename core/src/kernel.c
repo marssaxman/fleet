@@ -1,5 +1,5 @@
-#include <i386/cpu.h>
-#include "sys/log.h"
+#include "cpu.h"
+#include "log.h"
 #include "interrupt.h"
 #include "pcibus.h"
 
@@ -19,7 +19,7 @@ static void log_pci_device(struct _pcibus_addr addr, struct _pcibus_id id)
 
 // Main entrypoint invoked by the _start function when the assembly bootstrap
 // is ready to hand things over to the C world.
-void _crt(void)
+void _kernel(void)
 {
 	_log_init();
 	_interrupt_init();

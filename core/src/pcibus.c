@@ -1,8 +1,8 @@
-#include "pcibus.h"
-#include <i386/cpu.h>
-#include <sys/log.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "pcibus.h"
+#include "cpu.h"
+#include "log.h"
 
 // IO port addresses for interacting with PCI configuration space.
 static const uint32_t config_address = 0xCF8;

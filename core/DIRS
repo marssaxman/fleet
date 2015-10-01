@@ -1,7 +1,0 @@
-Where to look for files in the corelib:
-
-include/ is the entry on the system search path
-include/sys/ is for non-architecture-specific system services
-include/i386/ is for declarations which only apply to the i386 target
-src/ is the source code root
-src/stdlib is home for non-architecture-specific C library functions
