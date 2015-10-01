@@ -4,6 +4,7 @@
 #include <i386/idt.h>
 #include <sys/log.h>
 #include "pic.h"
+#include "panic.h"
 
 // The ISR module expects us to provide a master service routine.
 void _isr(struct _isr_state *regs)
@@ -18,8 +19,7 @@ void _isr(struct _isr_state *regs)
 			regs->interrupt_number,
 			regs->error_code,
 			regs->eip, regs->cs, regs->eflags);
-	_hlt();
-	while (1) {}
+	panic("unhandled interrupt");
 }
 
 static void idt_init()

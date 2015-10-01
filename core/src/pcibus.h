@@ -3,10 +3,24 @@
 
 #include <sys/pci.h>
 
-// Enumerate the PCI bus looking for devices. When one is found, invoke the
-// callback, providing it with the bus, slot, vendor, and device IDs.
-typedef void (*_pcibus_scan_callback)
-		(uint8_t bus, uint8_t slot, uint16_t vendorID, uint16_t slotID);
-extern void _pcibus_scan(_pcibus_scan_callback);
+// Unique location of a PCI device: bus:slot.function
+struct _pcibus_addr
+{
+	uint8_t bus;
+	uint8_t slot;
+	uint8_t function;
+};
+
+// Unique identifier for a PCI device control protocol
+struct _pcibus_id
+{
+	uint16_t vendor_id;
+	uint16_t device_id;
+};
+
+// Search the PCI bus, looking for devices and secondary buses. Configure each
+// bridge we find, then invoke the callback for each device we find.
+typedef void (*_pcibus_callback)(struct _pcibus_addr, struct _pcibus_id);
+extern void _pcibus_init(_pcibus_callback);
 
 #endif //_PCIBUS_H
