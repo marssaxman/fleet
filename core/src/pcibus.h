@@ -1,7 +1,7 @@
 #ifndef _PCIBUS_H
 #define _PCIBUS_H
 
-#include <sys/pci.h>
+#include "pci.h"
 
 // Unique location of a PCI device: bus:slot.function
 struct _pcibus_addr

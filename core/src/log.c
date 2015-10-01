@@ -1,7 +1,7 @@
-#include <sys/log.h>
-#include <i386/cpu.h>
 #include <stdint.h>
 #include <stdarg.h>
+#include "log.h"
+#include "cpu.h"
 
 // Stream log information to COM1 for use by host debugging.
 
