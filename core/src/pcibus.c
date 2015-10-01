@@ -20,27 +20,24 @@ static uint16_t read16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 	return (uint16_t)((_inl(config_data) >> ((offset & 2) * 8)) & 0xffff);
 }
 
-static void scan_device(uint8_t bus, uint8_t slot, _pcibus_scan_callback proc)
-{
-	// If this device actually exists, its vendor ID will be something other
-	// than 0xFFFF. 
-	uint16_t vendorID = read16(bus, slot, 0, 0);
-	if (vendorID != 0xFFFF) {
-		uint16_t deviceID = read16(bus, slot, 0, 2);
-		proc(bus, slot, vendorID, deviceID);
-	}
-}
-
-static void scan_bus(uint8_t bus, _pcibus_scan_callback proc)
-{
-	for (uint8_t slot = 0; slot < 32; ++slot) {
-		scan_device(bus, slot, proc);
-	}
-}
-
 void _pcibus_scan(_pcibus_scan_callback proc)
 {
-	// Reset the device count, then start out by scanning bus 0, which
-	// should be the chipset's main bridge.
-	scan_bus(0, proc);
+	// We have at least one and possibly as many as 256 buses to scan. We
+	// will start with bus 0, then add more buses as we discover bridge
+	// devices offering them.
+	uint8_t bus_list[256] = {0};
+	unsigned bus_count = 1;
+	for (unsigned scan_idx = 0; scan_idx < bus_count; ++scan_idx) {
+		uint8_t bus = bus_list[scan_idx];
+		// Scan each of the 64 possible devices on this bus to see which of
+		// them actually exist. We can identify devices that actually exist
+		// by the presence of a vendor ID which is not 0xFFFF.
+		for (uint8_t slot = 0; slot < 32; ++slot) {
+			uint16_t vendorID = read16(bus, slot, 0, 0);
+			if (0xFFFF == vendorID) continue;
+			uint16_t deviceID = read16(bus, slot, 0, 2);
+			proc(bus, slot, vendorID, deviceID);
+		}
+	}
 }
+
