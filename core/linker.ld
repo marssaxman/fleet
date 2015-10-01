@@ -34,6 +34,20 @@ SECTIONS
 	/* Read-only data. */
 	.rodata BLOCK(4K) : ALIGN(4K)
 	{
+		/* Metadata describing the program interface. */
+		__manifest = .;
+		*(.manifest)
+		__manifest_end = .;
+		__config = .;
+		*(.config)
+		__config_end = .;
+
+		/* List of device drivers for use during initialization. */
+		__driver = .;
+		*(.driver)
+		__driver_end = .;
+
+		/* Constant data defined by the program. */
 		*(.rodata)
 	}
 
