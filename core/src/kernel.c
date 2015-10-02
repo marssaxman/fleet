@@ -13,7 +13,7 @@ extern void main(void);
 static uint32_t mem_size;
 static const char *cmdline;
 
-static void log_pci_device(struct _pcibus_addr addr, struct _pcibus_id id)
+static void log_pci_device(struct pci_address addr, struct pci_device_id id)
 {
 	_log(PCIPROBE, "found PCI device at %hhd:%hhd.%hhd:\n"
 			"\tvendor_id = %hd\n"
@@ -21,7 +21,7 @@ static void log_pci_device(struct _pcibus_addr addr, struct _pcibus_id id)
 			"\tclass_code = %hhd\n"
 			"\tsubclass = %hhd\n",
 			addr.bus, addr.slot, addr.function,
-			id.vendor_id, id.device_id, id.class_code, id.subclass);
+			id.vendor, id.device, id.class_code, id.subclass);
 }
 
 static void check_multiboot(struct multiboot_info *info)
