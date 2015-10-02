@@ -1,43 +1,45 @@
 #include <stdbool.h>
 #include <stddef.h>
+#include <sys/driver.h>
+#include <sys/pci.h>
 #include "pcibus.h"
 #include "cpu.h"
 #include "log.h"
 
-// IO port addresses for interacting with PCI configuration space.
-static const uint32_t config_address = 0xCF8;
-static const uint32_t config_data = 0xCFC;
 
-#define PCIOFFSET(x) offsetof(struct pci_header_common, x)
-
-// Compute the PCI configuration space address we must send in order to read
-// or write some register.
-static uint32_t pci_config_address(struct pci_address addr, uint8_t offset)
-{
-	uint32_t lbus  = (uint32_t)addr.bus;
-	uint32_t lslot = (uint32_t)addr.slot;
-	uint32_t lfunc = (uint32_t)addr.function;
-	uint16_t tmp = 0;
-	return (uint32_t)((lbus << 16) | (lslot << 11) |
-			(lfunc << 8) | (offset & 0xfc) | ((uint32_t)0x80000000));
-}
-
-static uint8_t read8(struct pci_address addr, uint8_t offset)
-{
-	_outl(config_address, pci_config_address(addr, offset));
-	return _inb(config_data);
-}
-
-static uint16_t read16(struct pci_address addr, uint8_t offset)
-{
-	_outl(config_address, pci_config_address(addr, offset));
-	return (uint16_t)((_inl(config_data) >> ((offset & 2) * 8)) & 0xffff);
-}
+#define PCIOFFSET(reg) offsetof(struct pci_header_common, reg)
+#define READ8(addr,reg) pci_config_read8(addr, PCIOFFSET(reg))
+#define READ16(addr,reg) pci_config_read16(addr, PCIOFFSET(reg))
+#define READ32(addr,reg) pci_config_read32(addr, PCIOFFSET(reg))
 
 static uint8_t bus_list[256];
 static unsigned bus_count;
 
-static bool scan(struct pci_address addr, _pcibus_callback proc)
+static void register_device(struct pci_address addr, uint16_t vendor_id)
+{
+	// Read the type fields for this device so we can identify the drivers
+	// capable of handling it.
+	struct pci_device_id id = {vendor_id};
+	id.device = READ16(addr, device_id);
+	id.class_code = READ8(addr, class_code);
+	id.subclass = READ8(addr, subclass);
+	id.prog_if = READ8(addr, prog_if);
+	id.header_type = READ8(addr, header_type) & PCI_HEADER_TYPE_MASK;
+	_log(PCIPROBE, "found PCI device at %hhd:%hhd.%hhd:\n"
+			"\tvendor_id = %hd\n"
+			"\tdevice_id = %hd\n"
+			"\tclass_code = %hhd\n"
+			"\tsubclass = %hhd\n"
+			"\tprog_if = %hhd\n"
+			"\theader_type = %hhd\n",
+			addr.bus, addr.slot, addr.function,
+			id.vendor, id.device,
+			id.class_code, id.subclass,
+			id.prog_if, id.header_type);
+}
+
+/*
+static bool scan(struct pci_address addr)
 {
 	// Read this slot's vendor ID to see if there is a device attached.
 	struct pci_device_id id;
@@ -55,21 +57,40 @@ static bool scan(struct pci_address addr, _pcibus_callback proc)
 	bus_list[bus_count++] = read8(addr, off);
 	return true;
 }
+*/
 
-static void scan_slot(uint8_t bus, uint8_t slot, _pcibus_callback proc)
+static void scan_slot(uint8_t bus, uint8_t slot)
 {
+	// We found an active device at function 0 on this slot. Check the other
+	// functions to see if any of them are active.
 	struct pci_address addr = {bus, slot, 0};
-	if (!scan(addr, proc)) return;
-	// this device exists; check to see if it is a multifunction device.
-	uint8_t header_type = read8(addr, PCIOFFSET(header_type));
-	if (0 == header_type & PCI_HEADER_TYPE_MULTIFUNCTION_FLAG) return;
-	// it is a multifunction device, so we must check its other functions.
 	for (addr.function = 1; addr.function < 8; ++addr.function) {
-		scan(addr, proc);
+		uint16_t vendor_id = READ16(addr, vendor_id);
+		if (PCI_NO_DEVICE_ID == vendor_id) continue;
+		register_device(addr, vendor_id);
 	}
 }
 
-void _pcibus_init(_pcibus_callback proc)
+static void scan_bus(uint8_t bus)
+{
+	// Look at each slot on this bus.
+	struct pci_address addr = {bus, 0, 0};
+	for (addr.slot = 0; addr.slot < 32; ++addr.slot) {
+		// Check the device ID to see if something actually exists here.
+		uint16_t vendor_id = READ16(addr, vendor_id);
+		if (PCI_NO_DEVICE_ID == vendor_id) continue;
+		register_device(addr, vendor_id);
+		// If it is a multifunction device, it may have other functions on
+		// the same slot.
+		uint8_t header_type = READ8(addr, header_type);
+		if (0 == header_type & PCI_HEADER_TYPE_MULTIFUNCTION_FLAG) continue;
+		// It's a multifunction device, so continue looking for functions we
+		// can use on this slot.
+		scan_slot(bus, addr.slot);
+	}
+}
+
+void _pcibus_init()
 {
 	// We have at least one and possibly as many as 256 buses to scan. We
 	// will start with bus 0, then add more buses as we discover bridge
@@ -77,13 +98,7 @@ void _pcibus_init(_pcibus_callback proc)
 	bus_list[0] = 0;
 	bus_count = 1;
 	for (unsigned scan_idx = 0; scan_idx < bus_count; ++scan_idx) {
-		uint8_t bus = bus_list[scan_idx];
-		// Scan each of the 64 possible devices on this bus to see which of
-		// them actually exist. We can identify devices that actually exist
-		// by the presence of a vendor ID which is not 0xFFFF.
-		for (uint8_t slot = 0; slot < 32; ++slot) {
-			scan_slot(bus, slot, proc);
-		}
+		scan_bus(bus_list[scan_idx]);
 	}
 }
 

@@ -3,14 +3,6 @@
 
 #include <stdint.h>
 
-// A device is uniquely identified with a three-part location.
-struct pci_address
-{
-	uint8_t bus;
-	uint8_t slot;
-	uint8_t function;
-} __attribute__((packed));
-
 // All device configuration spaces share these initial fields.
 struct pci_header_common
 {
@@ -28,6 +20,12 @@ struct pci_header_common
 	uint8_t bist;
 } __attribute__((packed));
 
+// A nonexistent device will report this vendor ID.
+enum {
+	PCI_NO_DEVICE_ID = 0xFFFF
+};
+
+// Definitions for class_code.
 enum {
 	PCI_CLASS_UNKNOWN = 0x00,
 	PCI_CLASS_MASS_STORAGE_CONTROLLER = 0x01,

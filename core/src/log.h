@@ -2,7 +2,6 @@
 #define _LOG_H
 
 #include <stdarg.h>
-#include <stdbool.h>
 
 // Write kernel status information to the legacy COM1 port.
 
@@ -17,9 +16,9 @@ void _log_printf(const char *format,...);
 
 enum _log_categories
 {
-	_LOG_PCIPROBE = false,
-	_LOG_MULTIBOOT = true,
-	_LOG_ISR = true,
+	_LOG_PCIPROBE = 1,
+	_LOG_MULTIBOOT = 0,
+	_LOG_ISR = 1,
 };
 
 #define _log(category, format, args...) \
