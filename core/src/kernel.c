@@ -1,7 +1,6 @@
 #include "cpu.h"
 #include "log.h"
 #include "interrupt.h"
-#include "pcibus.h"
 #include "gdt.h"
 #include "multiboot.h"
 #include "panic.h"
@@ -37,7 +36,6 @@ void _kernel(unsigned magic, struct multiboot_info *info)
 	check_multiboot(info);
 	_gdt_init();
 	_interrupt_init();
-	_pcibus_init();
 	_sti();
 	main();
 	while (1) {}

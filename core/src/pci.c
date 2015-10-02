@@ -1,4 +1,4 @@
-#include <sys/driver.h>
+#include <sys/pci.h>
 #include <cpu.h>
 
 // IO ports used to communicate with PCI configuration space.

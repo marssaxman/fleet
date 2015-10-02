@@ -3,6 +3,14 @@
 
 #include <stdint.h>
 
+// Location of a PCI device communication port.
+struct pci_address
+{
+	uint8_t bus;
+	uint8_t slot;
+	uint8_t function;
+};
+
 // All device configuration spaces share these initial fields.
 struct pci_header_common
 {
@@ -98,6 +106,11 @@ struct pci_config_bridge {
 	uint8_t interrupt_pin;
 	uint16_t bridge_control;
 } __attribute((packed));
+
+// Accessors for device configuration registers.
+extern uint8_t pci_config_read8(struct pci_address, uint8_t field_offset);
+extern uint16_t pci_config_read16(struct pci_address, uint8_t field_offset);
+extern uint32_t pci_config_read32(struct pci_address, uint8_t field_offset);
 
 #endif //_SYS_PCI_H
 
