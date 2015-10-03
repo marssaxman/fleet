@@ -21,9 +21,7 @@
 	F = secondary hard disk
 */
 
-struct irq_notify_queue {
-	struct irq_handler *head;
-} irq_notifiers[16];
+struct _task _handlers[16];
 
 static unsigned irq_enable_mask = 0;
 
@@ -33,10 +31,9 @@ void irq_init()
 	_pic_set_irqs(irq_enable_mask);
 }
 
-void irq_attach(unsigned irq, struct irq_handler *entry)
+void irq_listen(unsigned irq, struct _task *handler)
 {
-	entry->next = irq_notifiers[irq].head;
-	irq_notifiers[irq].head = entry;
+	_task_schedule(&_handlers[irq], handler);
 	irq_enable_mask |= 1 << irq;
 	_log_printf("setting IRQ enable mask %d\n", irq_enable_mask);
 	_pic_set_irqs(irq_enable_mask);
@@ -45,8 +42,8 @@ void irq_attach(unsigned irq, struct irq_handler *entry)
 void _irq(unsigned irq)
 {
 	_log_printf("IRQ %d\n", irq);
-	for (struct irq_handler *h = irq_notifiers[irq].head; h; h = h->next) {
-		h->proc(h);
-	}
+	_task_execute(&_handlers[irq]);
+	irq_enable_mask &= ~(1 << irq);
+	_pic_set_irqs(irq_enable_mask);
 }
 

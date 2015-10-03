@@ -83,6 +83,12 @@
 #define COM4_IRQ 3
 
 static void com1_poll();
+static void listen()
+{
+	static struct _task h = { .proc = com1_poll };
+	_task_init(&h);
+	irq_listen(COM1_IRQ, &h);
+}
 
 static struct com1_events *notify;
 
@@ -99,8 +105,7 @@ void com1_init(struct com1_events *proc)
 	// Enable FIFO mode and clear buffers.
 	_outb(COM1 + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
 	// Add ourselves to the notify queue for the port's IRQ.
-	static struct irq_handler h = { .proc = com1_poll };
-	irq_attach(COM1_IRQ, &h);
+	listen();
 	// Enable interrupts so we don't have to waste time polling.
 	// We want to know when data is ready to send or to receive.
 	_outb(COM1 + IER, IER_RX_DATA|IER_THRE);
@@ -149,7 +154,6 @@ void com1_poll()
 		case IIR_THRE: {
 			// is there more data to send? if so, then send it.
 			// otherwise, we should probably disable write interrupts
-			
 		} break;
 		case IIR_RX_DATA: {
 			// there is more data ready to receive
