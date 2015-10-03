@@ -30,14 +30,21 @@ void _kernel(unsigned magic, struct multiboot_info *info)
 	// Set up the logging port first, so we can stream debug information.
 	_log_init();
 	_log_print("\nfleet kernel status log\n");
+	// Use our boot info to set up a memory map and find our configuration.
 	if (magic != 0x2BADB002) {
 		_panic("Bad boot magic: 0x%d (should be 0x2BADBOO2)\n", magic);
 	}
 	check_multiboot(info);
+	// Configure the memory and interrupt systems.
 	_gdt_init();
 	_interrupt_init();
-	_sti();
+	// Jump into the application entrypoint and let it do its thing.
 	main();
-	while (1) {}
+	// The app is done, so now we sleep and process interrupts forever.
+	while (1) {
+		_log_print("going to sleep\n");
+		_hlt();
+		_interrupt_notify();
+	}
 }
 
