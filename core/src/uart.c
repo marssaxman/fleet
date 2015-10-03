@@ -1,6 +1,7 @@
-#include <sys/uart.h>
-#include <stdint.h>
+
+#include "uart.h"
 #include "cpu.h"
+#include <stdint.h>
 
 // Implementation of the primitive PC serial transport.
 
@@ -47,7 +48,6 @@
 #define FIFO_TRIGGER_8 0x80
 #define FIFO_TRIGGER_14 0xC0
 
-
 // The line control register configures the serial protocol.
 #define LCR_DLAB 0x80	// switch divisor registers on or off
 #define LCR_BREAK 0x40	// continuously write out spaces
@@ -60,93 +60,62 @@
 #define LCR_WORD_6 0x01 // pain
 #define LCR_WORD_5 0x00 // huh?
 
-static void send(io_socket_t *self, io_buffer_t *buf)
-{
-	uintptr_t address = (intptr_t)self->port->reference;
-	// bad crude blocking implementation. get some interrupts in here
-	char *p = (char*)buf->address;
-	char *end = p + buf->length;
-	while (p < end) {
-		// Wait until the port is ready to receive
-		while (0 == (_inb(address + 5) & 0x20)) { /*wait*/ }
-		// Push another byte into its buffer
-		_outb(address, *p++);
-	}
-}
+// The line status register tells us what the port is up to.
+#define LSR_RX_READY 0x01
+#define LSR_RX_OVERRUN 0x02
+#define LSR_PARITY_ERROR 0x04
+#define LSR_FRAMING_ERROR 0x08
+#define LSR_BREAK 0x10
+#define LSR_TX_READY 0x20
+#define LSR_TX_STALL 0x40
+#define LSR_FIFO_ERROR 0x80
 
-static void receive(io_socket_t *self, io_buffer_t *buf)
-{
-}
 
-static void close(io_socket_t *self)
-{
-}
+#define COM1 0x3F8
+#define COM2 0x2F8
+#define COM3 0x3E8
+#define COM4 0x2E8
 
-static struct io_socket_actions socket_mechanism = {
-	.send = send,
-	.receive = receive,
-	.close = close,
-};
-
-static void enable(io_port_t *self, io_socket_t *socket)
+void com1_init()
 {
-	uintptr_t address = (intptr_t)self->reference;
 	// Switch DLAB on and set the speed to 115200.
-	_outb(address + LCR, LCR_DLAB);
-	_outb(address + DLL, 0x01);
-	_outb(address + DLH, 0x00);
+	_outb(COM1 + LCR, LCR_DLAB);
+	_outb(COM1 + DLL, 0x01);
+	_outb(COM1 + DLH, 0x00);
 	// Switch DLAB off and configure 8N1 mode.
-	_outb(address + LCR, LCR_WORD_8);
+	_outb(COM1 + LCR, LCR_WORD_8);
 	// Enable FIFO mode and clear buffers.
-	_outb(address + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
+	_outb(COM1 + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
 	// Enable interrupts so we don't have to waste time polling.
 	// We want to know when data is ready to send or to receive.
-	_outb(address + IER, IER_RX_DATA|IER_THRE);
-	// Configure the socket and let 'er rip.
-	socket->mechanism = &socket_mechanism;
-	socket->reference = 0;
-	socket->port = self;
+	_outb(COM1 + IER, IER_RX_DATA|IER_THRE);
 }
 
-static void connect(io_port_t *self, io_socket_t *socket)
+size_t com1_write(const char *buf, size_t length)
 {
-	enable(self, socket);
-	// detect/report errors, etc
-}
-
-static void listen(io_port_t *self, io_socket_t *socket)
-{
-	enable(self, socket);
-	// how to detect/report failure?
-	// what if the port's already in use?
-}
-
-static struct io_port_actions port_mechanism = {
-	.connect = connect,
-	.listen = listen,
-};
-
-static void bind(io_transport_t *self, io_port_t *port, const char *name)
-{
-	// Resolve this address, which should be the number of a COM port.
-	int number = *name++ - '1';
-	if (number < 0 || number > 3 || *name) {
-		// complain, somehow; TODO
-		return;
+	// Write this buffer into the port until its buffer is full.
+	const char *p = buf;
+	const char *end = buf + length;
+	while (p < end) {
+		// Make sure the UART can receive more data.
+		uint8_t lsr = _inb(COM1 + LSR);
+		if (0 == (lsr & LSR_TX_READY)) break;
+		// Add this byte to the FIFO.
+		_outb(COM1 + THR, *p++);
 	}
-	static intptr_t addrs[4] = {0x3F8, 0x2F8, 0x3E8, 0x2E8};
-	port->mechanism = &port_mechanism;
-	port->reference = (void*)(addrs[number]);
-	port->transport = self;
-	// report success, somehow; TODO
+	// Return the number of bytes we read.
+	return p - buf;
 }
 
-static struct io_transport_actions transport_mechanism = {
-	.bind = bind,
-};
-
-io_transport_t uart = {
-	.mechanism = &transport_mechanism,
-	.reference = 0,
-};
-
+size_t com1_read(char *buf, size_t capacity)
+{
+	// Read bytes from this port until we empty it or run out of buffer.
+	char *p = buf;
+	char *end = buf + capacity;
+	while (p < end) {
+		uint8_t lsr = _inb(COM1 + LSR);
+		if (0 == (lsr & LSR_RX_READY)) break;
+		*p++ = _inb(COM1 + RBR);
+	}
+	return p - buf;
+}

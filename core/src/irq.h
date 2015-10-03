@@ -1,5 +1,5 @@
-#ifndef _SYS_IRQ_H
-#define _SYS_IRQ_H
+#ifndef _IRQ_H
+#define _IRQ_H
 
 struct irq_handler {
 	struct irq_handler **previous;
@@ -12,4 +12,4 @@ void irq_detach(struct irq_handler*);
 
 extern const unsigned irq_count;
 
-#endif //_SYS_IRQ_H
+#endif //_IRQ_H
