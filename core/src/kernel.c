@@ -4,7 +4,7 @@
 #include "gdt.h"
 #include "multiboot.h"
 #include "panic.h"
-
+#include "events.h"
 #include "uart.h"
 
 // Somewhere out there, the user has implemented a main function.
@@ -26,6 +26,13 @@ static void check_multiboot(struct multiboot_info *info)
 	}
 }
 
+static void _tx_clear(struct _task *task)
+{
+	_log_print("TX_CLEAR on COM1");
+}
+static struct _task com1_tx_clear = { .proc = _tx_clear };
+static struct com1_events ev = { .tx_clear = &com1_tx_clear };
+
 // Main entrypoint invoked by the _start function.
 void _kernel(unsigned magic, struct multiboot_info *info)
 {
@@ -41,10 +48,13 @@ void _kernel(unsigned magic, struct multiboot_info *info)
 	_gdt_init();
 	_interrupt_init();
 	// Jump into the application entrypoint and let it do its thing.
-	com1_init(NULL);
-	com1_write("THIS IS A TEST", 14);
+	com1_init(&ev);
+	com1_write("THIS IS A TEST YO YO YO DUDE MAN", 22);
 	main();
 	// The app is done, so now we sleep and process interrupts forever.
-	while (1) _hlt();
+	while (1) {
+		poll();
+		_hlt();
+	}
 }
 

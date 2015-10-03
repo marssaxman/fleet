@@ -2,6 +2,7 @@
 #include "uart.h"
 #include "cpu.h"
 #include "irq.h"
+#include "events.h"
 #include <stdint.h>
 
 // Implementation of the primitive PC serial transport.
@@ -89,12 +90,15 @@ static void listen()
 	irq_listen(COM1_IRQ, &h);
 }
 
-static struct com1_events *notify;
+static struct com1_events events;
 
 void com1_init(struct com1_events *proc)
 {
-	// Save the proc address so we can send notifications later.
-	notify = proc;
+	if (proc) {
+		events = *proc;
+	} else {
+		memset(&events, '\0', sizeof(struct com1_events));
+	}
 	// Switch DLAB on and set the speed to 115200.
 	_outb(COM1 + LCR, LCR_DLAB);
 	_outb(COM1 + DLL, 0x01);
@@ -118,7 +122,11 @@ size_t com1_write(const char *buf, size_t length)
 	while (p < end) {
 		// Make sure the UART can receive more data.
 		uint8_t lsr = _inb(COM1 + LSR);
-		if (0 == (lsr & LSR_TX_READY)) break;
+		if (0 == (lsr & LSR_TX_READY)) {
+			// Wait to send more until the UART signals buffer cleared.
+			listen();
+			break;
+		}
 		// Add this byte to the FIFO.
 		_outb(COM1 + THR, *p++);
 	}
@@ -133,7 +141,11 @@ size_t com1_read(char *buf, size_t capacity)
 	char *end = buf + capacity;
 	while (p < end) {
 		uint8_t lsr = _inb(COM1 + LSR);
-		if (0 == (lsr & LSR_RX_READY)) break;
+		if (0 == (lsr & LSR_RX_READY)) {
+			// Wait until the port signals data availability.
+			listen();
+			break;
+		}
 		*p++ = _inb(COM1 + RBR);
 	}
 	return p - buf;
@@ -150,13 +162,8 @@ void com1_poll()
 			// so we'll read from the status register
         	_inb(COM1 + MSR);
 		} break;
-		case IIR_THRE: {
-			// is there more data to send? if so, then send it.
-			// otherwise, we should probably disable write interrupts
-		} break;
-		case IIR_RX_DATA: {
-			// there is more data ready to receive
-		} break;
+		case IIR_THRE: if (events.tx_clear) defer(events.tx_clear); break;
+		case IIR_RX_DATA: if (events.rx_ready) defer(events.rx_ready); break;
 		case IIR_RX_STATUS: {
 			// nothing we can usefully do just yet, but we need to clear
 			// the condition, so we'll read from the status register

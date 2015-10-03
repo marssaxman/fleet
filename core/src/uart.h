@@ -2,14 +2,16 @@
 #define _UART_H
 
 #include <string.h>
+#include "task.h"
 
 // Primitive, low-speed legacy serial interfaces, aka COM ports.
 
+// Events the port may raise 
 struct com1_events {
 	// Sent all the data: need more
-	void (*tx_clear)();
+	struct _task *tx_clear;
 	// Data came in: you should grab it
-	void (*rx_ready)();
+	struct _task *rx_ready;
 };
 
 // Set up the port and connect it to your event handlers

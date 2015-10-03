@@ -10,7 +10,7 @@
 
 struct _task
 {
-	struct _task *previous, *next;
+	struct _task *tail, *head;
 	void (*proc)(struct _task*);
 };
 void _task_schedule(struct _task *queue, struct _task *job);
