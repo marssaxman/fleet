@@ -43,10 +43,7 @@ _pic_init:
 	movl $PIC2_DATA, %edx
 	outb %al, %dx
 
-	// Fall right on through to the disable function
-.global _pic_disable
-.type _pic_disable, @function
-_pic_disable:
+	// Disable all IRQs to start with
 	movl $0xFF, %eax
 	movl $PIC1_DATA, %edx
 	outb %al, %dx
@@ -54,13 +51,19 @@ _pic_disable:
 	outb %al, %dx
 	ret
 
-.global _pic_enable
-.type _pic_enable, @function
-_pic_enable:
-	movl $0x00, %eax
+.global _pic_set_irqs
+.type _pic_set_irqs, @function
+_pic_set_irqs:
+	// The stack parameter is a bitmask for both PICs, with bits set for
+	// the IRQs we want to receive. The PICs are more interested in knowing
+	// which IRQs we want to suppress, so we'll invert the bits.
+	movb 4(%esp), %al
+	xor $0xFF, %al
 	movl $PIC1_DATA, %edx
 	outb %al, %dx
 	movl $PIC2_DATA, %edx
+	movb 5(%esp), %al
+	xor $0xFF, %al
 	outb %al, %dx
 	ret
 

@@ -39,6 +39,11 @@ void irq_detach(struct irq_handler *entry)
 {
 }
 
+void _irq(unsigned irq)
+{
+	_log_printf("IRQ %d\n", irq);
+}
+
 void _exception(struct _isr_state *regs)
 {
 	// Processor signalled that something fatal happened
@@ -112,14 +117,7 @@ void _interrupt_init()
 	register_isr(&idt[0x2F], _isr_irqF);
 
 	// Our interrupt system is ready, so let it rip.
-	_pic_enable();
+	_pic_set_irqs(0xFFFF);
 	_sti();
 }
 
-void _interrupt_notify()
-{
-	// If device interrupts have occurred, notify their listeners.
-	if (!_irq_waiting) return;
-	_log_printf("irq recorded: %d\n", _irq_waiting);
-	_irq_waiting = 0;
-}

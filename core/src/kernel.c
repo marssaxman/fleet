@@ -41,10 +41,6 @@ void _kernel(unsigned magic, struct multiboot_info *info)
 	// Jump into the application entrypoint and let it do its thing.
 	main();
 	// The app is done, so now we sleep and process interrupts forever.
-	while (1) {
-		_log_print("going to sleep\n");
-		_hlt();
-		_interrupt_notify();
-	}
+	while (1) _hlt();
 }
 
