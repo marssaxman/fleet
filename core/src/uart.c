@@ -86,7 +86,6 @@ static void com1_poll();
 static void listen()
 {
 	static struct _task h = { .proc = com1_poll };
-	_task_init(&h);
 	irq_listen(COM1_IRQ, &h);
 }
 
