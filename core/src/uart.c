@@ -1,6 +1,7 @@
 
 #include "uart.h"
 #include "cpu.h"
+#include "irq.h"
 #include <stdint.h>
 
 // Implementation of the primitive PC serial transport.
@@ -76,8 +77,19 @@
 #define COM3 0x3E8
 #define COM4 0x2E8
 
-void com1_init()
+#define COM1_IRQ 4
+#define COM2_IRQ 3
+#define COM3_IRQ 4
+#define COM4_IRQ 3
+
+static void com1_poll();
+
+static struct com1_events *notify;
+
+void com1_init(struct com1_events *proc)
 {
+	// Save the proc address so we can send notifications later.
+	notify = proc;
 	// Switch DLAB on and set the speed to 115200.
 	_outb(COM1 + LCR, LCR_DLAB);
 	_outb(COM1 + DLL, 0x01);
@@ -86,6 +98,9 @@ void com1_init()
 	_outb(COM1 + LCR, LCR_WORD_8);
 	// Enable FIFO mode and clear buffers.
 	_outb(COM1 + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
+	// Add ourselves to the notify queue for the port's IRQ.
+	static struct irq_handler h = { .proc = com1_poll };
+	irq_attach(COM1_IRQ, &h);
 	// Enable interrupts so we don't have to waste time polling.
 	// We want to know when data is ready to send or to receive.
 	_outb(COM1 + IER, IER_RX_DATA|IER_THRE);
@@ -119,3 +134,31 @@ size_t com1_read(char *buf, size_t capacity)
 	}
 	return p - buf;
 }
+
+void com1_poll()
+{
+	// See what's up with this port. Why did an interrupt occur?
+	uint8_t iir = _inb(COM1 + IIR);
+	switch (iir & IIR_MASK) {
+		case IIR_NONE: return; // well that was weird
+		case IIR_MODEM_STATUS: {
+			// we don't really care, but we need to clear the condition,
+			// so we'll read from the status register
+        	_inb(COM1 + MSR);
+		} break;
+		case IIR_THRE: {
+			// is there more data to send? if so, then send it.
+			// otherwise, we should probably disable write interrupts
+			
+		} break;
+		case IIR_RX_DATA: {
+			// there is more data ready to receive
+		} break;
+		case IIR_RX_STATUS: {
+			// nothing we can usefully do just yet, but we need to clear
+			// the condition, so we'll read from the status register
+        	_inb(COM1 + LSR);
+		} break;
+	}
+}
+

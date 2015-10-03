@@ -5,6 +5,8 @@
 #include "multiboot.h"
 #include "panic.h"
 
+#include "uart.h"
+
 // Somewhere out there, the user has implemented a main function.
 extern void main(void);
 
@@ -39,6 +41,8 @@ void _kernel(unsigned magic, struct multiboot_info *info)
 	_gdt_init();
 	_interrupt_init();
 	// Jump into the application entrypoint and let it do its thing.
+	com1_init(NULL);
+	com1_write("THIS IS A TEST", 14);
 	main();
 	// The app is done, so now we sleep and process interrupts forever.
 	while (1) _hlt();

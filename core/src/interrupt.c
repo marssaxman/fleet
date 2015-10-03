@@ -5,6 +5,7 @@
 #include "pic.h"
 #include "panic.h"
 #include "interrupt.h"
+#include "irq.h"
 
 void _exception(struct _isr_state *regs)
 {
@@ -79,7 +80,7 @@ void _interrupt_init()
 	register_isr(&idt[0x2F], _isr_irqF);
 
 	// Our interrupt system is ready, so let it rip.
-	_pic_set_irqs(0xFFFF);
+	irq_init();
 	_sti();
 }
 
