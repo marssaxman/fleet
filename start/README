@@ -1,0 +1,13 @@
+Libstart is a minimal freestanding C runtime library intended for embedded
+software or for an operating system kernel. Its target platform is an i386 PC
+with a multiboot-compatible bootloader.
+
+Libstart provides a _start function, a multiboot header, and a small stack
+suitable for kernel bootstrapping. Once the machine is setup to run C code,
+the _start function will call this entrypoint:
+
+extern void _kernel(unsigned magic, struct multiboot_info *info);
+
+The include/ directory contains a set of header files sufficient for a
+conforming freestanding implementation of C99.
+
