@@ -1,8 +1,9 @@
 #include "cpu.h"
 #include "log.h"
-#include "interrupt.h"
+#include "exception.h"
 #include "gdt.h"
 #include "idt.h"
+#include "irq.h"
 #include "multiboot.h"
 #include "panic.h"
 #include "events.h"
@@ -45,7 +46,9 @@ void _kernel(unsigned magic, struct multiboot_info *info)
 	// Configure the memory and interrupt systems.
 	_gdt_init();
 	_idt_init();
-	_interrupt_init();
+	_exception_init();
+	_irq_init();
+	_sti();
 	// Jump into the application entrypoint and let it do its thing.
 	work_item_init(&com1_tx_clear, _tx_clear, &COM1);
 	COM1.events.tx_clear = &com1_tx_clear;

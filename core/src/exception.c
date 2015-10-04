@@ -1,11 +1,8 @@
 #include "isr.h"
 #include "cpu.h"
 #include "idt.h"
-#include "log.h"
-#include "pic.h"
 #include "panic.h"
-#include "interrupt.h"
-#include "irq.h"
+#include "exception.h"
 
 void _exception(struct _isr_state *regs)
 {
@@ -23,7 +20,7 @@ static void register_isr(struct _idt_entry *gate, void *ptr)
 	gate->flags = 0x8E;	// 32-bit interrupt gate
 }
 
-void _interrupt_init()
+void _exception_init()
 {
 	// Install ISRs for the CPU exceptions, since we might want to recover
 	// from those or use them as a chance to manage virtual memory.
@@ -47,31 +44,5 @@ void _interrupt_init()
 	register_isr(&_idt[0x11], _isr_exc11);
 	register_isr(&_idt[0x12], _isr_exc12);
 	register_isr(&_idt[0x13], _isr_exc13);
-
-	// Configure the PIC to remap device IRQs out of the range of processor
-	// exceptions, so we can give them their own set of handlers.
-	_pic_init();
-
-	// Register an ISR for each device IRQ.
-	register_isr(&_idt[0x20], _isr_irq0);
-	register_isr(&_idt[0x21], _isr_irq1);
-	register_isr(&_idt[0x22], _isr_irq2);
-	register_isr(&_idt[0x23], _isr_irq3);
-	register_isr(&_idt[0x24], _isr_irq4);
-	register_isr(&_idt[0x25], _isr_irq5);
-	register_isr(&_idt[0x26], _isr_irq6);
-	register_isr(&_idt[0x27], _isr_irq7);
-	register_isr(&_idt[0x28], _isr_irq8);
-	register_isr(&_idt[0x29], _isr_irq9);
-	register_isr(&_idt[0x2A], _isr_irqA);
-	register_isr(&_idt[0x2B], _isr_irqB);
-	register_isr(&_idt[0x2C], _isr_irqC);
-	register_isr(&_idt[0x2D], _isr_irqD);
-	register_isr(&_idt[0x2E], _isr_irqE);
-	register_isr(&_idt[0x2F], _isr_irqF);
-
-	// Our interrupt system is ready, so let it rip.
-	irq_init();
-	_sti();
 }
 
