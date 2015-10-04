@@ -3,7 +3,8 @@
 
 .section .data
 .align 8
-gdt:
+.global _gdt
+_gdt:
 gdt_entry_null:
 	.hword 0, 0
 	.byte 0, 0, 0, 0
@@ -36,16 +37,17 @@ gdt_entry_user_data:
 	.byte 0xCF		# granularity
 	.byte 0x00		# base_high
 
-gdt_descriptor:
-	.hword 39	# limit: size of table minus one
-	.long gdt	# base: address of table
+.global _gdtr
+_gdtr:
+	.hword 39	# limit: size of table in bytes, minus one
+	.long _gdt	# base: address of table
 
 # Tell the cpu where our GDT lives, then reload the segment registers.
 .section .text
 .global _gdt_init
 .type _gdt_init, @function
 _gdt_init:
-	lgdtl (gdt_descriptor)
+	lgdtl (_gdtr)
 	mov $0x10, %ax
 	mov %ax, %ds
 	mov %ax, %es
