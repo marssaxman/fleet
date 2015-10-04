@@ -54,6 +54,7 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 		*(.bootstrap_stack)
+		__data_end = .;
 	}
 
 	/* The compiler may produce other sections, by default it will put them in
