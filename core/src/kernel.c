@@ -52,7 +52,7 @@ void _kernel(unsigned magic, struct multiboot_info *info)
 	// Jump into the application entrypoint and let it do its thing.
 	work_item_init(&com1_tx_clear, _tx_clear, &COM1);
 	COM1.events.tx_clear = &com1_tx_clear;
-	uart_init(&COM1);
+	uart_open(&COM1);
 	uart_write(&COM1, "THIS IS A TEST YO YO YO DUDE MAN", 22);
 	main();
 	// The app is done, so now we sleep and process interrupts forever.

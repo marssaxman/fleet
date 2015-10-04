@@ -17,9 +17,10 @@ struct uart {
 	} events;
 };
 
-void uart_init(struct uart*);
+void uart_open(struct uart*);
 size_t uart_write(struct uart*, const char *buf, size_t bytes);
 size_t uart_read(struct uart*, char *buf, size_t capacity);
+void uart_close(struct uart*);
 
 extern struct uart COM1;
 extern struct uart COM2;

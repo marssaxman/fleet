@@ -105,7 +105,7 @@ static void uart_irq(void *ref)
 	}
 }
 
-void uart_init(struct uart *uart)
+void uart_open(struct uart *uart)
 {
 	// Configure the listen task we'll attach to the IRQ handler.
 	work_item_init(&uart->listen, uart_irq, uart);
@@ -160,4 +160,11 @@ size_t uart_read(struct uart *uart, char *buf, size_t capacity)
 	}
 	return p - buf;
 }
+
+void uart_close(struct uart *uart)
+{
+	// Disable interrupts.
+	_outb(uart->port + IER, 0);
+}
+
 
