@@ -2,7 +2,7 @@
 #include "log.h"
 #include "pic.h"
 #include "isr.h"
-#include "idt.h"
+#include <startc/idt.h>
 
 /*
 	0 = timer
@@ -47,8 +47,8 @@ void _irq(unsigned irq)
 static void register_isr(struct _idt_entry *gate, void *ptr)
 {
 	uint32_t addr = (uint32_t)ptr;
-	gate->offset_low = addr & 0x0000FFFF;
-	gate->offset_high = (addr >> 16) & 0x0000FFFF;
+	gate->offset0_15 = addr & 0x0000FFFF;
+	gate->offset16_31 = (addr >> 16) & 0x0000FFFF;
 	gate->selector = 0x08; // the only code segment we use
 	gate->flags = 0x8E;	// 32-bit interrupt gate
 }
