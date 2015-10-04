@@ -27,6 +27,7 @@ _start:
 	movl $stack_top, %esp
 	push %ebx
 	push %eax
+	call _gdt_init
 	call _kernel
 	cli
 	hlt
