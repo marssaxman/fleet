@@ -31,8 +31,8 @@ static void _tx_clear(void *value)
 }
 static struct work_item com1_tx_clear;
 
-// Main entrypoint invoked by the _start function.
-void _kernel(unsigned magic, struct multiboot_info *info)
+// Libstartc runtime calls this entrypoint function.
+void _startc(unsigned magic, struct multiboot_info *info)
 {
 	_log_print("\nfleet kernel status log\n");
 	// Use our boot info to set up a memory map and find our configuration.

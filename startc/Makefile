@@ -1,6 +1,6 @@
 SRC = $(wildcard src/*.s)
 OBJ = $(patsubst src/%.s,obj/%.o,$(SRC))
-LIB = libstart.a
+LIB = libstartc.a
 OPT = -march=i686 --strip-local-absolute
 
 all: $(LIB)

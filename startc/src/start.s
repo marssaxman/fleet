@@ -20,7 +20,7 @@ stack_top:
 # stack, initialize globals, then jump into the C world. We will pass in the
 # multiboot signature and information pointer as parameters.
 .section .text
-.global _kernel
+.global _startc
 .global _start
 .type _start, @function
 _start:
@@ -28,7 +28,7 @@ _start:
 	push %ebx
 	push %eax
 	call _gdt_init
-	call _kernel
+	call _startc
 	cli
 	hlt
 .Lhang:

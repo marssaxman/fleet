@@ -5,9 +5,9 @@ LDFLAGS="$LDFLAGS -static -nostdlib -static-libgcc -m32"
 LIBRARIES="$LIBRARIES -lgcc"
 
 # Point the way to the C runtime library.
-CCFLAGS="$CCFLAGS -I $FLEETBASE/start/include"
-LDFLAGS="$LDFLAGS -L $FLEETBASE/start/"
-LIBRARIES="$LIBRARIES -lstart"
+CCFLAGS="$CCFLAGS -I $FLEETBASE/startc/include"
+LDFLAGS="$LDFLAGS -L $FLEETBASE/startc/"
+LIBRARIES="$LIBRARIES -lstartc"
 
 # Won't get very far without the core library either.
 CCFLAGS="$CCFLAGS -I $FLEETBASE/core/include"
