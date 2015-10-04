@@ -8,8 +8,8 @@ struct _gdt_entry
 	uint16_t limit;
 	uint16_t base0_15;
 	uint8_t base16_23;
-	uint8_t attribs0_7;
-	uint8_t  attribs8_15;
+	uint8_t attrs0_7;
+	uint8_t attrs8_15;
 	uint8_t base24_31;
 } __attribute__ ((packed));
 

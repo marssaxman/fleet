@@ -1,7 +1,6 @@
 #include "cpu.h"
 #include "log.h"
 #include "exception.h"
-#include "idt.h"
 #include "irq.h"
 #include "multiboot.h"
 #include "panic.h"
@@ -42,7 +41,6 @@ void _startc(unsigned magic, struct multiboot_info *info)
 	check_multiboot(info);
 	// Configure the memory and interrupt systems.
 	_memory_init(info);
-	_idt_init();
 	_exception_init();
 	_irq_init();
 	_sti();

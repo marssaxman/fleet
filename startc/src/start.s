@@ -28,6 +28,7 @@ _start:
 	push %ebx
 	push %eax
 	call _gdt_init
+	call _idt_init
 	call _startc
 	cli
 	hlt

@@ -1,4 +1,4 @@
-# Tell the CPU where the new IDT descriptor lives.
+# Set up a full-size, empty IDT which can be configured with interrupt vectors.
 
 .section .data
 .align 8
@@ -11,20 +11,14 @@ _idt:
 	.byte 0x00		# flags
 	.hword 0x0000	# offset_high
 	.endr
-.global _idtptr
-_idtptr:
+.global _idtr
+_idtr:
 	.hword 0x07FF	# size of table - 1
 	.long _idt 		# address
 
 .section .text
 .global _idt_init
 _idt_init:
-	lidtl _idtptr
-	ret
-
-.global _idt_load
-_idt_load:
-	movl 4(%esp), %eax		# descriptor address
-	lidtl (%eax)
+	lidtl _idtr
 	ret
 
