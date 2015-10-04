@@ -1,13 +1,19 @@
 #include "events.h"
 
-static struct _task_queue event_loop;
+static struct work_queue events;
 
-void defer(struct _task *event)
+void events_init()
 {
-	_task_schedule(&event_loop, event);
+	work_queue_init(&events);
 }
 
-void poll()
+void raise_event(struct work_item *event)
 {
-	_task_execute(&event_loop);
+	queue_work(&events, event);
 }
+
+void poll_events()
+{
+	await_queue(&events);
+}
+

@@ -78,13 +78,14 @@ struct uart COM2 = { .port = 0x2F8, .irq = 3 };
 struct uart COM3 = { .port = 0x3E8, .irq = 4 };
 struct uart COM4 = { .port = 0x2E8, .irq = 3 };
 
-static void defer_opt(struct _task *task)
+static void raise_opt(struct work_item *task)
 {
-	if (task) defer(task);
+	if (task) raise_event(task);
 }
 
-static void uart_irq(struct uart *uart)
+static void uart_irq(void *ref)
 {
+	struct uart *uart = (struct uart*)ref;
 	// See what's up with this port. Why did an interrupt occur?
 	uint8_t iir = _inb(uart->port + IIR);
 	switch (iir & IIR_MASK) {
@@ -94,8 +95,8 @@ static void uart_irq(struct uart *uart)
 			// so we'll read from the status register
         	_inb(uart->port + MSR);
 		} break;
-		case IIR_THRE: defer_opt(uart->events.tx_clear); break;
-		case IIR_RX_DATA: defer_opt(uart->events.rx_ready); break;
+		case IIR_THRE: raise_opt(uart->events.tx_clear); break;
+		case IIR_RX_DATA: raise_opt(uart->events.rx_ready); break;
 		case IIR_RX_STATUS: {
 			// nothing we can usefully do just yet, but we need to clear
 			// the condition, so we'll read from the status register
@@ -104,13 +105,10 @@ static void uart_irq(struct uart *uart)
 	}
 }
 
-void uart_init(struct uart *uart, struct uart_events *proc)
+void uart_init(struct uart *uart)
 {
-	// Record the array of event handlers the client wants us to use.
-	if (proc) uart->events = *proc;
-	else memset(&uart->events, '\0', sizeof(struct uart_events));
 	// Configure the listen task we'll attach to the IRQ handler.
-	_task_init(&uart->listen, (_task_proc)uart_irq, uart);
+	work_item_init(&uart->listen, uart_irq, uart);
 	// Switch DLAB on and set the speed to 115200.
 	_outb(uart->port + LCR, LCR_DLAB);
 	_outb(uart->port + DLL, 0x01);

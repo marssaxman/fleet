@@ -6,9 +6,10 @@
 // possible so we can re-enable interrupts. The driver should therefore defer
 // substantial work by scheduling a task on the event queue.
 
-#include "task.h"
+#include <workqueue.h>
 
-void defer(struct _task *);
-void poll();
+void events_init();
+void raise_event(struct work_item *event);
+void poll_events();
 
 #endif //_EVENTS_H

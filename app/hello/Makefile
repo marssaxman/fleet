@@ -1,5 +1,5 @@
 NAME := "hello"
-LIBS := vga
+LIBS := #vga
 CCFLAGS := -Wall -g
 LDFLAGS :=
 
