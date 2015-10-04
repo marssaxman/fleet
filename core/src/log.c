@@ -68,6 +68,7 @@ void _log_vprintf(const char *fmt, va_list args)
 				_log_print(str);
 				fmt++;
 			} break;
+			case 'x':
 			case 'd':
 			case 'i': {
 				int value = va_arg(args, int);

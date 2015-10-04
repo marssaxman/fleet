@@ -16,9 +16,9 @@ void _log_printf(const char *format,...);
 enum _log_categories
 {
 	_LOG_PCIPROBE = 0,
-	_LOG_MULTIBOOT = 0,
-	_LOG_ISR = 1,
-	_LOG_WORKQUEUE = 1,
+	_LOG_MULTIBOOT = 1,
+	_LOG_ISR = 0,
+	_LOG_WORKQUEUE = 0,
 };
 
 #define _log(category, format, args...) \
