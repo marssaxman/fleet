@@ -1,7 +1,7 @@
 #ifndef _UART_H
 #define _UART_H
 
-#include <string.h>
+#include <stddef.h>
 #include <workqueue.h>
 
 // Primitive, low-speed legacy serial interfaces, aka COM ports.
