@@ -5,7 +5,6 @@
 
 // Write kernel status information to the legacy COM1 port.
 
-void _log_init();
 void _log_putch(char ch);
 void _log_print(const char *str);
 void _log_puts(const char *str);

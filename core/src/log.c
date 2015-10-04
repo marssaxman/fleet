@@ -3,25 +3,11 @@
 #include "log.h"
 #include "cpu.h"
 
-// Stream log information to COM1 for use by host debugging.
-
-static uint16_t COM1 = 0x03F8;
-
-void _log_init()
-{
-	_outb(COM1 + 3, 0x80); // enable DLAB
-	_outb(COM1 + 0, 0x01); // set divisor to 1 (115200baud)
-	_outb(COM1 + 1, 0x00); // hi byte of divisor
-	_outb(COM1 + 3, 0x03); // 8N1 
-	_outb(COM1 + 2, 0xC7); // enable FIFO
-}
+// Write log messages to the hypervisor's debug console.
 
 void _log_putchar(char ch)
 {
-	// Wait until the port is ready to receive
-	while (0 == (_inb(COM1 + 5) & 0x20)) { /*wait*/ }
-	// Push another byte into its buffer
-	_outb(COM1, ch);
+	_outb(0xE9, ch);
 }
 
 void _log_print(const char *str)
