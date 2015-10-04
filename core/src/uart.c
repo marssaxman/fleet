@@ -73,102 +73,93 @@
 #define LSR_FIFO_ERROR 0x80
 
 
-#define COM1 0x3F8
-#define COM2 0x2F8
-#define COM3 0x3E8
-#define COM4 0x2E8
+struct uart COM1 = { .port = 0x3F8, .irq = 4 };
+struct uart COM2 = { .port = 0x2F8, .irq = 3 };
+struct uart COM3 = { .port = 0x3E8, .irq = 4 };
+struct uart COM4 = { .port = 0x2E8, .irq = 3 };
 
-#define COM1_IRQ 4
-#define COM2_IRQ 3
-#define COM3_IRQ 4
-#define COM4_IRQ 3
-
-static void com1_poll();
-static void listen()
+static void defer_opt(struct _task *task)
 {
-	static struct _task h = { .proc = com1_poll };
-	irq_listen(COM1_IRQ, &h);
+	if (task) defer(task);
 }
 
-static struct com1_events events;
-
-void com1_init(struct com1_events *proc)
-{
-	if (proc) {
-		events = *proc;
-	} else {
-		memset(&events, '\0', sizeof(struct com1_events));
-	}
-	// Switch DLAB on and set the speed to 115200.
-	_outb(COM1 + LCR, LCR_DLAB);
-	_outb(COM1 + DLL, 0x01);
-	_outb(COM1 + DLH, 0x00);
-	// Switch DLAB off and configure 8N1 mode.
-	_outb(COM1 + LCR, LCR_WORD_8);
-	// Enable FIFO mode and clear buffers.
-	_outb(COM1 + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
-	// Add ourselves to the notify queue for the port's IRQ.
-	listen();
-	// Enable interrupts so we don't have to waste time polling.
-	// We want to know when data is ready to send or to receive.
-	_outb(COM1 + IER, IER_RX_DATA|IER_THRE);
-}
-
-size_t com1_write(const char *buf, size_t length)
-{
-	// Write this buffer into the port until its buffer is full.
-	const char *p = buf;
-	const char *end = buf + length;
-	while (p < end) {
-		// Make sure the UART can receive more data.
-		uint8_t lsr = _inb(COM1 + LSR);
-		if (0 == (lsr & LSR_TX_READY)) {
-			// Wait to send more until the UART signals buffer cleared.
-			listen();
-			break;
-		}
-		// Add this byte to the FIFO.
-		_outb(COM1 + THR, *p++);
-	}
-	// Return the number of bytes we read.
-	return p - buf;
-}
-
-size_t com1_read(char *buf, size_t capacity)
-{
-	// Read bytes from this port until we empty it or run out of buffer.
-	char *p = buf;
-	char *end = buf + capacity;
-	while (p < end) {
-		uint8_t lsr = _inb(COM1 + LSR);
-		if (0 == (lsr & LSR_RX_READY)) {
-			// Wait until the port signals data availability.
-			listen();
-			break;
-		}
-		*p++ = _inb(COM1 + RBR);
-	}
-	return p - buf;
-}
-
-void com1_poll()
+static void uart_irq(struct uart *uart)
 {
 	// See what's up with this port. Why did an interrupt occur?
-	uint8_t iir = _inb(COM1 + IIR);
+	uint8_t iir = _inb(uart->port + IIR);
 	switch (iir & IIR_MASK) {
 		case IIR_NONE: return; // well that was weird
 		case IIR_MODEM_STATUS: {
 			// we don't really care, but we need to clear the condition,
 			// so we'll read from the status register
-        	_inb(COM1 + MSR);
+        	_inb(uart->port + MSR);
 		} break;
-		case IIR_THRE: if (events.tx_clear) defer(events.tx_clear); break;
-		case IIR_RX_DATA: if (events.rx_ready) defer(events.rx_ready); break;
+		case IIR_THRE: defer_opt(uart->events.tx_clear); break;
+		case IIR_RX_DATA: defer_opt(uart->events.rx_ready); break;
 		case IIR_RX_STATUS: {
 			// nothing we can usefully do just yet, but we need to clear
 			// the condition, so we'll read from the status register
-        	_inb(COM1 + LSR);
+        	_inb(uart->port + LSR);
 		} break;
 	}
+}
+
+void uart_init(struct uart *uart, struct uart_events *proc)
+{
+	// Record the array of event handlers the client wants us to use.
+	if (proc) uart->events = *proc;
+	else memset(&uart->events, '\0', sizeof(struct uart_events));
+	// Configure the listen task we'll attach to the IRQ handler.
+	_task_init(&uart->listen, (_task_proc)uart_irq, uart);
+	// Switch DLAB on and set the speed to 115200.
+	_outb(uart->port + LCR, LCR_DLAB);
+	_outb(uart->port + DLL, 0x01);
+	_outb(uart->port + DLH, 0x00);
+	// Switch DLAB off and configure 8N1 mode.
+	_outb(uart->port + LCR, LCR_WORD_8);
+	// Enable FIFO mode and clear buffers.
+	_outb(uart->port + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
+	// Add ourselves to the notify queue for the port's IRQ.
+	irq_listen(uart->irq, &uart->listen);
+	// Enable interrupts so we don't have to waste time polling.
+	// We want to know when data is ready to send or to receive.
+	_outb(uart->port + IER, IER_RX_DATA|IER_THRE);
+}
+
+size_t uart_write(struct uart *uart, const char *buf, size_t bytes)
+{
+	// Write this buffer into the port until its buffer is full.
+	const char *p = buf;
+	const char *end = buf + bytes;
+	while (p < end) {
+		// Make sure the UART can receive more data.
+		uint8_t lsr = _inb(uart->port + LSR);
+		if (0 == (lsr & LSR_TX_READY)) {
+			// Wait to send more until the UART signals buffer cleared.
+			irq_listen(uart->irq, &uart->listen);
+			break;
+		}
+		// Add this byte to the FIFO.
+		_outb(uart->port + THR, *p++);
+	}
+	// Return the number of bytes we read.
+	return p - buf;
+}
+
+size_t uart_read(struct uart *uart, char *buf, size_t capacity)
+{
+	// Read bytes from this port until we empty it or run out of buffer.
+	char *p = buf;
+	char *end = buf + capacity;
+	while (p < end) {
+		uint8_t lsr = _inb(uart->port + LSR);
+		if (0 == (lsr & LSR_RX_READY)) {
+			// Wait until the port signals data availability.
+			irq_listen(uart->irq, &uart->listen);
+			break;
+		}
+		*p++ = _inb(uart->port + RBR);
+	}
+	return p - buf;
 }
 

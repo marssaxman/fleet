@@ -1,7 +1,7 @@
 #include "events.h"
 
 static void events_done(struct _task *ignored) {}
-static struct _task event_loop = {.proc = events_done};
+static struct _task event_loop = {.proc = (_task_proc)events_done};
 
 void defer(struct _task *event)
 {

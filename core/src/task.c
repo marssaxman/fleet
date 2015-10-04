@@ -28,12 +28,20 @@ static inline struct _task *pull(struct _task *queue)
 
 static inline void exec(struct _task *task)
 {
-	task->proc(task);
+	task->proc(task->data);
 }
 
 static inline int more(struct _task *queue)
 {
 	return head(queue) != queue;
+}
+
+void _task_init(struct _task *task, _task_proc proc, _task_data *data)
+{
+	task->proc = proc;
+	task->data = data;
+	task->head = task;
+	task->tail = task;
 }
 
 void _task_schedule(struct _task *queue, struct _task *job)
@@ -50,8 +58,6 @@ void _task_schedule(struct _task *queue, struct _task *job)
 
 void _task_execute(struct _task *queue)
 {
-	do {
-		exec(pull(queue));
-	} while (more(queue));
+	do exec(pull(queue)); while (more(queue));
 }
 
