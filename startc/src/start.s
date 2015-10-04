@@ -29,6 +29,7 @@ _start:
 	push %eax
 	call _gdt_init
 	call _idt_init
+	call _pic_init
 	call _startc
 	cli
 	hlt

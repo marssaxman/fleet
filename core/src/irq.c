@@ -27,7 +27,6 @@
 static struct work_queue _handlers[IRQ_COUNT];
 static unsigned irq_enable_mask = 0;
 
-
 void irq_listen(unsigned irq, struct work_item *handler)
 {
 	queue_work(&_handlers[irq], handler);
@@ -55,10 +54,6 @@ static void register_isr(struct _idt_entry *gate, void *ptr)
 
 void _irq_init()
 {
-	// Configure the PIC to remap device IRQs out of the range of processor
-	// exceptions, so we can give them their own set of handlers.
-	_pic_init();
-
 	// Register an ISR for each device IRQ.
 	register_isr(&_idt[0x20], _isr_irq0);
 	register_isr(&_idt[0x21], _isr_irq1);

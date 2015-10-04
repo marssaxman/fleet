@@ -1,11 +1,12 @@
 Libstartc is a minimal freestanding C runtime library intended for embedded
-software or for an operating system kernel. Its target platform is an i386 PC
-with a multiboot-compatible bootloader.
+software or an operating system kernel. Its target platform is an i386 PC with
+a multiboot-compatible bootloader.
 
 Libstartc provides a _start function, a multiboot header, and a small stack
 suitable for kernel bootstrapping. On entry, after setting the stack pointer,
-it configures the GDT for a flat 32-bit address space before jumping into the
-application entrypoint:
+it configures the GDT for a flat 32-bit address space, installs a 256-entry
+IDT, and configures the PIC to remap IRQ interrupts up to 0x20-0x2F. Once the
+boilerplate setup work is done it jumps into the application entrypoint:
 
 extern void _startc(unsigned magic, struct multiboot_info *info);
 
