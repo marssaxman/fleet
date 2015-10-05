@@ -2,18 +2,18 @@
 #define _UART_H
 
 #include <stddef.h>
-#include <workqueue.h>
+#include <signal.h>
 
 // Primitive, low-speed legacy serial interfaces, aka COM ports.
 
 struct uart {
 	unsigned port;
 	unsigned irq;
-	struct work_item listen;
+	struct signal_action listen;
 	// uart user supplies work items to run when events occur
 	struct uart_events {
-		struct work_item *tx_clear;
-		struct work_item *rx_ready;
+		struct signal tx_clear;
+		struct signal rx_ready;
 	} events;
 };
 
@@ -26,5 +26,10 @@ extern struct uart COM1;
 extern struct uart COM2;
 extern struct uart COM3;
 extern struct uart COM4;
+
+// terms:
+// LISTEN for a signal
+// SIGNAL an event
+// HANDLE an event
 
 #endif //_UART_H

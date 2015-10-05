@@ -24,12 +24,12 @@
 */
 
 #define IRQ_COUNT 16
-static struct work_queue _handlers[IRQ_COUNT];
+static struct signal _irqs[IRQ_COUNT];
 static unsigned irq_enable_mask = 0;
 
-void irq_listen(unsigned irq, struct work_item *handler)
+void irq_listen(unsigned irq, struct signal_action *handler)
 {
-	queue_work(&_handlers[irq], handler);
+	signal_listen(&_irqs[irq], handler);
 	irq_enable_mask |= 1 << irq;
 	_log_printf("setting IRQ enable mask %d\n", irq_enable_mask);
 	_pic_set_irqs(irq_enable_mask);
@@ -38,7 +38,7 @@ void irq_listen(unsigned irq, struct work_item *handler)
 void _irq(unsigned irq)
 {
 	_log_printf("IRQ %d\n", irq);
-	await_queue(&_handlers[irq]);
+	signal_raise(&_irqs[irq]);
 	irq_enable_mask &= ~(1 << irq);
 	_pic_set_irqs(irq_enable_mask);
 }
@@ -74,7 +74,7 @@ void _irq_init()
 
 	// Prepare a work queue for each IRQ.
 	for (unsigned i = 0; i < IRQ_COUNT; ++i) {
-		work_queue_init(&_handlers[i]);
+		signal_init(&_irqs[i]);
 	}
 
 	// Set the initial IRQ enable state.

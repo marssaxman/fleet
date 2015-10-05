@@ -78,11 +78,6 @@ struct uart COM2 = { .port = 0x2F8, .irq = 3 };
 struct uart COM3 = { .port = 0x3E8, .irq = 4 };
 struct uart COM4 = { .port = 0x2E8, .irq = 3 };
 
-static void raise_opt(struct work_item *task)
-{
-	if (task) raise_event(task);
-}
-
 static void uart_irq(void *ref)
 {
 	struct uart *uart = (struct uart*)ref;
@@ -95,8 +90,8 @@ static void uart_irq(void *ref)
 			// so we'll read from the status register
         	_inb(uart->port + MSR);
 		} break;
-		case IIR_THRE: raise_opt(uart->events.tx_clear); break;
-		case IIR_RX_DATA: raise_opt(uart->events.rx_ready); break;
+		case IIR_THRE: event_signal(&uart->events.tx_clear); break;
+		case IIR_RX_DATA: event_signal(&uart->events.rx_ready); break;
 		case IIR_RX_STATUS: {
 			// nothing we can usefully do just yet, but we need to clear
 			// the condition, so we'll read from the status register
@@ -108,7 +103,7 @@ static void uart_irq(void *ref)
 void uart_open(struct uart *uart)
 {
 	// Configure the listen task we'll attach to the IRQ handler.
-	work_item_init(&uart->listen, uart_irq, uart);
+	action_init(&uart->listen, uart_irq, uart);
 	// Switch DLAB on and set the speed to 115200.
 	_outb(uart->port + LCR, LCR_DLAB);
 	_outb(uart->port + DLL, 0x01);

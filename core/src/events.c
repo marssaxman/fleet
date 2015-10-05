@@ -1,19 +1,24 @@
 #include "events.h"
 
-static struct work_queue events;
+static struct signal events;
 
 void events_init()
 {
-	work_queue_init(&events);
+	signal_init(&events);
 }
 
-void raise_event(struct work_item *event)
+void event_action(struct signal_action *action)
 {
-	queue_work(&events, event);
+	signal_listen(&events, action);
+}
+
+void event_signal(struct signal *signal)
+{
+	signal_defer(signal, &events);
 }
 
 void poll_events()
 {
-	await_queue(&events);
+	signal_raise(&events);
 }
 

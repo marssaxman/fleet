@@ -6,10 +6,11 @@
 // possible so we can re-enable interrupts. The driver should therefore defer
 // substantial work by scheduling a task on the event queue.
 
-#include <workqueue.h>
+#include <signal.h>
 
 void events_init();
-void raise_event(struct work_item *event);
+void event_action(struct signal_action *action);
+void event_signal(struct signal *signal);
 void poll_events();
 
 #endif //_EVENTS_H

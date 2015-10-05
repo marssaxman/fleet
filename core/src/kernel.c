@@ -28,7 +28,7 @@ static void _tx_clear(void *value)
 {
 	_log_print("TX_CLEAR on COM1");
 }
-static struct work_item com1_tx_clear;
+static struct signal_action com1_tx_clear;
 
 // Libstartc runtime calls this entrypoint function.
 void _startc(unsigned magic, struct multiboot_info *info)
@@ -45,8 +45,8 @@ void _startc(unsigned magic, struct multiboot_info *info)
 	_irq_init();
 	_sti();
 	// Jump into the application entrypoint and let it do its thing.
-	work_item_init(&com1_tx_clear, _tx_clear, &COM1);
-	COM1.events.tx_clear = &com1_tx_clear;
+	action_init(&com1_tx_clear, _tx_clear, &COM1);
+	signal_listen(&COM1.events.tx_clear, &com1_tx_clear);
 	uart_open(&COM1);
 	uart_write(&COM1, "THIS IS A TEST YO YO YO DUDE MAN", 22);
 	main();
