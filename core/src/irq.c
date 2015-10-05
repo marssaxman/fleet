@@ -7,7 +7,7 @@
 /*
 	0 = timer
 	1 = keyboard
-	2 = cascade (never raised)
+	2 = cascade (never raised, should be permanently enabled)
 	3 = com2
 	4 = com1
 	5 = lpt2
@@ -25,7 +25,8 @@
 
 #define IRQ_COUNT 16
 static struct signal _irqs[IRQ_COUNT];
-static unsigned irq_enable_mask = 0;
+// Enable IRQ2 so we get PIC2 cascade IRQs.
+static unsigned irq_enable_mask = 0x0004;
 
 void irq_listen(unsigned irq, struct signal_action *handler)
 {

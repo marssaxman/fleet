@@ -4,11 +4,10 @@
 #include "panic.h"
 #include "exception.h"
 
-void _isr_cpu(struct _isr_state *regs)
+void _isr_cpu(unsigned code, struct _cpu_state *regs)
 {
 	// Processor signalled that something fatal happened
-	_panic("Processor exception %hhd at %d\n",
-			regs->interrupt_number, regs->eip);
+	_panic("Processor exception %hhd at %d\n", code, regs->eip);
 }
 
 static void register_isr(struct _idt_entry *gate, void *ptr)

@@ -3,22 +3,15 @@
 
 #include <stdint.h>
 
-struct _isr_state {
-	// Registers saved with PUSHAL. Note that esp here is the old value of
-	// esp, which should be the address of the interrupt_number field.
-	uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-	// Vector number pushed by stub routine
-	uint32_t interrupt_number;
-	// Error data pushed by interrupt, or dummy pushed by stub routine
-	uint32_t error_code;
-	// Previous execution state, saved by interrupt gate
-	uint32_t eip;
-	uint32_t cs;
-	uint32_t eflags;
+struct _cpu_state
+{
+	unsigned edi, esi, ebp, esp;
+	unsigned ebx, edx, ecx, eax;
+	unsigned error, eip, cs, eflags;
 };
 
 // The exception stubs handle CPU interrupts and invoke _exception.
-extern void _isr_cpu(struct _isr_state*);
+extern void _isr_cpu(unsigned code, struct _cpu_state*);
 void _isr_cpu00();
 void _isr_cpu01();
 void _isr_cpu02();
