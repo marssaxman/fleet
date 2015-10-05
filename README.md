@@ -8,6 +8,6 @@ sharing data. We'll make this efficient by providing zero-copy data transfer
 interfaces for our virtual devices. We'll make it secure in "capability" style
 by granting each VM only those resources it should be able to manipulate.
 Finally, we'll make this system self-regulating by exposing the hypervisor as
-a virtual device and thereby allowing our VMs to create new VMs and subdelegate
+a virtual device, thereby allowing our VMs to create new VMs and subdelegate
 their resources.
 

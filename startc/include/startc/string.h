@@ -1,5 +1,5 @@
-#ifndef _STRING_H
-#define _STRING_H
+#ifndef _STARTC_STRING_H
+#define _STARTC_STRING_H
 
 #include <stddef.h>
 
@@ -8,13 +8,12 @@ extern "C" {
 #endif
 
 int memcmp(const void*, const void*, size_t);
-void* memcpy(void* __restrict, const void* __restrict, size_t);
-void* memmove(void*, const void*, size_t);
-void* memset(void*, int, size_t);
-size_t strlen(const char*);
+void *memcpy(void *dest, const void *src, size_t len);
+void *memmove(void *dest, const void *src, size_t len);
+void *memset(void*, int, size_t);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif // _STARTC_STRING_H

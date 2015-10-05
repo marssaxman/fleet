@@ -1,7 +1,7 @@
 #include "cpu.h"
 #include "log.h"
 #include "irq.h"
-#include <startc/multiboot.h>
+#include "multiboot.h"
 #include <startc/cpustate.h>
 #include "panic.h"
 #include "events.h"
