@@ -1,5 +1,5 @@
-#ifndef _STARTC_STARTC_H
-#define _STARTC_STARTC_H
+#ifndef _STARTC_ENTRY_H
+#define _STARTC_ENTRY_H
 
 // The application should define these entrypoint functions.
 
@@ -14,4 +14,4 @@ extern void _isr_cpu(unsigned code, struct _cpu_state*);
 // External device requested interrupt
 extern void _isr_irq(unsigned irq);
 
-#endif //_STARTC_STARTC_H
+#endif //_STARTC_ENTRY_H

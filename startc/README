@@ -1,16 +1,24 @@
-Libstartc is a minimal freestanding C runtime library intended for embedded
-software or an operating system kernel. Its target platform is an i386 PC with
-a multiboot-compatible bootloader.
+Libstartc is a minimal freestanding C runtime library for a 32-bit i386 PC.
+Its job is to put the machine in a state which can be comfortably programmed
+using ordinary C semantics, without constraining the application programmer's
+architectural policy choices.
 
-Libstartc provides a _start function, a multiboot header, and a small stack
-suitable for kernel bootstrapping. On entry, after setting the stack pointer,
-it configures the GDT for a flat 32-bit address space, installs a 256-entry
-IDT, and configures the PIC to remap IRQ interrupts up to 0x20-0x2F. Once the
-boilerplate setup work is done it jumps into the application entrypoint:
+Picking up where a stage-2 bootloader leaves off, startc will configure the
+memory model for a flat address space, configure the interrupt controller so
+that IRQs can be distinguished from CPU exceptions, and install an interrupt
+table equipped with forwarding stubs that invoke an application-provided
+handler function.
 
-extern void _startc(unsigned magic, struct multiboot_info *info);
+Once the setup work is done, startc allocates a 16K bootstrap stack and jumps
+to the application entrypoint.
 
 The include/ directory contains a set of header files sufficient for a
-conforming freestanding implementation of C99. Headers exposing runtime data
-structures are located under include/startc/.
+conforming freestanding implementation of C99. The include/startc/ subdirectory
+contains headers exposing runtime data structures, plus a few simple wrappers
+around the machine instructions for enabling and disabling interrupts and for
+reading and writing through IO port addresses.
+
+Finally, startc implements memmove, memcpy, memcmp, and memset, which GCC
+requires a freestanding library implementation to provide. These are declared
+as weak symbols so that the application can easily override them. 
 
