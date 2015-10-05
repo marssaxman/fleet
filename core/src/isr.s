@@ -1,17 +1,15 @@
 # ISR entrypoint stubs for external device-initiated interrupts.
+# Get the stack ready, invoke the C routine, clean up appropriately.
+
+.global _isr_irq
+.type _isr_irq, @function
+
 
 .macro isr_irq_pic1 id
 	pushal
 	push $\id
 	jmp common_irq_pic1
 .endm
-
-.macro isr_irq_pic2 id
-	pushal
-	push $\id
-	jmp common_irq_pic2
-.endm
-
 
 .global _isr_irq0
 _isr_irq0:
@@ -37,6 +35,25 @@ _isr_irq6:
 .global _isr_irq7
 _isr_irq7:
 	isr_irq_pic1 0x07
+
+common_irq_pic1:
+	cld
+	call _isr_irq
+	pop %eax	# parameter we pushed earlier
+	# issue EOI command to PIC1
+	movl $0x20, %eax # EOI command
+	movl $0x0020, %edx # PIC1 CMD port
+	outb %al, %dx
+	popal
+	iret
+
+
+.macro isr_irq_pic2 id
+	pushal
+	push $\id
+	jmp common_irq_pic2
+.endm
+
 .global _isr_irq8
 _isr_irq8:
 	isr_irq_pic2 0x08
@@ -62,26 +79,17 @@ _isr_irqE:
 _isr_irqF:
 	isr_irq_pic2 0x0F
 
-.global _isr_irq
-.type _isr_irq, @function
-
-.global _pic_eoi_master
-.type _pic_eoi_master, @function
-common_irq_pic1:
-	cld
-	call _isr_irq
-	pop %eax
-	call _pic_eoi_master
-	popal
-	iret
-
-.global _pic_eoi_slave
-.type _pic_eoi_slave, @function
 common_irq_pic2:
 	cld
 	call _isr_irq
-	pop %eax
-	call _pic_eoi_slave
+	pop %eax # remove IRQ number from earlier
+
+	# issue EOI to PIC2, then PIC1
+	movl $0x20, %eax # EOI command
+	movl $0x00A0, %edx # PIC2 CMD port
+	outb %al, %dx
+	movl $0x0020, %edx # PIC1 CMD port
+	outb %al, %dx
 	popal
 	iret
 
