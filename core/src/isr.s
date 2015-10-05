@@ -1,127 +1,126 @@
 # Here we find interrupt service routine stubs which generate a common stack
 # layout and invoke the C entrypoint for handling exceptions.
 
-.global _isr_exc00
-_isr_exc00:
+.global _isr_cpu00
+_isr_cpu00:
 	push $0
 	push $0x00
 	jmp common_exception
 
-.global _isr_exc01
-_isr_exc01:
+.global _isr_cpu01
+_isr_cpu01:
 	push $0
 	push $0x01
 	jmp common_exception
 
-.global _isr_exc02
-_isr_exc02:
+.global _isr_cpu02
+_isr_cpu02:
 	push $0
 	push $0x02
 	jmp common_exception
 
-.global _isr_exc03
-_isr_exc03:
+.global _isr_cpu03
+_isr_cpu03:
 	push $0
 	push $0x03
 	jmp common_exception
 
-.global _isr_exc04
-_isr_exc04:
+.global _isr_cpu04
+_isr_cpu04:
 	push $0
 	push $0x04
 	jmp common_exception
 
-.global _isr_exc05
-_isr_exc05:
+.global _isr_cpu05
+_isr_cpu05:
 	push $0
 	push $0x05
 	jmp common_exception
 
-.global _isr_exc06
-_isr_exc06:
+.global _isr_cpu06
+_isr_cpu06:
 	push $0
 	push $0x06
 	jmp common_exception
 
-.global _isr_exc07
-_isr_exc07:
+.global _isr_cpu07
+_isr_cpu07:
 	push $0
 	push $0x07
 	jmp common_exception
 
-.global _isr_exc08
-_isr_exc08:
+.global _isr_cpu08
+_isr_cpu08:
 	push $0x08
 	jmp common_exception
 
-.global _isr_exc09
-_isr_exc09:
+.global _isr_cpu09
+_isr_cpu09:
 	push $0
 	push $0x09
 	jmp common_exception
 
-.global _isr_exc0A
-_isr_exc0A:
+.global _isr_cpu0A
+_isr_cpu0A:
 	push $0x0A
 	jmp common_exception
 
-.global _isr_exc0B
-_isr_exc0B:
+.global _isr_cpu0B
+_isr_cpu0B:
 	push $0x0B
 	jmp common_exception
 
-.global _isr_exc0C
-_isr_exc0C:
+.global _isr_cpu0C
+_isr_cpu0C:
 	push $0x0C
 	jmp common_exception
 
-.global _isr_exc0D
-_isr_exc0D:
+.global _isr_cpu0D
+_isr_cpu0D:
 	push $0x0D
 	jmp common_exception
 
-.global _isr_exc0E
-_isr_exc0E:
+.global _isr_cpu0E
+_isr_cpu0E:
 	push $0x0E
 	jmp common_exception
 
-.global _isr_exc0F
-_isr_exc0F:
+.global _isr_cpu0F
+_isr_cpu0F:
 	push $0
 	push $0x0F
 	jmp common_exception
 
-.global _isr_exc10
-_isr_exc10:
+.global _isr_cpu10
+_isr_cpu10:
 	push $0
 	push $0x10
 	jmp common_exception
 
-.global _isr_exc11
-_isr_exc11:
+.global _isr_cpu11
+_isr_cpu11:
 	push $0x11
 	jmp common_exception
 
-.global _isr_exc12
-_isr_exc12:
+.global _isr_cpu12
+_isr_cpu12:
 	push $0
 	push $0x12
 	jmp common_exception
 
-.global _isr_exc13
-_isr_exc13:
+.global _isr_cpu13
+_isr_cpu13:
 	push $0
 	push $0x13
 	jmp common_exception
 
-# The _exception funtion will be defined in some C module.
-.global _exception
-.type _exception, @function
+.global _isr_irq
+.type _isr_irq, @function
 common_exception:
 	pushal				# save all registers
 	cld					# voodoo - SysV calling conventions?
 	pushl %esp			# pointer to the saved register data on the stack
-	call _exception		# let the C world handle things
+	call _isr_cpu		# let the C world handle things
 	addl $0xC, %esp		# clear off data ptr, vector number, and error code
 	popal				# restore registers from stack
 	iret				# return from interrupt state
