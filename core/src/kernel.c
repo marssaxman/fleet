@@ -1,8 +1,8 @@
 #include "cpu.h"
 #include "log.h"
-#include "exception.h"
 #include "irq.h"
 #include <startc/multiboot.h>
+#include <startc/cpustate.h>
 #include "panic.h"
 #include "events.h"
 #include "uart.h"
@@ -30,6 +30,12 @@ static void _tx_clear(void *value)
 }
 static struct signal_action com1_tx_clear;
 
+void _isr_cpu(unsigned code, struct _cpu_state *regs)
+{
+	// Processor signalled that something fatal happened
+	_panic("Processor exception %hhd at %d\n", code, regs->eip);
+}
+
 // Libstartc runtime calls this entrypoint function.
 void _startc(unsigned magic, struct multiboot_info *info)
 {
@@ -41,7 +47,6 @@ void _startc(unsigned magic, struct multiboot_info *info)
 	check_multiboot(info);
 	// Configure the memory and interrupt systems.
 	_memory_init(info);
-	_exception_init();
 	_irq_init();
 	_sti();
 	// Jump into the application entrypoint and let it do its thing.

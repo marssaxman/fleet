@@ -1,9 +1,14 @@
 #ifndef _STARTC_STARTC_H
 #define _STARTC_STARTC_H
 
-struct multiboot_info;
+// The application should define these entrypoint functions.
 
-// The application should define this entrypoint function.
+// Program entry
+struct multiboot_info;
 extern void _startc(unsigned magic, struct multiboot_info *info);
+
+// CPU exception interrupt
+struct _cpu_state;
+extern void _isr_cpu(unsigned code, struct _cpu_state*);
 
 #endif //_STARTC_STARTC_H
