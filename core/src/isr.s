@@ -81,14 +81,14 @@ _isr_irqF:
 	push $0x0F
 	jmp _common_irq_slave
 
-.global _irq
-.type _irq, @function
+.global _isr_irq
+.type _isr_irq, @function
 
 .global _pic_eoi_master
 .type _pic_eoi_master, @function
 _common_irq_master:
 	cld
-	call _irq
+	call _isr_irq
 	pop %eax
 	call _pic_eoi_master
 	popal
@@ -98,7 +98,7 @@ _common_irq_master:
 .type _pic_eoi_slave, @function
 _common_irq_slave:
 	cld
-	call _irq
+	call _isr_irq
 	pop %eax
 	call _pic_eoi_slave
 	popal

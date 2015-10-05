@@ -36,7 +36,7 @@ void irq_listen(unsigned irq, struct signal_action *handler)
 	_pic_set_irqs(irq_enable_mask);
 }
 
-void _irq(unsigned irq)
+void _isr_irq(unsigned irq)
 {
 	_log_printf("IRQ %d\n", irq);
 	signal_raise(&_irqs[irq]);
