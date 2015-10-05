@@ -48,8 +48,6 @@ static void register_isr(struct _idt_entry *gate, void *ptr)
 	uint32_t addr = (uint32_t)ptr;
 	gate->offset0_15 = addr & 0x0000FFFF;
 	gate->offset16_31 = (addr >> 16) & 0x0000FFFF;
-	gate->selector = 0x08; // the only code segment we use
-	gate->flags = 0x8E;	// 32-bit interrupt gate
 }
 
 void _irq_init()

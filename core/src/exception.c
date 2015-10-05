@@ -16,14 +16,6 @@ static void register_isr(struct _idt_entry *gate, void *ptr)
 	uint32_t addr = (uint32_t)ptr;
 	gate->offset0_15 = addr & 0x0000FFFF;
 	gate->offset16_31 = (addr >> 16) & 0x0000FFFF;
-	if (gate->selector != 0x08) {
-		_panic("FAIL! gate selector is wrong: 0x%hd\n", gate->selector);
-	}
-	if (gate->flags != 0x8E) {
-		_panic("FAIL! gate flags are wrong: 0x%hd\n", gate->flags);
-	}
-//	gate->selector = 0x08; // the only code segment we use
-//	gate->flags = 0x8E;	// 32-bit interrupt gate
 }
 
 void _exception_init()
