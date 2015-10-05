@@ -27,9 +27,4 @@ extern struct uart COM2;
 extern struct uart COM3;
 extern struct uart COM4;
 
-// terms:
-// LISTEN for a signal
-// SIGNAL an event
-// HANDLE an event
-
 #endif //_UART_H

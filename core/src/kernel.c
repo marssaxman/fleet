@@ -2,7 +2,7 @@
 #include "log.h"
 #include "exception.h"
 #include "irq.h"
-#include "multiboot.h"
+#include <startc/multiboot.h>
 #include "panic.h"
 #include "events.h"
 #include "uart.h"

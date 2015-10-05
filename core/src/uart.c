@@ -7,6 +7,9 @@
 
 // Implementation of the primitive PC serial transport.
 
+// more information about serial ports than you could ever want:
+// http://retired.beyondlogic.org/serial/serial.htm
+
 // The UART has six register addresses. The meaning depends on the state of
 // the DLAB flag and whether you are reading from or writing to the register.
 #define RBR 0	// Receive buffer: DLAB=0, input
@@ -72,6 +75,15 @@
 #define LSR_TX_STALL 0x40
 #define LSR_FIFO_ERROR 0x80
 
+// The modem status register describes communication signalling states.
+#define MSR_DCD 0x80	// carrier detect
+#define MSR_RI 0x40 // ring indicator
+#define MSR_DSR 0x20	// data set ready
+#define MSR_CTS 0x10	// clear to send
+#define MSR_X_DCD 0x08	// change in DCD
+#define MSR_X_RI 0x04	// low RI went high
+#define MSR_X_DSR 0x02 // change in DSR
+#define MSR_X_CTS 0x01 // change in CTS
 
 struct uart COM1 = { .port = 0x3F8, .irq = 4 };
 struct uart COM2 = { .port = 0x2F8, .irq = 3 };

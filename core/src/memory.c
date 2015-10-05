@@ -1,5 +1,5 @@
 #include "memory.h"
-#include "multiboot.h"
+#include <startc/multiboot.h>
 #include "log.h"
 #include "panic.h"
 #include <stdint.h>
