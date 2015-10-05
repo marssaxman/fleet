@@ -1,8 +1,6 @@
 #include "irq.h"
 #include "log.h"
 #include "pic.h"
-#include "isr.h"
-#include <startc/idt.h>
 
 /*
 	0 = timer
@@ -44,38 +42,12 @@ void _isr_irq(unsigned irq)
 	_pic_set_irqs(irq_enable_mask);
 }
 
-static void register_isr(struct _idt_entry *gate, void *ptr)
-{
-	uint32_t addr = (uint32_t)ptr;
-	gate->offset0_15 = addr & 0x0000FFFF;
-	gate->offset16_31 = (addr >> 16) & 0x0000FFFF;
-}
-
 void _irq_init()
 {
-	// Register an ISR for each device IRQ.
-	register_isr(&_idt[0x20], _isr_irq0);
-	register_isr(&_idt[0x21], _isr_irq1);
-	register_isr(&_idt[0x22], _isr_irq2);
-	register_isr(&_idt[0x23], _isr_irq3);
-	register_isr(&_idt[0x24], _isr_irq4);
-	register_isr(&_idt[0x25], _isr_irq5);
-	register_isr(&_idt[0x26], _isr_irq6);
-	register_isr(&_idt[0x27], _isr_irq7);
-	register_isr(&_idt[0x28], _isr_irq8);
-	register_isr(&_idt[0x29], _isr_irq9);
-	register_isr(&_idt[0x2A], _isr_irqA);
-	register_isr(&_idt[0x2B], _isr_irqB);
-	register_isr(&_idt[0x2C], _isr_irqC);
-	register_isr(&_idt[0x2D], _isr_irqD);
-	register_isr(&_idt[0x2E], _isr_irqE);
-	register_isr(&_idt[0x2F], _isr_irqF);
-
 	// Prepare a work queue for each IRQ.
 	for (unsigned i = 0; i < IRQ_COUNT; ++i) {
 		signal_init(&_irqs[i]);
 	}
-
 	// Set the initial IRQ enable state.
 	_pic_set_irqs(irq_enable_mask);
 }

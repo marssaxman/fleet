@@ -11,4 +11,7 @@ extern void _startc(unsigned magic, struct multiboot_info *info);
 struct _cpu_state;
 extern void _isr_cpu(unsigned code, struct _cpu_state*);
 
+// External device requested interrupt
+extern void _isr_irq(unsigned irq);
+
 #endif //_STARTC_STARTC_H

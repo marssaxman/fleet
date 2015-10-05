@@ -66,6 +66,22 @@ _idt_init:
 	setgate 0x11, _isr_cpu11
 	setgate 0x12, _isr_cpu12
 	setgate 0x13, _isr_cpu13
+	setgate 0x20, _isr_irq0
+	setgate 0x21, _isr_irq1
+	setgate 0x22, _isr_irq2
+	setgate 0x23, _isr_irq3
+	setgate 0x24, _isr_irq4
+	setgate 0x25, _isr_irq5
+	setgate 0x26, _isr_irq6
+	setgate 0x27, _isr_irq7
+	setgate 0x28, _isr_irq8
+	setgate 0x29, _isr_irq9
+	setgate 0x2A, _isr_irqA
+	setgate 0x2B, _isr_irqB
+	setgate 0x2C, _isr_irqC
+	setgate 0x2D, _isr_irqD
+	setgate 0x2E, _isr_irqE
+	setgate 0x2F, _isr_irqF
 	lidtl _idtr
 	ret
 

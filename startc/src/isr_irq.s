@@ -1,9 +1,7 @@
 # ISR entrypoint stubs for external device-initiated interrupts.
-# Get the stack ready, invoke the C routine, clean up appropriately.
 
 .global _isr_irq
 .type _isr_irq, @function
-
 
 .macro isr_irq_pic1 id
 	pushal
