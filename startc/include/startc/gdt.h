@@ -1,5 +1,5 @@
-#ifndef _GDT_H
-#define _GDT_H
+#ifndef _STARTC_GDT_H
+#define _STARTC_GDT_H
 
 #include <stdint.h>
 
@@ -22,5 +22,5 @@ struct _gdt_register
 extern struct _gdt_register _gdtr;
 extern struct _gdt_entry _gdt[5];
 
-#endif //_GDT_H
+#endif //_STARTC_GDT_H
 
