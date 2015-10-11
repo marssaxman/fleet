@@ -66,22 +66,131 @@ _idt_init:
 	setgate 0x11, _isr_cpu11
 	setgate 0x12, _isr_cpu12
 	setgate 0x13, _isr_cpu13
-	setgate 0x20, _isr_irq0
-	setgate 0x21, _isr_irq1
-	setgate 0x22, _isr_irq2
-	setgate 0x23, _isr_irq3
-	setgate 0x24, _isr_irq4
-	setgate 0x25, _isr_irq5
-	setgate 0x26, _isr_irq6
-	setgate 0x27, _isr_irq7
-	setgate 0x28, _isr_irq8
-	setgate 0x29, _isr_irq9
-	setgate 0x2A, _isr_irqA
-	setgate 0x2B, _isr_irqB
-	setgate 0x2C, _isr_irqC
-	setgate 0x2D, _isr_irqD
-	setgate 0x2E, _isr_irqE
-	setgate 0x2F, _isr_irqF
+	setgate 0x20, _isr_irq00
+	setgate 0x21, _isr_irq01
+	setgate 0x22, _isr_irq02
+	setgate 0x23, _isr_irq03
+	setgate 0x24, _isr_irq04
+	setgate 0x25, _isr_irq05
+	setgate 0x26, _isr_irq06
+	setgate 0x27, _isr_irq07
+	setgate 0x28, _isr_irq08
+	setgate 0x29, _isr_irq09
+	setgate 0x2A, _isr_irq0A
+	setgate 0x2B, _isr_irq0B
+	setgate 0x2C, _isr_irq0C
+	setgate 0x2D, _isr_irq0D
+	setgate 0x2E, _isr_irq0E
+	setgate 0x2F, _isr_irq0F
 	lidtl _idtr
 	ret
+
+# Entrypoint for CPU exceptions to be defined by application
+.global _isr_cpu
+.type _isr_cpu, @function
+
+# Entrypoint for device IRQs to be implemented by application
+.global _isr_irq
+.type _isr_irq, @function
+
+.macro isr_cpu id
+	pushal
+	push $\id
+	jmp common_exception
+.endm
+
+.macro push0_isr_cpu id
+	push $0
+	isr_cpu \id
+.endm
+
+.macro isr_irq_pic1 id
+	pushal
+	movb $\id, %al
+	jmp common_irq_pic1
+.endm
+
+.macro isr_irq_pic2 id
+	pushal
+	movb $\id, %al
+	jmp common_irq_pic2
+.endm
+
+# ISR stubs for the IDT gates we'll use
+_isr_cpu00: push0_isr_cpu 0x00
+_isr_cpu01: push0_isr_cpu 0x01
+_isr_cpu02: push0_isr_cpu 0x02
+_isr_cpu03: push0_isr_cpu 0x03
+_isr_cpu04: push0_isr_cpu 0x04
+_isr_cpu05: push0_isr_cpu 0x05
+_isr_cpu06: push0_isr_cpu 0x06
+_isr_cpu07: push0_isr_cpu 0x07
+_isr_cpu08:       isr_cpu 0x08
+_isr_cpu09: push0_isr_cpu 0x09
+_isr_cpu0A:       isr_cpu 0x0A
+_isr_cpu0B:       isr_cpu 0x0B
+_isr_cpu0C:       isr_cpu 0x0C
+_isr_cpu0D:       isr_cpu 0x0D
+_isr_cpu0E:       isr_cpu 0x0E
+_isr_cpu0F: push0_isr_cpu 0x0F
+_isr_cpu10: push0_isr_cpu 0x10
+_isr_cpu11:       isr_cpu 0x11
+_isr_cpu12: push0_isr_cpu 0x12
+_isr_cpu13: push0_isr_cpu 0x13
+_isr_irq00:  isr_irq_pic1 0x00
+_isr_irq01:  isr_irq_pic1 0x01
+_isr_irq02:  isr_irq_pic1 0x02
+_isr_irq03:  isr_irq_pic1 0x03
+_isr_irq04:  isr_irq_pic1 0x04
+_isr_irq05:  isr_irq_pic1 0x05
+_isr_irq06:  isr_irq_pic1 0x06
+_isr_irq07:  isr_irq_pic1 0x07
+_isr_irq08:  isr_irq_pic2 0x08
+_isr_irq09:  isr_irq_pic2 0x09
+_isr_irq0A:  isr_irq_pic2 0x0A
+_isr_irq0B:  isr_irq_pic2 0x0B
+_isr_irq0C:  isr_irq_pic2 0x0C
+_isr_irq0D:  isr_irq_pic2 0x0D
+_isr_irq0E:  isr_irq_pic2 0x0E
+_isr_irq0F:  isr_irq_pic2 0x0F
+
+common_exception:
+	cld					# make sure we're not in backward string mode
+	popl %eax			# retrieve the exception number
+	pushl %esp			# parameter: address of saved state
+	pushl %eax			# parameter: exception number
+	call _isr_cpu		# let the C world handle things
+	addl $0x08, %esp	# remove parameters
+	popal				# restore register state
+	addl $0x04, %esp	# remove error code
+	iret				# return from interrupt state
+
+common_irq_pic1:
+	cld
+	# pass IRQ and address of register state as args
+	push %esp
+	and $0x0F, %eax
+	push %eax
+	call _isr_irq
+	# clear parameters
+	add $0x08, %esp
+	# issue EOI command to PIC1
+	movl $0x20, %eax # EOI command
+	movl $0x0020, %edx # PIC1 CMD port
+	outb %al, %dx
+	popal
+	iret
+
+common_irq_pic2:
+	cld
+	call _isr_irq
+	pop %eax # remove IRQ number from earlier
+	# issue EOI to PIC2, then PIC1
+	movl $0x20, %eax # EOI command
+	movl $0x00A0, %edx # PIC2 CMD port
+	outb %al, %dx
+	movl $0x0020, %edx # PIC1 CMD port
+	outb %al, %dx
+	popal
+	iret
 

@@ -6,6 +6,7 @@
 .text
 .global memmove
 .type memmove, @function
+.weak memmove
 #	void *memmove(void *dest, const void *src, size_t len);
 # Copy 'len' bytes from 'src' to 'dest', coping with the likelihood that the
 # source and destination memory regions overlap.
@@ -43,6 +44,7 @@ memmove:
 
 .global memcpy
 .type memcpy, @function
+.weak memcpy
 #	void *memcpy(void *dest, const void *src, size_t len);
 # Copy 'len' bytes from 'src' to 'dest', assuming that we don't have to worry
 # about overlap.
@@ -71,6 +73,7 @@ memcpy:
 
 .global memset
 .type memset, @function
+.weak memset
 #	void *memset(void *ptr, int value, size_t num);
 # Fill the first 'num' bytes of the buffer pointed at by 'ptr' to 'value'.
 # This is a bytewise operation despite the value's type being int.
@@ -92,6 +95,7 @@ memset:
 
 .global memcmp
 .type memcmp, @function
+.weak memcmp
 #	int memcmp(const void *ptr1, const void *ptr2, size_t num);
 # Compare the first 'num' bytes of the block 'ptr1' points at to the first
 # 'num' bytes of the block 'ptr2' points at, returning zero if they all match

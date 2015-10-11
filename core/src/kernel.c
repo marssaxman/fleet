@@ -2,7 +2,7 @@
 #include "log.h"
 #include "irq.h"
 #include "multiboot.h"
-#include <startc/cpustate.h>
+#include <startc/i386.h>
 #include "panic.h"
 #include "events.h"
 #include "uart.h"
