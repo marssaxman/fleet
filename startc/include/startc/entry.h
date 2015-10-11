@@ -12,6 +12,6 @@ struct _cpu_state;
 extern void _isr_cpu(unsigned code, struct _cpu_state*);
 
 // External device requested interrupt
-extern void _isr_irq(unsigned irq);
+extern void _isr_irq(unsigned irq, struct _cpu_state*);
 
 #endif //_STARTC_ENTRY_H

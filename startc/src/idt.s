@@ -105,12 +105,14 @@ _idt_init:
 .endm
 
 .macro isr_irq_pic1 id
+	push $0
 	pushal
 	movb $\id, %al
 	jmp common_irq_pic1
 .endm
 
 .macro isr_irq_pic2 id
+	push $0
 	pushal
 	movb $\id, %al
 	jmp common_irq_pic2
@@ -179,12 +181,18 @@ common_irq_pic1:
 	movl $0x0020, %edx # PIC1 CMD port
 	outb %al, %dx
 	popal
+	add $0x04, %esp
 	iret
 
 common_irq_pic2:
 	cld
+	# pass IRQ and address of register state as args
+	push %esp
+	and $0x0F, %eax
+	push %eax
 	call _isr_irq
-	pop %eax # remove IRQ number from earlier
+	# clear parameters
+	add $0x08, %esp
 	# issue EOI to PIC2, then PIC1
 	movl $0x20, %eax # EOI command
 	movl $0x00A0, %edx # PIC2 CMD port
@@ -192,5 +200,6 @@ common_irq_pic2:
 	movl $0x0020, %edx # PIC1 CMD port
 	outb %al, %dx
 	popal
+	add $0x04, %esp
 	iret
 
