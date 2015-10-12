@@ -1,6 +1,7 @@
 #include "irq.h"
 #include "log.h"
 #include "pic.h"
+#include <startc/i386.h>
 
 /*
 	0 = timer
@@ -34,12 +35,14 @@ void irq_listen(unsigned irq, struct signal_action *handler)
 	_pic_set_irqs(irq_enable_mask);
 }
 
-void _isr_irq(unsigned irq)
+void _isr_irq(unsigned irq, struct _cpu_state *state)
 {
 	_log_printf("IRQ %d\n", irq);
-	signal_raise(&_irqs[irq]);
+	// suppress further interrupts on this IRQ unless some action requests one
 	irq_enable_mask &= ~(1 << irq);
 	_pic_set_irqs(irq_enable_mask);
+	// raise the signal and run all actions associated with this IRQ
+	signal_raise(&_irqs[irq]);
 }
 
 void _irq_init()
