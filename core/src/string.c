@@ -1,4 +1,5 @@
-#include "string.h"
+#include <string.h>
+#include <errno.h>
 
 char *strcpy(char *dest, const char *src)
 {
@@ -197,6 +198,21 @@ char *strerror(int num)
 		case 0:
 			error = "Success";
 			break;
+#ifdef EDOM
+		case EDOM:
+			error = "Domain error";
+			break;
+#endif //EDOM
+#ifdef ERANGE
+		case ERANGE:
+			error = "Range error";
+			break;
+#endif //ERANGE
+#ifdef EILSEQ
+		case EILSEQ:
+			error = "Illegal sequence";
+			break;
+#endif //EILSEQ
 		/* insert definitions for error codes here */
 		default:
 			error = "";
