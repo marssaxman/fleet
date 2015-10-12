@@ -3,6 +3,10 @@
 
 #include <stddef.h> // for size_t
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef NULL
 #define NULL ((void*)0)
 #endif
@@ -43,6 +47,10 @@ char *strtok_r(char *str, const char *delims, char **lasts);
 char *strerror(int num);
 size_t strlen(const char *str);
 size_t strxfrm(char *dest, const char *src, size_t n);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //_STRING_H
 
