@@ -2,16 +2,16 @@
 #define _STDINT_H
 
 typedef signed char int8_t;
-typedef short       int16_t;
-typedef int         int32_t;
-typedef long long   int64_t;
+typedef short int16_t;
+typedef int int32_t;
+typedef long long int64_t;
 
-typedef unsigned char      uint8_t;
-typedef unsigned short     uint16_t;
-typedef unsigned int       uint32_t;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 
-typedef long          intptr_t;
+typedef long intptr_t;
 typedef unsigned long uintptr_t;
 
 typedef int8_t int_fast8_t;
@@ -101,30 +101,31 @@ typedef uint32_t uint_fast32_t;
 #define UINT_FAST16_MAX UINT32_MAX
 #define UINT_FAST32_MAX UINT32_MAX
 
-#define INTPTR_MIN      INT32_MIN
-#define INTPTR_MAX      INT32_MAX
-#define UINTPTR_MAX     UINT32_MAX
-#define PTRDIFF_MIN     INT32_MIN
-#define PTRDIFF_MAX     INT32_MAX
-#define SIZE_MAX        UINT32_MAX
-#define INT8_C(c)  c
+#define INTPTR_MIN INT32_MIN
+#define INTPTR_MAX INT32_MAX
+#define UINTPTR_MAX UINT32_MAX
+#define PTRDIFF_MIN INT32_MIN
+#define PTRDIFF_MAX INT32_MAX
+#define SIZE_MAX UINT32_MAX
+#define INT8_C(c) c
 #define INT16_C(c) c
 #define INT32_C(c) c
 
-#define UINT8_C(c)  c
+#define UINT8_C(c) c
 #define UINT16_C(c) c
 #define UINT32_C(c) c ## U
 
 #if UINTPTR_MAX == UINT64_MAX
 #define INT64_C(c) c ## L
 #define UINT64_C(c) c ## UL
-#define INTMAX_C(c)  c ## L
+#define INTMAX_C(c) c ## L
 #define UINTMAX_C(c) c ## UL
 #else
 #define INT64_C(c) c ## LL
 #define UINT64_C(c) c ## ULL
-#define INTMAX_C(c)  c ## LL
+#define INTMAX_C(c) c ## LL
 #define UINTMAX_C(c) c ## ULL
 #endif
 
-#endif
+#endif //_STDINT_H
+

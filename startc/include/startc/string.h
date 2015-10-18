@@ -22,3 +22,4 @@ void *memset(void*, int, size_t);
 #endif
 
 #endif // _STARTC_STRING_H
+

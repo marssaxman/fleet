@@ -15,4 +15,5 @@ typedef __WCHAR_TYPE__ wchar_t;
 
 #define offsetof(type, member) __builtin_offsetof(type, member)
 
-#endif
+#endif //_STDDEF_H
+

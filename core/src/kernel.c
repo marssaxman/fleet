@@ -3,6 +3,7 @@
 #include "irq.h"
 #include "multiboot.h"
 #include <startc/i386.h>
+#include <startc/entry.h>
 #include "panic.h"
 #include "events.h"
 #include "uart.h"
@@ -37,16 +38,14 @@ void _isr_cpu(unsigned code, struct _cpu_state *regs)
 }
 
 // Libstartc runtime calls this entrypoint function.
-void _startc(unsigned magic, struct multiboot_info *info)
+void _startc()
 {
 	_log_print("\nfleet kernel status log\n");
 	// Use our boot info to set up a memory map and find our configuration.
-	if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-		_panic("Bad boot magic: 0x%d (should be 0x2BADBOO2)\n", magic);
-	}
-	check_multiboot(info);
+	if (!_multiboot) _panic("Bad boot: no multiboot header\n");
+	check_multiboot(_multiboot);
 	// Configure the memory and interrupt systems.
-	_memory_init(info);
+	_memory_init(_multiboot);
 	_irq_init();
 	_sti();
 	// Jump into the application entrypoint and let it do its thing.

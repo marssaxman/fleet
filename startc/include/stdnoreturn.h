@@ -5,4 +5,5 @@
 #define noreturn _Noreturn
 #endif
 
-#endif
+#endif //_STDNORETURN_H
+
