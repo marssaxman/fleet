@@ -6,8 +6,8 @@ architectural policy choices.
 Picking up where a stage-2 bootloader leaves off, startc will configure the
 memory model for a flat address space, configure the interrupt controller so
 that IRQs can be distinguished from CPU exceptions, and install an interrupt
-table equipped with forwarding stubs that invoke an application-provided
-handler function.
+table equipped with forwarding stubs that invoke two application-provided
+handler functions, one for exceptions and one for IRQs.
 
 Once the setup work is done, startc allocates a 16K bootstrap stack and jumps
 to the application entrypoint.
@@ -20,5 +20,5 @@ reading and writing through IO port addresses.
 
 Finally, startc implements memmove, memcpy, memcmp, and memset, which GCC
 requires a freestanding library implementation to provide. These are declared
-as weak symbols so that the application can easily override them. 
+as weak symbols so that the application can easily override them.
 
