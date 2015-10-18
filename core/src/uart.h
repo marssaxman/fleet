@@ -2,7 +2,7 @@
 #define _UART_H
 
 #include <stddef.h>
-#include <signal.h>
+#include "signal.h"
 
 // Primitive, low-speed legacy serial interfaces, aka COM ports.
 

@@ -1,4 +1,4 @@
-#include <signal.h>
+#include "signal.h"
 
 void action_init(struct signal_action *action, void(*proc)(void*), void *data)
 {

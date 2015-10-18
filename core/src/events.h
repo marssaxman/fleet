@@ -6,7 +6,7 @@
 // possible so we can re-enable interrupts. The driver should therefore defer
 // substantial work by scheduling a task on the event queue.
 
-#include <signal.h>
+#include "signal.h"
 
 void events_init();
 void event_action(struct signal_action *action);
