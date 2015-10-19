@@ -1,5 +1,6 @@
 #include "debug-write.h"
 #include "test-string.h"
+#include "check.h"
 
 void _startc()
 {
