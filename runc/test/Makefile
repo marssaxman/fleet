@@ -8,7 +8,7 @@ all: $(BIN)
 .PHONY: all clean run
 
 $(BIN): $(OBJ)
-	ld $(LDFLAGS) -T linker.ld -o $@ $(OBJ)
+	ld $(OBJ) $(LDFLAGS) -T linker.ld -o $@
 
 obj/%.o: src/%.c
 	@mkdir -p obj
