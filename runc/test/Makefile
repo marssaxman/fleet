@@ -3,12 +3,8 @@ OBJ = $(SRC:src/%.c=obj/%.o)
 DEP = $(wildcard obj/*.d)
 BIN = test.bin
 
-CCFLAGS = -ffreestanding -nostdlib -nostdinc
-CCFLAGS += -march=i686 -m32
-CCFLAGS += -isystem ../../startc/include -isystem ../include
-CCFLAGS += -std=c99 -MD -MP
-
-LDFLAGS = -static -nostdlib -L../ -lrunc -L../../startc -lstartc
+include ../flags.mk
+CCFLAGS += -MD -MP
 
 all: $(BIN)
 .PHONY: all clean run
@@ -16,7 +12,8 @@ all: $(BIN)
 -include $(OBJ:%.o=%.d)
 
 $(BIN): $(OBJ)
-	ld $(OBJ) $(LDFLAGS) -T linker.ld -o $@
+	@echo "$(STARTC_DIR)"
+	ld $(OBJ) $(LDFLAGS) -o $@
 
 obj/%.o: src/%.c
 	@mkdir -p obj

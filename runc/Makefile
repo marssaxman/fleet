@@ -3,11 +3,8 @@ OBJ = $(SRC:src/%.c=obj/%.o)
 DEP = $(wildcard obj/*.d)
 LIB = librunc.a
 
-CCFLAGS = -ffreestanding -nostdlib -nostdinc
-CCFLAGS += -march=i686 -m32
-CCFLAGS += -isystem ../startc/include
-CCFLAGS += -Iinclude
-CCFLAGS += -std=c99 -MD -MP
+include flags.mk
+CCFLAGS += -MD -MP
 
 all: $(LIB)
 .PHONY: all clean test
