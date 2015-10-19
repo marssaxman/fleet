@@ -8,6 +8,9 @@ LIBRARIES="$LIBRARIES -lgcc"
 CCFLAGS="$CCFLAGS -I $FLEETBASE/startc/include"
 LDFLAGS="$LDFLAGS -L $FLEETBASE/startc/"
 LIBRARIES="$LIBRARIES -lstartc"
+CCFLAGS="$CCFLAGS -I $FLEETBASE/runc/include"
+LDFLAGS="$LDFLAGS -L $FLEETBASE/runc/"
+LIBRARIES="$LIBRARIES -lrunc"
 
 # Won't get very far without the core library either.
 CCFLAGS="$CCFLAGS -I $FLEETBASE/core/include"
