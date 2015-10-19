@@ -1,13 +1,13 @@
 SRC = $(wildcard src/*.c)
-OBJ = $(patsubst src/%.c,obj/%.o,$(SRC))
+OBJ = $(SRC:src/%.c=obj/%.o)
 DEP = $(wildcard obj/*.d)
 BIN = test.bin
 
 CCFLAGS = -ffreestanding -nostdlib -nostdinc
 CCFLAGS += -march=i686 -m32
 CCFLAGS += -isystem ../../startc/include -isystem ../include
-CCFLAGS += -Isrc
 CCFLAGS += -std=c99 -MD -MP
+
 LDFLAGS = -static -nostdlib -L../ -lrunc -L../../startc -lstartc
 
 all: $(BIN)
