@@ -2,7 +2,7 @@
 #include "test-string.h"
 #include "check.h"
 
-void _startc()
+int main()
 {
 	debug_putc('\n');
 	debug_write("BEGIN runc test suite\n");
