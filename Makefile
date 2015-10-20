@@ -1,11 +1,11 @@
 
 all:
-	cd startc; make
-	cd core; make
-	cd app; make
+	cd startc && $(MAKE)
+	cd core && $(MAKE)
+	cd runc && $(MAKE)
 
 clean:
-	cd startc; make clean
-	cd core; make clean
-	cd app; make clean
+	cd startc && $(MAKE) clean
+	cd core && $(MAKE) clean
+	cd runc && $(MAKE) clean
 
