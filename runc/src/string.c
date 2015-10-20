@@ -24,7 +24,7 @@ int strcmp(const char *l, const char *r)
 		l++;
 		r++;
 	}
-	return (*(unsigned char*)l) - (*(unsigned char*)r);
+	return *(const unsigned char *)l - *(const unsigned char *)r;
 }
 
 int strncmp(const char *l, const char *r, size_t n)

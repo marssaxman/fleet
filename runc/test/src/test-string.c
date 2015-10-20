@@ -155,14 +155,62 @@ static void test_strncpy()
 
 static void test_strcmp()
 {
+	CHECK(0 == strcmp("", ""));
+	CHECK(0 == strcmp("a", "a"));
+	CHECK(0 == strcmp("abc", "abc"));
+	CHECK(0 > strcmp("abc", "abcd"));
+	CHECK(0 < strcmp("abcd", "abc"));
+	CHECK(0 > strcmp("abcd", "abce"));
+	CHECK(0 < strcmp("abce", "abcd"));
+	CHECK(0 < strcmp("a\x42", "a"));
+	CHECK(0 < strcmp("a\x42", "a\x02"));
+	CHECK(0 == strcmp(upper, upper));
+	CHECK(0 < strcmp(lower, upper));
+	CHECK(0 > strcmp(upper, lower));
+	CHECK(0 > strcmp("foo", "foobar"));
+	CHECK(0 < strcmp("foo", "fobbed"));
 }
 
 static void test_strncmp()
 {
+	// make sure strncmp does what strcmp does when the size is adequate
+	CHECK(0 == strncmp("", "", 40));
+	CHECK(0 == strncmp("a", "a", 40));
+	CHECK(0 == strncmp("abc", "abc", 40));
+	CHECK(0 > strncmp("abc", "abcd", 40));
+	CHECK(0 < strncmp("abcd", "abc", 40));
+	CHECK(0 > strncmp("abcd", "abce", 40));
+	CHECK(0 < strncmp("abce", "abcd", 40));
+	CHECK(0 < strncmp("a\x42", "a", 40));
+	CHECK(0 < strncmp("a\x42", "a\x02", 40));
+	CHECK(0 == strncmp(upper, upper, 40));
+	CHECK(0 < strncmp(lower, upper, 40));
+	CHECK(0 > strncmp(upper, lower, 40));
+	CHECK(0 > strncmp("foo", "foobar", 40));
+	CHECK(0 < strncmp("foo", "fobbed", 40));
+	// now check behavior when size is less than or equal to string length
+	CHECK(0 == strncmp("flibbet", "flipper", 3));
+	CHECK(0 == strncmp("barrister", "bar", 3));
+	CHECK(0 > strncmp("flip", "flit", 4));
+	CHECK(0 == strncmp("hopeless", "mismatch", 0));
 }
 
 static void test_strcoll()
 {
+	CHECK(0 == strcoll("", ""));
+	CHECK(0 == strcoll("a", "a"));
+	CHECK(0 == strcoll("abc", "abc"));
+	CHECK(0 > strcoll("abc", "abcd"));
+	CHECK(0 < strcoll("abcd", "abc"));
+	CHECK(0 > strcoll("abcd", "abce"));
+	CHECK(0 < strcoll("abce", "abcd"));
+	CHECK(0 < strcoll("a\x42", "a"));
+	CHECK(0 < strcoll("a\x42", "a\x02"));
+	CHECK(0 == strcoll(upper, upper));
+	CHECK(0 < strcoll(lower, upper));
+	CHECK(0 > strcoll(upper, lower));
+	CHECK(0 > strcoll("foo", "foobar"));
+	CHECK(0 < strcoll("foo", "fobbed"));
 }
 
 static void test_strcat()
