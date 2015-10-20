@@ -1,21 +1,27 @@
-SOURCES := $(wildcard src/*.c)
-HEADERS := $(wildcard src/*.h)
-OBJECTS := $(patsubst src%.c,obj%.o,$(SOURCES))
+CFLAGS += -isystem include
+CFLAGS += -MD -MP
+
+SRCS := $(wildcard src/*.c)
+OBJS := $(patsubst src%.c,obj%.o,$(SRCS))
+DEPS := $(OBJS%.o=%.d)
 TARGET := librunc.a
 
 default: $(TARGET)
 
-CFLAGS += -isystem include
 include ../startc/link.mk
 
-$(TARGET): $(OBJECTS)
-	ar rcs $@ $(OBJECTS)
+$(TARGET): $(OBJS)
+	ar rcs $@ $(OBJS)
 
-obj/%.o: src/%.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+-include $(DEPS)
+
+obj/%.o: src/%.c Makefile
+	@mkdir -p obj
+	@echo "$(CC) \$$(CFLAGS) -c $< -o $@"
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	-@rm -f $(TARGET) $(OBJECTS)
+	-@rm -f $(TARGET) $(OBJS)
 
 .PHONY: clean
 
