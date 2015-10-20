@@ -46,19 +46,20 @@ int strcoll(const char *l, const char *r)
 char *strcat(char *dest, const char *src)
 {
 	char *out = dest;
-	while (*dest++) {}
-	strcpy(dest, src);
+	while (*dest) dest++;
+	while (*dest++ = *src++) {}
 	return out;
 }
 
 char *strncat(char *dest, const char *src, size_t n)
 {
 	char *out = dest;
-	while (*dest++) {}
-	while (n-- && (*dest = *src++)) {
-		dest++;
+	while (*dest) dest++;
+	while (n-- && (*dest++ = *src++)) {
+		if (0 == n) {
+			*dest = '\0';
+		}
 	}
-	*dest = '\0';
 	return out;
 }
 
@@ -72,12 +73,13 @@ char *strchr(const char *str, int ch)
 
 char *strrchr(const char *str, int ch)
 {
-	char *out = NULL;
-	while (*str) {
-		out = (*str == ch)? (char*)str: out;
-		str++;
-	}
-	return out;
+	const char *out = NULL;
+	do {
+		if (*str == ch) {
+			out = str;
+		}
+	} while (*str++);
+	return (char*)out;
 }
 
 char *strstr(const char *haystack, const char *needle)

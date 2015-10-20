@@ -215,18 +215,53 @@ static void test_strcoll()
 
 static void test_strcat()
 {
+	char buf[64];
+	strcpy(buf, "hello ");
+	CHECK(buf == strcat(buf, "my name is "));
+	CHECK_STR(buf, "hello my name is ", 64);
+	CHECK(buf == strcat(buf, "inigo montoya"));
+	CHECK_STR(buf, "hello my name is inigo montoya", 64);
 }
 
 static void test_strncat()
 {
+	char buf[64];
+	memset(buf, 'X', 64);
+	strcpy(buf, "around ");
+	// copy with more space than necessary
+	CHECK(buf == strncat(buf, "the world ", 12));
+	CHECK_STR(buf, "around the world ", 64);
+	CHECK_MEM(buf, "around the world \0XXXXXX", 24);
+	CHECK(buf == strncat(buf, "in eighty days", 8));
+	CHECK_MEM(buf, "around the world in eight\0XXXXXX", 32);
 }
 
 static void test_strchr()
 {
+	CHECK(&lower[0] == strchr(lower, 'a'));
+	CHECK(&lower[3] == strchr(lower, 'd'));
+	char buf[] = "abcabcabc";
+	CHECK(&buf[1] == strchr(buf, 'b'));
+	CHECK(&lower[25] == strchr(lower, 'z'));
+	CHECK(0 == strchr(lower, 'A'));
+	CHECK(&lower[26] == strchr(lower, '\0'));
+	CHECK(0 == strchr("", 'X'));
+	char dummy[] = "";
+	CHECK(dummy == strchr(dummy, '\0'));
 }
 
 static void test_strrchr()
 {
+	CHECK(&lower[0] == strrchr(lower, 'a'));
+	CHECK(&lower[3] == strrchr(lower, 'd'));
+	char buf[] = "abcabcabc";
+	CHECK(&buf[7] == strrchr(buf, 'b'));
+	CHECK(&lower[25] == strrchr(lower, 'z'));
+	CHECK(0 == strrchr(lower, 'A'));
+	CHECK(&lower[26] == strrchr(lower, '\0'));
+	CHECK(0 == strrchr("", 'X'));
+	char dummy[] = "";
+	CHECK(dummy == strrchr(dummy, '\0'));
 }
 
 static void test_strstr()
