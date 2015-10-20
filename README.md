@@ -11,3 +11,12 @@ Finally, we'll make this system self-regulating by exposing the hypervisor as
 a virtual device, thereby allowing our VMs to create new VMs and subdelegate
 their resources.
 
+You will need gcc and build tools, configured for i386 or x86-64.
+$ apt-get build-essential
+
+If you are using an x86-64 machine, you will need i386 libc.
+$ apt-get g++-multilib libc6-dev-i386
+
+You will need qemu, since that's what makes the whole thing run.
+$ apt-get qemu
+

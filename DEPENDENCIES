@@ -1,9 +1,0 @@
-You will need gcc and build tools, configured for i386 or x86-64.
-	build-essential
-
-If you are using an x86-64 machine, you will need i386 libc.
-	g++-multilib libc6-dev-i386
-
-You will need qemu, since that's what makes the whole thing run.
-	qemu
-
