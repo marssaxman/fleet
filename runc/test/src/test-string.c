@@ -73,6 +73,12 @@ static void test_memmove()
 	memmove(buf, lower, 26);
 	memmove(&buf[3], buf, 5);
 	CHECK_MEM(buf, "abcabcdeijklmnopqrstuvwxyz", 26);
+	memmove(buf, lower, 26);
+	memmove(buf, &buf[3], 16);
+	CHECK_MEM(buf, "defghijklmnopqrsqrstuvwxyz", 26);
+	memmove(buf, lower, 26);
+	memmove(buf, &buf[3], 5);
+	CHECK_MEM(buf, "defghfghijklmnopqrstuvwxyz", 26);
 	// copy at all alignments and lengths
 	for (int start = 0; start < 26; ++start) {
 		for (int len = 0; len < (26-start); ++len) {
@@ -83,6 +89,13 @@ static void test_memmove()
 			char scratch[26];
 			memcpy(scratch, lower, 26);
 			memcpy(&scratch[start], lower, len);
+			CHECK_MEM(buf, scratch, 26);
+			// do it again the opposite direction
+			memmove(buf, lower, 26);
+			memmove(buf, &buf[start], len);
+			// make an equivalent buffer via memcpy
+			memcpy(scratch, lower, 26);
+			memcpy(scratch, &lower[start], len);
 			CHECK_MEM(buf, scratch, 26);
 		}
 	}
