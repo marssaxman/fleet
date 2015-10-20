@@ -1,24 +1,32 @@
-SRC = $(wildcard src/*.s)
-OBJ = $(patsubst src/%.s,obj/%.o,$(SRC))
-LIB = libstartc.a
-OPT = -march=i686 --32 --strip-local-absolute
+# Identify our input components and our output file
+LIB := libstartc.a
+SRCS := $(wildcard src/*.s)
+OBJS := $(addsuffix .o, $(basename $(SRCS:src/%=obj/%)))
+HELLO := demo/hello.bin
 
-all: $(LIB)
-.PHONY: all clean hello demo
+include target.mk
 
-$(LIB): $(OBJ)
-	ar rcs $(LIB) $(OBJ)
+all: lib hello
+
+lib: $(LIB)
+
+$(LIB): $(OBJS)
+	ar rcs $@ $^
 
 obj/%.o: src/%.s
-	@mkdir -p obj
-	as $(OPT) -o $@ $<
+	as $(ASFLAGS) -o $@ $<
+
+hello: $(HELLO)
+
+$(HELLO):
+	cd demo && $(MAKE)
+
+demo:
+	cd demo && $(MAKE) -f Makefile run
 
 clean:
-	-rm -f $(LIB) $(OBJ)
+	-rm $(LIB) $(OBJS)
+	cd demo && $(MAKE) -f Makefile clean
 
-hello:
-	$(MAKE) -C hello
-
-demo: hello
-	hello/demo.sh hello/hello.bin
+.PHONY: all clean demo
 
