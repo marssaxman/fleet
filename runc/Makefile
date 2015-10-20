@@ -4,9 +4,9 @@
 RUNC := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 SUBMAKES := $(patsubst $(RUNC)/%,%,$(wildcard $(RUNC)/*/Makefile))
 MODULES := $(dir $(SUBMAKES))
-LIBS := $(join $(MODULES), lib$(MODULES:%/=%.a))
-SRCS := $(foreach dir, $(MODULES),$(wildcard $(dir)*.c))
-OBJS := $(subst /,/obj/,$(basename $(SRCS))).o
+LIBS := $(join $(MODULES), $(addprefix lib, $(MODULES:%/=%.a)))
+SRCS := $(foreach dir,$(MODULES),$(wildcard $(dir)src/*.c))
+OBJS := $(subst /src/,/obj/,$(SRCS:%.c=%.o))
 OUTLIB := librunc.a
 
 all: $(OUTLIB)

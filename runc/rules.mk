@@ -15,18 +15,23 @@ CFLAGS += -isystem $(RUNC)/include -isystem $(FLEETBASE)/startc/include
 MODNAME := $(notdir $(MODULE:%/=%))
 LIBNAME := $(addprefix lib, $(addsuffix .a, $(MODNAME)))
 OUTLIB := $(MODULE)$(LIBNAME)
-SRCS := $(wildcard $(MODULE)*.c)
-OBJS := $(subst /,/obj/,$(basename $(SRCS))).o
+SRCS := $(wildcard $(MODULE)src/*.c)
+OBJS := $(subst /src/,/obj/,$(basename $(SRCS))).o
+
+# We will use auto dependency tracking.
 DEPS := $(OBJS:%.o=%.d)
+CFLAGS += -MD -MP
+-include $(DEPS)
 
 all: $(OUTLIB)
 
 $(OUTLIB): $(OBJS)
 	ar rcs $@ $^
 
-obj/%.o: %.c
+obj/%.o: src/%.c
 	@mkdir -p obj
-	$(CC) $(CFLAGS) -c $< -o $@
+	echo "$(CC) \$$(CFLAGS) -c $< -o $@"
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	-@rm -f $(OUTLIB) $(OBJS) $(DEPS)
