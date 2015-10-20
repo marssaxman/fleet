@@ -21,7 +21,7 @@ obj/%.o: src/%.c Makefile
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	-@rm -f $(TARGET) $(OBJS)
+	-@rm -f $(TARGET) $(wildcard obj/*.o) $(wildcard obj/*.d)
 	@$(MAKE) -s -C test clean
 
 test:
