@@ -87,6 +87,30 @@ void check_mem(
 	pass(func);
 }
 
+void check_str(
+		const char *actual,
+		const char *expect,
+		int max,
+		const char *func,
+		int line)
+{
+	const char *aptr = actual;
+	const char *eptr = expect;
+	for (int i = 0; i < max; ++i) {
+		if (*aptr != *eptr++) {
+			fail(func, line, "");
+			debug_write("\texpect: ");
+			debug_write(expect);
+			debug_write("\n\tactual: ");
+			debug_write(actual);
+			debug_putc('\n');
+			return;
+		}
+		if (!*aptr++) break;
+	}
+	pass(func);
+}
+
 void suite_exit()
 {
 	write_test_conclusion();

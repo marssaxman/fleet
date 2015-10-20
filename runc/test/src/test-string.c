@@ -128,10 +128,29 @@ static void test_memset()
 
 static void test_strcpy()
 {
+	char str1[] = "Sample string";
+	char str2[40];
+	char str3[40];
+	char *ret = strcpy(str2, str1);
+	CHECK(ret == str2);
+	CHECK_STR(str2, str1, 40);
+	ret = strcpy(str3, "copy successful");
+	CHECK(ret == str3);
+	CHECK_STR(str3, "copy successful", 40);
+	char buf[41] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+	strcpy(&buf[5], "Bleep bloop");
+	CHECK_MEM(buf, "XXXXXBleep bloop\0XXXXXXXXXXXXXXXXXXXXXXX", 40);
 }
 
 static void test_strncpy()
 {
+	char buf[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+	char *ret = strncpy(buf, upper, 30);
+	CHECK(ret == buf);
+	CHECK_STR(buf, upper, 40);
+	CHECK_MEM(buf, "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0\0\0\0XXXXXXXXXX", 40);
+	strncpy(buf, lower, 10);
+	CHECK_MEM(buf, "abcdefghijKLMNOPQRSTUVWXYZ\0", 27);
 }
 
 static void test_strcmp()

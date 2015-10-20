@@ -15,6 +15,15 @@ void check_mem(
 #define CHECK_MEM(actual, expect, bytes) \
 		check_mem((actual), (expect), (bytes), __func__, __LINE__)
 
+void check_str(
+		const char *actual,
+		const char *expect,
+		int max,
+		const char *func,
+		int line);
+#define CHECK_STR(actual, expect, max) \
+		check_str((actual), (expect), (max), __func__, __LINE__)
+
 void suite_exit();
 
 #endif //CHECK_H
