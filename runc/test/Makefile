@@ -60,7 +60,7 @@ $(TESTAPP): $(APPOBJS) $(LIBOBJS) $(STARTSTR)
 	gcc $(CTARGET) -o $(TESTAPP) $(APPOBJS) $(LIBOBJS) $(STARTSTR)
 
 clean:
-	-@rm -f $(TESTAPP) $(APPOBJS) $(APPDEPS) $(LIBOBJS) $(LIBDEPS)
+	-@rm -f $(TESTAPP) $(wildcard obj/*.o) $(wildcard obj/*.d)
 
 .PHONY: clean
 

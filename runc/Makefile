@@ -22,6 +22,10 @@ obj/%.o: src/%.c Makefile
 
 clean:
 	-@rm -f $(TARGET) $(OBJS)
+	@$(MAKE) -s -C test clean
+
+test:
+	$(MAKE) -s -C test
 
 .PHONY: clean
 
