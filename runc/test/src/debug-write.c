@@ -1,5 +1,22 @@
 #include "debug-write.h"
 
+#if __STDC_HOSTED__
+extern int putchar ( int character );
+
+void debug_write(const char *msg)
+{
+	while (*msg) {
+		putchar(*msg++);
+	}
+}
+
+void debug_putc(char ch)
+{
+	putchar(ch);
+}
+
+#else
+
 // Use the port E9 hack to write data to the emulator's debug console.
 
 void debug_write(const char *msg)
@@ -13,6 +30,8 @@ void debug_putc(char ch)
 {
 	__asm__("outb %%al,%%dx;": :"d"(0xE9), "a"(ch));
 }
+
+#endif
 
 void debug_print_buffer(const void *buf, int bytes)
 {
