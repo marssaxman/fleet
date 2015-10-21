@@ -19,6 +19,19 @@ size_t strxfrm(char *dest, const char *src, size_t n)
 }
 
 TESTSUITE {
-	// TODO
+	char a[64];
+	char b[64];
+	strcpy(a, "What goes around must come around");
+	int ret = strxfrm(b, a, strlen(a)+1);
+	CHECK_STR(a, b, 64);
+	CHECK(ret == strlen(a));
+	a[0] = '\0';
+	strcpy(b, "Always pleasure, my friend. Any time.");
+	ret = strxfrm(b, a, strlen(a)+1);
+	CHECK_STR(b, "", 64);
+	CHECK(ret == strlen(a));
+	strcpy(b, "Another fine product from the nonsense factory");
+	ret = strxfrm(NULL, b, 0);
+	CHECK(ret == strlen(b));
 }
 
