@@ -1,5 +1,6 @@
 #include "time.h"
 
+#if 0
 clock_t clock(void)
 {
 }
@@ -7,12 +8,14 @@ clock_t clock(void)
 time_t time(time_t *out)
 {
 }
+#endif
 
 double difftime(time_t end, time_t start)
 {
 	return (double)(end - start);
 }
 
+#if 0
 time_t mktime(struct tm *t)
 {
 }
@@ -24,6 +27,7 @@ struct tm *gmtime(const time_t *t)
 struct tm *localtime(const time_t *t)
 {
 }
+#endif
 
 char *asctime(const struct tm *t)
 {

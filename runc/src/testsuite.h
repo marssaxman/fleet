@@ -32,7 +32,6 @@ void check_str(
 #define CHECK(x) while(0)
 #define CHECK_MEM(a, e, b) while(0)
 #define CHECK_STR(a, e, b) while(0)
-#define TESTATTR unused
 
 #endif
 

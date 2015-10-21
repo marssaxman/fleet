@@ -1,6 +1,5 @@
 CFLAGS += -isystem include
 CFLAGS += -MD -MP
-CFLAGS += -Wall
 
 SRCS := $(wildcard src/*.c)
 OBJS := $(patsubst src%.c,obj%.o,$(SRCS))

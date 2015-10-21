@@ -13,7 +13,6 @@ char *strrchr(const char *str, int ch)
 }
 
 TESTSUITE {
-	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(&lower[0] == strrchr(lower, 'a'));
 	CHECK(&lower[3] == strrchr(lower, 'd'));

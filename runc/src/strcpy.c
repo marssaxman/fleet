@@ -4,7 +4,7 @@
 char *strcpy(char *dest, const char *src)
 {
 	char *out = dest;
-	while (*dest++ = *src++) {}
+	while ((*dest++ = *src++)) {}
 	return out;
 }
 

@@ -5,7 +5,7 @@ size_t strxfrm(char *dest, const char *src, size_t n)
 {
 	size_t out = 0;
 	while (n--) {
-		if (*dest++ = *src++) {
+		if ((*dest++ = *src++)) {
 			++out;
 		} else {
 			return out;
