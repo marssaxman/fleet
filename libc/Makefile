@@ -36,7 +36,7 @@ TESTOBJS += obj/test/string.o
 HOSTSRCS := $(wildcard test/*.c)
 HOSTOBJS := $(patsubst test%.c,obj/host%.o,$(HOSTSRCS))
 HOSTDEPS := $(HOSTOBJS%.o=%.d)
-TESTHOST := runlibctests
+TESTHOST := runtests
 HOSTCFLAGS += -Itest -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
 
 -include $(TESTDEPS)
@@ -56,8 +56,7 @@ obj/host/%.o: test/*.c Makefile
 	$(CC) $(HOSTCFLAGS) -c $< -o $@
 
 $(TESTHOST): $(HOSTOBJS) $(TESTOBJS)
-	@echo "HOSTOBJS: $(HOSTOBJS)"
-	gcc $(ARCHFLAGS) -o $(TESTHOST) $(HOSTOBJS) $(TESTOBJS)
+	gcc -march=$(ARCH) -m$(BITS) -o $(TESTHOST) $(HOSTOBJS) $(TESTOBJS)
 
 suite: $(TESTHOST)
 
