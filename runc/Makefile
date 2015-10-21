@@ -1,5 +1,6 @@
 CFLAGS += -isystem include
 CFLAGS += -MD -MP
+CFLAGS += -Isrc -include _testmode.h
 
 SRCS := $(wildcard src/*.c)
 OBJS := $(patsubst src%.c,obj%.o,$(SRCS))

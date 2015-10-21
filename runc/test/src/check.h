@@ -1,6 +1,8 @@
 #ifndef CHECK_H
 #define CHECK_H
 
+#define TEST static void test##__LINE__() __attribute__ ((constructor))
+
 void pass(const char *func);
 void fail(const char *func, int line, const char *cond);
 #define CHECK(cond) \

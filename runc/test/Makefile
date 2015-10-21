@@ -29,7 +29,8 @@ default: tester
 # absence normally prevents the test code from being compiled.
 LIB_CFLAGS := $(CTARGET) -nostdinc -MD -MP
 LIB_CFLAGS += -isystem $(STARTCDIR)/include -isystem $(ROOTDIR)/include
-LIB_CFLAGS += -D MAKE_TESTSUITE -include check.h -I$(TESTDIR)/src
+LIB_CFLAGS += -D TEST_SUITE_MODE -include _testmode.h
+LIB_CFLAGS += -include check.h -I$(TESTDIR)/src -I$(ROOTDIR)/src
 
 $(TESTDIR)/obj/%.o: $(ROOTDIR)/src/%.c Makefile
 	@mkdir -p obj
