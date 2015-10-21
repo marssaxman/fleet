@@ -17,7 +17,7 @@ LIBDEPS := $(LIBOBJS%.o=%.d)
 APPSRCS := $(wildcard $(TESTDIR)/src/*.c)
 APPOBJS := $(patsubst $(TESTDIR)/src/%.c,$(TESTDIR)/obj/%.o,$(APPSRCS))
 APPDEPS := $(APPOBJS%.o=%.d)
-TESTAPP := testsuite.bin
+TESTAPP := testlibc.bin
 
 default: suite
 
@@ -36,7 +36,7 @@ $(TESTDIR)/obj/%.o: $(ROOTDIR)/src/%.c Makefile
 	@echo "$(CC) \$$(LIB_CFLAGS) -c $< -o $@"
 	@$(CC) $(LIB_CFLAGS) -c $< -o $@
 
-# runc doesn't implement the four special gcc-required string functions -
+# libc doesn't implement the four special gcc-required string functions -
 # those belong to startc. We can't link against startc in this locally hosted
 # app, so we will just assemble that one file and throw it in when we build
 # the test lib.

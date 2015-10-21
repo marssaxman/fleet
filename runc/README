@@ -1,6 +1,0 @@
-runc is an implementation of the C99 standard library which builds on startc to
-provide a pseudo-hosted runtime environment for embedded firmware projects or
-bare-metal unikernel applications.
-
-The include/ directory contains headers not already provided by startc.
-

@@ -133,7 +133,7 @@ void check_str(
 int main()
 {
 	write_test_conclusion();
-	debug_write("END runc test suite\n");
+	debug_write("END libc test suite\n");
 	return 0;
 }
 

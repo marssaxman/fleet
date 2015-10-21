@@ -4,7 +4,7 @@ CFLAGS += -MD -MP
 SRCS := $(wildcard src/*.c)
 OBJS := $(patsubst src%.c,obj%.o,$(SRCS))
 DEPS := $(OBJS%.o=%.d)
-TARGET := librunc.a
+TARGET := libc.a
 
 default: $(TARGET)
 
