@@ -15,7 +15,13 @@ char *strstr(const char *haystack, const char *needle)
 }
 
 TESTSUITE {
-	// TODO
+	const char fizz[64] = "Hello world, how are you doing this fine evening?";
+	CHECK(&fizz[17] == strstr(fizz, "are you"));
+	CHECK(NULL == strstr(fizz, "Hello world!"));
+	CHECK(&fizz[14] == strstr(&fizz[14], ""));
+	CHECK(NULL == strstr("", "what is the deal?"));
+	const char empty[1] = "";
+	CHECK(empty == strstr(empty, ""));
 }
 
 

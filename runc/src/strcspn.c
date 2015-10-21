@@ -16,6 +16,14 @@ size_t strcspn(const char *str, const char *set)
 }
 
 TESTSUITE {
-	// TODO
+	const char str[] = "fcba73";
+	const char keys[] = "1234567890";
+	CHECK(4 == strcspn(str, keys));
+	const char qbf[] = "The quick brown fox jumped over the lazy dog's back";
+	CHECK(7 == strcspn(qbf, "c"));
+	CHECK(12 == strcspn(qbf, "floop"));
+	CHECK(strlen(qbf) == strcspn(qbf, "XYZ"));
+	CHECK(strlen(qbf) == strcspn(qbf, ""));
+	CHECK(0 == strcspn("", "hello again"));
 }
 
