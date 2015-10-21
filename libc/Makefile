@@ -1,5 +1,5 @@
 include target.mk
-CFLAGS += -Isrc -isystem include
+CFLAGS += -Iinternal -isystem include
 CFLAGS += -MD -MP
 
 SRCS := $(wildcard src/*.c) $(wildcard src/*/*.c)
