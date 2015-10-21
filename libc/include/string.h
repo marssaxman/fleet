@@ -12,16 +12,16 @@ extern "C" {
 #endif
 
 // Fill
-void *memset(void *buf, int ch, size_t n); // in startc
+void *memset(void *buf, int ch, size_t n);
 
 // Copy
 char *strcpy(char *dest, const char *src);
 char *strncpy(char *dest, const char *src, size_t n);
-void *memmove(void *dest, const void *src, size_t n); // in startc
-void *memcpy(void *dest, const void *src, size_t n); // in startc
+void *memmove(void *dest, const void *src, size_t n);
+void *memcpy(void *dest, const void *src, size_t n);
 
 // Compare
-int memcmp(const void *l, const void *r, size_t n); // in startc
+int memcmp(const void *l, const void *r, size_t n);
 int strcmp(const char *l, const char *r);
 int strncmp(const char *l, const char *r, size_t n);
 int strcoll(const char *l, const char *r);

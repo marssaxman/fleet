@@ -1,7 +1,15 @@
 #include <string.h>
 #include "testsuite.h"
 
-// implemented in startc, but we'll test it here anyway
+void *memcpy(void *dest, const void *src, size_t n)
+{
+	char *d = dest;
+	const char *s = src;
+	while (n--) {
+		*d++ = *s++;
+	}
+	return dest;
+}
 
 TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

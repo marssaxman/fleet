@@ -1,6 +1,26 @@
 #include <string.h>
 #include "testsuite.h"
 
+void *memmove(void *dest, const void *src, size_t n)
+{
+	char *d = dest;
+	const char *s = src;
+	if (d > s && d < s+n) {
+		// The dest buffer overlaps the end of the src, so copy in reverse.
+		d += n;
+		s += n;
+		while (n--) {
+			*--d = *--s;
+		}
+	} else {
+		// The dest buffer precedes the src, or there is no overlap.
+		while (n--) {
+			*d++ = *s++;
+		}
+	}
+	return dest;
+}
+
 TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";

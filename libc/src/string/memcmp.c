@@ -1,7 +1,12 @@
 #include <string.h>
 #include "testsuite.h"
 
-// memcmp is implemented in startc, but we'll test it here anyway
+int memcmp(const void *lptr, const void *rptr, size_t n)
+{
+    const unsigned char *l=lptr, *r=rptr;
+    for (; n && *l == *r; n--, l++, r++);
+    return n ? *l-*r : 0;
+}
 
 TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

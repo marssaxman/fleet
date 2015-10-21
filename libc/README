@@ -1,11 +1,11 @@
-This implementation of the C99 standard library builds on startc to provide a
-pseudo-hosted runtime environment for embedded firmware projects or bare-metal
-unikernel applications. POSIX compliance is not a goal; this is strictly a
-C library.
+This is an implementation of the C99 standard library for a 32-bit i386 PC.
+It is intended for kernels or embedded software providing minimal system
+services. POSIX compliance is not a goal and there is no support for threads.
 
-The include/ directory contains those C standard headers which not already
-provided by startc.
+Standard headers live in the include/ directory. The include/libc/ subdirectory
+contains headers which define the abstract system interface and expose the
+library's configuration and startup interface.
 
-The library includes a test suite target which builds for the host system.
+The library includes a test suite, which is built as a host system executable.
 Use 'make suite' to compile it and 'make test' to run it.
 

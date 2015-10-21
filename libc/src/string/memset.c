@@ -1,7 +1,14 @@
 #include <string.h>
 #include "testsuite.h"
 
-// implemented in startc but easier to test over here
+void *memset(void *dest, int c, size_t n)
+{
+	unsigned char *d = dest;
+	while (n--) {
+		*d++ = c;
+	}
+	return dest;
+}
 
 TESTSUITE {
 	char buf[26];
