@@ -3,7 +3,7 @@
 
 // implemented in startc but easier to test over here
 
-TESTBEGIN
+TESTSUITE {
 	char buf[26];
 	static const char naughts[26] = "00000000000000000000000000";
 	static const char crosses[26] = "XXXXXXXXXXXXXXXXXXXXXXXXXX";
@@ -25,5 +25,5 @@ TESTBEGIN
 			CHECK_MEM(buf, scratch, 26);
 		}
 	}
-TESTEND
+}
 

@@ -10,7 +10,7 @@ int strcmp(const char *l, const char *r)
 	return *(const unsigned char *)l - *(const unsigned char *)r;
 }
 
-TESTBEGIN
+TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(0 == strcmp("", ""));
@@ -27,6 +27,6 @@ TESTBEGIN
 	CHECK(0 > strcmp(upper, lower));
 	CHECK(0 > strcmp("foo", "foobar"));
 	CHECK(0 < strcmp("foo", "fobbed"));
-TESTEND
+}
 
 

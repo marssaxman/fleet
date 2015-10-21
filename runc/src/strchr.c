@@ -9,7 +9,7 @@ char *strchr(const char *str, int ch)
 	return (*str == ch) ? (char*)str : NULL;
 }
 
-TESTBEGIN
+TESTSUITE {
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(&lower[0] == strchr(lower, 'a'));
 	CHECK(&lower[3] == strchr(lower, 'd'));
@@ -21,6 +21,7 @@ TESTBEGIN
 	CHECK(0 == strchr("", 'X'));
 	char dummy[] = "";
 	CHECK(dummy == strchr(dummy, '\0'));
-TESTEND
+}
+
 
 

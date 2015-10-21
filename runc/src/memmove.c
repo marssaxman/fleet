@@ -1,7 +1,7 @@
 #include <string.h>
 #include "testsuite.h"
 
-TESTBEGIN
+TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	char buf[26];
@@ -62,5 +62,5 @@ TESTBEGIN
 			CHECK_MEM(buf, scratch, 26);
 		}
 	}
-TESTEND
+}
 

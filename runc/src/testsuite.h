@@ -2,6 +2,7 @@
 #define __TESTSUITE_H
 
 #ifdef TEST_SUITE_MODE
+#define TESTSUITE __attribute__((constructor)) static void test()
 
 void check(int expect, const char *cond, const char *func, int line);
 #define CHECK(cond) \
@@ -24,19 +25,16 @@ void check_str(
 		int line);
 #define CHECK_STR(actual, expect, max) \
 		check_str((actual), (expect), (max), __FILE__, __LINE__)
-#define TESTSUITEATTRIBUTE __attribute__((constructor))
 
 #else	// not TEST_SUITE_MODE
+#define TESTSUITE __attribute__((unused)) static void test()
 
 #define CHECK(x) while(0)
 #define CHECK_MEM(a, e, b) while(0)
 #define CHECK_STR(a, e, b) while(0)
-#define TESTSUITEATTRIBUTE __attribute__((unused))
+#define TESTATTR unused
 
 #endif
-
-#define TESTBEGIN TESTSUITEATTRIBUTE static void test() {
-#define TESTEND }
 
 #endif //__TESTSUITE_H
 

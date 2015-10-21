@@ -27,7 +27,7 @@ default: tester
 # Disable access to system headers when compiling the library files, which
 # are designed to operate in a freestanding environment. Define a symbol whose
 # absence normally prevents the test code from being compiled.
-LIB_CFLAGS := $(CTARGET) -nostdinc -MD -MP
+LIB_CFLAGS := $(CTARGET) -nostdinc -MD -MP -Wall
 LIB_CFLAGS += -isystem $(STARTCDIR)/include -isystem $(ROOTDIR)/include
 LIB_CFLAGS += -D TEST_SUITE_MODE
 
@@ -46,7 +46,7 @@ $(STARTSTR): $(STARTCDIR)/src/string.s
 	$(AS) -march=i686 --32 --strip-local-absolute -o $@ $<
 
 # Compile the application functions in a more normal fashion.
-APP_CFLAGS := $(CTARGET) -MD -MP
+APP_CFLAGS := $(CTARGET) -MD -MP -Wall
 APP_CFLAGS += -isystem $(STARTCDIR)/include -isystem $(ROOTDIR)/include
 AP_CFLAGS += -I $(ROOTDIR)/src
 

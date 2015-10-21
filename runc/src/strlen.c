@@ -10,7 +10,8 @@ size_t strlen(const char *str)
 	return (size_t)(p - str);
 }
 
-TESTBEGIN
+TESTSUITE {
 	// TODO
-TESTEND
+}
+
 

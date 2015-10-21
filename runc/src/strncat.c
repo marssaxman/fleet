@@ -13,7 +13,7 @@ char *strncat(char *dest, const char *src, size_t n)
 	return out;
 }
 
-TESTBEGIN
+TESTSUITE {
 	char buf[64];
 	memset(buf, 'X', 64);
 	strcpy(buf, "around ");
@@ -23,6 +23,6 @@ TESTBEGIN
 	CHECK_MEM(buf, "around the world \0XXXXXX", 24);
 	CHECK(buf == strncat(buf, "in eighty days", 8));
 	CHECK_MEM(buf, "around the world in eight\0XXXXXX", 32);
-TESTEND
+}
 
 

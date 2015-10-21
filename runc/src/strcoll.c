@@ -6,7 +6,7 @@ int strcoll(const char *l, const char *r)
 	return strcmp(l, r);
 }
 
-TESTBEGIN
+TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(0 == strcoll("", ""));
@@ -23,5 +23,6 @@ TESTBEGIN
 	CHECK(0 > strcoll(upper, lower));
 	CHECK(0 > strcoll("foo", "foobar"));
 	CHECK(0 < strcoll("foo", "fobbed"));
-TESTEND
+}
+
 

@@ -8,7 +8,7 @@ char *strcpy(char *dest, const char *src)
 	return out;
 }
 
-TESTBEGIN
+TESTSUITE {
 	char str1[] = "Sample string";
 	char str2[40];
 	char str3[40];
@@ -21,5 +21,5 @@ TESTBEGIN
 	char buf[41] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 	strcpy(&buf[5], "Bleep bloop");
 	CHECK_MEM(buf, "XXXXXBleep bloop\0XXXXXXXXXXXXXXXXXXXXXXX", 40);
-TESTEND
+}
 

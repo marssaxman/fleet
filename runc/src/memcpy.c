@@ -3,7 +3,7 @@
 
 // implemented in startc, but we'll test it here anyway
 
-TESTBEGIN
+TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	char buf[26];
@@ -22,5 +22,5 @@ TESTBEGIN
 		CHECK_MEM(buf, &upper[26-i], i);
 		CHECK_MEM(&buf[i], &lower[i], 26-i);
 	}
-TESTEND
+}
 

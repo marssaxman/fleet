@@ -15,7 +15,7 @@ size_t strspn(const char *str, const char *set)
 	return str - start;
 }
 
-TESTBEGIN
+TESTSUITE {
 	// TODO
-TESTEND
+}
 

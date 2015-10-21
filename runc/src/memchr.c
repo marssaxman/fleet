@@ -13,6 +13,6 @@ void *memchr(const void *buf, int ch, size_t n)
 	return NULL;
 }
 
-TESTBEGIN
+TESTSUITE {
 	// TODO
-TESTEND
+}

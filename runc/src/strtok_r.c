@@ -18,7 +18,8 @@ char *strtok_r(char *str, const char *delims, char **lasts)
 	return sbegin;
 }
 
-TESTBEGIN
+TESTSUITE {
 	// TODO
-TESTEND
+}
+
 

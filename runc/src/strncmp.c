@@ -12,7 +12,7 @@ int strncmp(const char *l, const char *r, size_t n)
 	return 0;
 }
 
-TESTBEGIN
+TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	// make sure strncmp does what strcmp does when the size is adequate
@@ -35,5 +35,6 @@ TESTBEGIN
 	CHECK(0 == strncmp("barrister", "bar", 3));
 	CHECK(0 > strncmp("flip", "flit", 4));
 	CHECK(0 == strncmp("hopeless", "mismatch", 0));
-TESTEND
+}
+
 

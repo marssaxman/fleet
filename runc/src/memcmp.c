@@ -3,7 +3,7 @@
 
 // memcmp is implemented in startc, but we'll test it here anyway
 
-TESTBEGIN
+TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(0 != memcmp(upper, lower, 26));
@@ -14,5 +14,5 @@ TESTBEGIN
 	CHECK(0 == memcmp(&c[6], &c[9], 3));
 	char d[] = "123456789123456789";
 	CHECK(0 == memcmp(&d[0], &d[9], 9));
-TESTEND
+}
 

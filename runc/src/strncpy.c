@@ -11,7 +11,7 @@ char *strncpy(char *dest, const char *src, size_t n)
 	return out;
 }
 
-TESTBEGIN
+TESTSUITE {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	char buf[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
@@ -21,5 +21,5 @@ TESTBEGIN
 	CHECK_MEM(buf, "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0\0\0\0XXXXXXXXXX", 40);
 	strncpy(buf, lower, 10);
 	CHECK_MEM(buf, "abcdefghijKLMNOPQRSTUVWXYZ\0", 27);
-TESTEND
+}
 
