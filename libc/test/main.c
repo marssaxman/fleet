@@ -1,7 +1,26 @@
-#include "debug-write.h"
+#include <stdio.h>
 
 static const char *current_func = 0;
 static unsigned current_fails = 0;
+
+static void putstr(const char *str) { fputs(str, stdout); }
+
+static void print_buffer(const void *buf, int bytes)
+{
+	static const char digits[] = "0123456789ABCDEF";
+	const char *src = (const char*)buf;
+	while (bytes--) {
+		char ch = *src++;
+		if (ch > 0x1F && ch < 0x7F) {
+			putchar(ch);
+		} else {
+			putchar('\\');
+			putchar('x');
+			putchar(digits[ch & 0x0F]);
+			putchar(digits[(ch >> 4) & 0x0F]);
+		}
+	}
+}
 
 static void print_dec(int num)
 {
@@ -12,7 +31,7 @@ static void print_dec(int num)
 		buf[--i] = (num % 10) + '0';
 		num /= 10;
 	}
-	debug_write(&buf[i]);
+	putstr(&buf[i]);
 }
 
 static void write_func(const char *func)
@@ -26,7 +45,7 @@ static void write_func(const char *func)
 	if (*++lastslash) {
 		func = lastslash;
 	}
-	debug_write(func);
+	putstr(func);
 }
 
 static void write_test_conclusion()
@@ -36,18 +55,18 @@ static void write_test_conclusion()
 	// test in a new function. If all tests in the previous function passed,
 	// print a message to that effect.
 	write_func(current_func);
-	debug_write(": ");
+	putstr(": ");
 	if (0 == current_fails) {
-		debug_write("pass");
+		putstr("pass");
 	} else {
 		print_dec(current_fails);
-		debug_write(" check");
+		putstr(" check");
 		if (current_fails > 1) {
-			debug_putc('s');
+			putstr('s');
 		}
-		debug_write(" failed");
+		putstr(" failed");
 	}
-	debug_putc('\n');
+	putchar('\n');
 }
 
 static void check_test_conclusion(const char *func)
@@ -70,13 +89,13 @@ static void fail(const char *func, int line, const char *cond)
 {
 	check_test_conclusion(func);
 	current_fails++;
-	debug_write("FAIL ");
+	putstr("FAIL ");
 	write_func(func);
-	debug_write("@");
+	putstr("@");
 	print_dec(line);
-	debug_write(": ");
-	debug_write(cond);
-	debug_putc('\n');
+	putstr(": ");
+	putstr(cond);
+	putchar('\n');
 }
 
 void check(int flag, const char *cond, const char *func, int line)
@@ -95,11 +114,11 @@ void check_mem(
 	for (int i = 0; i < bytes; ++i) {
 		if (((unsigned char*)actual)[i] != ((unsigned char*)expect)[i]) {
 			fail(func, line, "");
-			debug_write("\texpect: ");
-			debug_print_buffer(expect, bytes);
-			debug_write("\n\tactual: ");
-			debug_print_buffer(actual, bytes);
-			debug_putc('\n');
+			putstr("\texpect: ");
+			print_buffer(expect, bytes);
+			putstr("\n\tactual: ");
+			print_buffer(actual, bytes);
+			putchar('\n');
 			return;
 		}
 	}
@@ -118,11 +137,11 @@ void check_str(
 	for (int i = 0; i < max; ++i) {
 		if (*aptr != *eptr++) {
 			fail(func, line, "");
-			debug_write("\texpect: ");
-			debug_write(expect);
-			debug_write("\n\tactual: ");
-			debug_write(actual);
-			debug_putc('\n');
+			putstr("\texpect: ");
+			putstr(expect);
+			putstr("\n\tactual: ");
+			putstr(actual);
+			putchar('\n');
 			return;
 		}
 		if (!*aptr++) break;
@@ -133,7 +152,6 @@ void check_str(
 int main()
 {
 	write_test_conclusion();
-	debug_write("END libc test suite\n");
 	return 0;
 }
 
