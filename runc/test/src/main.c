@@ -21,6 +21,16 @@ static void write_test_conclusion()
 	// We have finished the previous function and have just passed the first
 	// test in a new function. If all tests in the previous function passed,
 	// print a message to that effect.
+
+	// we're actually getting file names instead of function names now, so
+	// trim off the directory path and type extension if they are present.
+	const char *lastslash = 0;
+	for (const char *src = current_func; *src; ++src) {
+		if (*src == '/') lastslash = src;
+	}
+	if (*++lastslash) {
+		current_func = lastslash;
+	}
 	debug_write(current_func);
 	debug_write(": ");
 	if (0 == current_fails) {
