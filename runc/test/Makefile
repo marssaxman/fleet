@@ -17,9 +17,9 @@ LIBDEPS := $(LIBOBJS%.o=%.d)
 APPSRCS := $(wildcard $(TESTDIR)/src/*.c)
 APPOBJS := $(patsubst $(TESTDIR)/src/%.c,$(TESTDIR)/obj/%.o,$(APPSRCS))
 APPDEPS := $(APPOBJS%.o=%.d)
-TESTAPP := test.bin
+TESTAPP := testsuite.bin
 
-default: tester
+default: suite
 
 -include $(LIBDEPS)
 -include $(APPDEPS)
@@ -55,7 +55,7 @@ $(TESTDIR)/obj/%.o: $(TESTDIR)/src/%.c Makefile
 	@echo "$(CC) \$$(APP_CFLAGS) -c $< -o $@"
 	@$(CC) $(APP_CFLAGS) -c $< -o $@
 
-tester: $(TESTAPP)
+suite: $(TESTAPP)
 
 $(TESTAPP): $(APPOBJS) $(LIBOBJS) $(STARTSTR)
 	gcc $(CTARGET) -o $(TESTAPP) $(APPOBJS) $(LIBOBJS) $(STARTSTR)
@@ -63,5 +63,8 @@ $(TESTAPP): $(APPOBJS) $(LIBOBJS) $(STARTSTR)
 clean:
 	-@rm -f $(TESTAPP) $(wildcard obj/*.o) $(wildcard obj/*.d)
 
-.PHONY: clean
+test: $(TESTAPP)
+	@$(realpath $(TESTAPP))
+
+.PHONY: clean test
 

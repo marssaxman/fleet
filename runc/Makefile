@@ -24,8 +24,11 @@ clean:
 	-@rm -f $(TARGET) $(wildcard obj/*.o) $(wildcard obj/*.d)
 	@$(MAKE) -s -C test clean
 
+suite:
+	$(MAKE) -s -C test default
+
 test:
-	$(MAKE) -s -C test
+	$(MAKE) -s -C test run
 
 .PHONY: clean
 
