@@ -41,7 +41,6 @@ size_t strspn(const char *str, const char *set);
 size_t strcspn(const char *str, const char *set);
 char *strpbrk(const char *str, const char *set);
 char *strtok(char *str, const char *delims);
-char *strtok_r(char *str, const char *delims, char **lasts);
 
 // Misc
 char *strerror(int num);
