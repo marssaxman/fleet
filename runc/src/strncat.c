@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 char *strncat(char *dest, const char *src, size_t n)
 {

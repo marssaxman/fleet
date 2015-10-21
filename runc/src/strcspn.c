@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 size_t strcspn(const char *str, const char *set)
 {

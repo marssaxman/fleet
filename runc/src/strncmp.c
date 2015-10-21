@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 int strncmp(const char *l, const char *r, size_t n)
 {

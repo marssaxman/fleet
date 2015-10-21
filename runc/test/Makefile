@@ -29,8 +29,7 @@ default: tester
 # absence normally prevents the test code from being compiled.
 LIB_CFLAGS := $(CTARGET) -nostdinc -MD -MP
 LIB_CFLAGS += -isystem $(STARTCDIR)/include -isystem $(ROOTDIR)/include
-LIB_CFLAGS += -D TEST_SUITE_MODE -include _testmode.h
-LIB_CFLAGS += -include check.h -I$(TESTDIR)/src -I$(ROOTDIR)/src
+LIB_CFLAGS += -D TEST_SUITE_MODE
 
 $(TESTDIR)/obj/%.o: $(ROOTDIR)/src/%.c Makefile
 	@mkdir -p obj
@@ -49,6 +48,7 @@ $(STARTSTR): $(STARTCDIR)/src/string.s
 # Compile the application functions in a more normal fashion.
 APP_CFLAGS := $(CTARGET) -MD -MP
 APP_CFLAGS += -isystem $(STARTCDIR)/include -isystem $(ROOTDIR)/include
+AP_CFLAGS += -I $(ROOTDIR)/src
 
 $(TESTDIR)/obj/%.o: $(TESTDIR)/src/%.c Makefile
 	@mkdir -p obj

@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 size_t strlen(const char *str)
 {

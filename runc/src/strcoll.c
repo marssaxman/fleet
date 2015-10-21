@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 int strcoll(const char *l, const char *r)
 {

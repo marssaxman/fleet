@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 char *strrchr(const char *str, int ch)
 {

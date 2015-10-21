@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 char *strpbrk(const char *str, const char *set)
 {

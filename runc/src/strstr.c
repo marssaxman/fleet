@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 char *strstr(const char *haystack, const char *needle)
 {

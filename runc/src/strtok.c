@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 char *strtok(char *str, const char *delims)
 {

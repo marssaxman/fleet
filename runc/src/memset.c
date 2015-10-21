@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 // implemented in startc but easier to test over here
 

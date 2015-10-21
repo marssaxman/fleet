@@ -48,12 +48,12 @@ static void check_test_conclusion(const char *func)
 	current_func = func;
 }
 
-void pass(const char *func)
+static void pass(const char *func)
 {
 	check_test_conclusion(func);
 }
 
-void fail(const char *func, int line, const char *cond)
+static void fail(const char *func, int line, const char *cond)
 {
 	check_test_conclusion(func);
 	current_fails++;
@@ -64,6 +64,12 @@ void fail(const char *func, int line, const char *cond)
 	debug_write(": ");
 	debug_write(cond);
 	debug_putc('\n');
+}
+
+void check(int flag, const char *cond, const char *func, int line)
+{
+	if (flag) pass(func);
+	else fail(func, line, cond);
 }
 
 void check_mem(

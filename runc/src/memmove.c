@@ -1,4 +1,5 @@
 #include <string.h>
+#include "testsuite.h"
 
 TESTBEGIN
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
