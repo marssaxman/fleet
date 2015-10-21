@@ -11,7 +11,7 @@ CTARGET := -march=i686 -m32 -std=c99
 TESTDIR := $(realpath .)
 ROOTDIR := $(realpath ..)
 STARTCDIR := $(realpath ../../startc)
-LIBSRCS := $(wildcard $(ROOTDIR)/src/*.c)
+LIBSRCS := $(wildcard $(ROOTDIR)/src/*.c) $(wildcard $(ROOTDIR)/src/*/*.c)
 LIBOBJS := $(patsubst $(ROOTDIR)/src%.c,$(TESTDIR)/obj%.o,$(LIBSRCS))
 LIBDEPS := $(LIBOBJS%.o=%.d)
 APPSRCS := $(wildcard $(TESTDIR)/src/*.c)
@@ -28,11 +28,12 @@ default: suite
 # are designed to operate in a freestanding environment. Define a symbol whose
 # absence normally prevents the test code from being compiled.
 LIB_CFLAGS := $(CTARGET) -nostdinc -MD -MP -Wall
+LIB_CFLAGS += -I$(ROOTDIR)/src
 LIB_CFLAGS += -isystem $(STARTCDIR)/include -isystem $(ROOTDIR)/include
 LIB_CFLAGS += -D TEST_SUITE_MODE
 
 $(TESTDIR)/obj/%.o: $(ROOTDIR)/src/%.c Makefile
-	@mkdir -p obj
+	@mkdir -p $(@D)
 	@echo "$(CC) \$$(LIB_CFLAGS) -c $< -o $@"
 	@$(CC) $(LIB_CFLAGS) -c $< -o $@
 
@@ -51,7 +52,7 @@ APP_CFLAGS += -isystem $(STARTCDIR)/include -isystem $(ROOTDIR)/include
 AP_CFLAGS += -I $(ROOTDIR)/src
 
 $(TESTDIR)/obj/%.o: $(TESTDIR)/src/%.c Makefile
-	@mkdir -p obj
+	@mkdir -p $(@D)
 	@echo "$(CC) \$$(APP_CFLAGS) -c $< -o $@"
 	@$(CC) $(APP_CFLAGS) -c $< -o $@
 
