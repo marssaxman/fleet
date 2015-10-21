@@ -62,7 +62,7 @@ static void write_test_conclusion()
 		print_dec(current_fails);
 		putstr(" check");
 		if (current_fails > 1) {
-			putstr('s');
+			putchar('s');
 		}
 		putstr(" failed");
 	}

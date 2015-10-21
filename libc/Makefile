@@ -26,19 +26,18 @@ obj/rel/%.o: src/%.c Makefile
 # The library source files contain embedded test suites which are only
 # compiled in when the symbol TEST_SUITE_MODE is defined.
 # We will link these sources into a locally hosted executable.
-# We add test/ to the include path so the test suites can use the check and
-# result functions.
-# Unlike the library, the test host is a normal executable linked against the
-# host system's libc. It must still compile with the same target flags as the
-# library files and run as a 32-bit executable even on a 64-bit machine.
+# It must still compile with the same target flags as the library files.
+# We also link against the implementations of the string functions from startc,
+# because libc includes tests for those functions.
 
 TESTOBJS := $(patsubst obj/rel%,obj/test%,$(OBJS))
 TESTDEPS := $(TESTOBJS%.o=%.d)
+TESTOBJS += obj/test/string.o
 HOSTSRCS := $(wildcard test/*.c)
 HOSTOBJS := $(patsubst test%.c,obj/host%.o,$(HOSTSRCS))
 HOSTDEPS := $(HOSTOBJS%.o=%.d)
 TESTHOST := runlibctests
-HOSTCFLAGS += -Itest $(ARCHFLAGS) -MD -MP -std=c99
+HOSTCFLAGS += -Itest -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
 
 -include $(TESTDEPS)
 -include $(HOSTDEPS)
@@ -47,6 +46,10 @@ obj/test/%.o: src/%.c Makefile
 	@mkdir -p $(@D)
 	@echo "$(CC) -DTEST_SUITE_MODE \$$(CFLAGS) -c $< -o $@"
 	@$(CC) $(CFLAGS) -DTEST_SUITE_MODE -Itest -c $< -o $@
+
+obj/test/string.o: ../startc/src/string.s
+	@mkdir -p $(@D)
+	as $(ASFLAGS) -o $@ $<
 
 obj/host/%.o: test/*.c Makefile
 	@mkdir -p $(@D)
