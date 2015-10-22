@@ -2,7 +2,7 @@
 #define _STDIO_H
 
 #include <_null.h>
-#include <_size_t.h>Ok
+#include <_size_t.h>
 
 #if 0 // implement later
 BUFSIZ
