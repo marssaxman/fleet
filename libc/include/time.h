@@ -1,7 +1,9 @@
 #ifndef _TIME_H
 #define _TIME_H
 
-#include <stddef.h>
+#include <_null.h>
+#include <_size_t.h>
+#include <_struct_tm.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,18 +11,6 @@ extern "C" {
 
 typedef int clock_t;
 typedef int time_t;
-struct tm
-{
-	int tm_sec;
-	int tm_min;
-	int tm_hour;
-	int tm_mday;
-	int tm_mon;
-	int tm_year;
-	int tm_wday;
-	int tm_yday;
-	int tm_isdst;
-};
 // millisecond clock
 #define CLOCKS_PER_SEC 1000
 

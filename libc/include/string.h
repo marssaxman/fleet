@@ -1,14 +1,11 @@
 #ifndef _STRING_H
 #define _STRING_H
 
-#include <stddef.h> // for size_t
+#include <_size_t.h>
+#include <_null.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#ifndef NULL
-#define NULL ((void*)0)
 #endif
 
 // Fill
