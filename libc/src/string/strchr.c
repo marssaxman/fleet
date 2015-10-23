@@ -1,5 +1,5 @@
 #include <string.h>
-#include "testsuite.h"
+#include "internal/testsuite.h"
 
 char *strchr(const char *str, int ch)
 {

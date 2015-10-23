@@ -1,5 +1,5 @@
 #include <string.h>
-#include "testsuite.h"
+#include "internal/testsuite.h"
 
 void *memcpy(void *dest, const void *src, size_t n)
 {

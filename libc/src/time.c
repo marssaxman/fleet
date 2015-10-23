@@ -1,4 +1,4 @@
-#include "time.h"
+#include <time.h>
 
 #if 0
 clock_t clock(void)

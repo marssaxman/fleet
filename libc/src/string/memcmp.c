@@ -1,5 +1,5 @@
 #include <string.h>
-#include "testsuite.h"
+#include "internal/testsuite.h"
 
 int memcmp(const void *lptr, const void *rptr, size_t n)
 {

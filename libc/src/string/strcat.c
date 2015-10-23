@@ -1,5 +1,5 @@
 #include <string.h>
-#include "testsuite.h"
+#include "internal/testsuite.h"
 
 char *strcat(char *dest, const char *src)
 {

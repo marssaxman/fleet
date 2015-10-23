@@ -1,4 +1,4 @@
-#include "ctype.h"
+#include <ctype.h>
 
 #define CNTRL 0x0001
 #define SPACE 0x0002

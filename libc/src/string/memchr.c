@@ -1,5 +1,5 @@
 #include <string.h>
-#include "testsuite.h"
+#include "internal/testsuite.h"
 
 void *memchr(const void *buf, int ch, size_t n)
 {

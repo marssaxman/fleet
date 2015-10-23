@@ -1,5 +1,5 @@
 include target.mk
-CFLAGS += -iquote internal -iquote system -isystem include
+CFLAGS += -iquote . -isystem include
 CFLAGS += -MD -MP
 
 SRCS := $(wildcard src/*.c) $(wildcard src/*/*.c)
@@ -33,7 +33,7 @@ HOSTSRCS := $(wildcard test/*.c)
 HOSTOBJS := $(patsubst test%.c,obj/host%.o,$(HOSTSRCS))
 HOSTDEPS := $(HOSTOBJS%.o=%.d)
 TESTHOST := runtests
-HOSTCFLAGS += -iquote test -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
+HOSTCFLAGS += -iquote . -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
 
 -include $(TESTDEPS)
 -include $(HOSTDEPS)
@@ -41,7 +41,7 @@ HOSTCFLAGS += -iquote test -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
 obj/test/%.o: src/%.c Makefile
 	@mkdir -p $(@D)
 	@echo "$(CC) -DTEST_SUITE_MODE \$$(CFLAGS) -c $< -o $@"
-	@$(CC) $(CFLAGS) -DTEST_SUITE_MODE -Itest -c $< -o $@
+	@$(CC) $(CFLAGS) -DTEST_SUITE_MODE -c $< -o $@
 
 obj/host/%.o: test/*.c Makefile
 	@mkdir -p $(@D)
