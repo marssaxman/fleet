@@ -5,15 +5,38 @@
 #include <_null.h>
 #include <_size_t.h>
 
+#define EOF (-1)
+#define BUFSIZ 1024
+
 typedef struct _stream FILE;
+
+FILE *stdin;
+FILE *stdout;
+FILE *stderr;
+
+int fgetc(FILE *stream);
+char *fgets(char *str, int num, FILE *stream);
+inline int getc(FILE *stream) { return fgetc(stream); }
+inline int getchar() { return fgetc(stdin); }
+inline char *gets(char *str, int num) { return fgets(str, num, stdin); }
+int fputc(int character, FILE *stream);
+int fputs(const char *str, FILE *stream);
+inline int putc(int c, FILE *stream) { return fputc(c, stream); }
+inline int putchar(int character) { return fputc(character, stdout); }
+int puts(const char *str);
+
+size_t fread(void *dest, size_t size, size_t count, FILE *stream);
+size_t fwrite(const void *src, size_t size, size_t count, FILE *stream);
+
+void clearerr(FILE *stream);
+int feof(FILE *stream);
+int ferror(FILE *stream);
 
 #if 0 // implement later
 int sprintf(char *str, const char *format, ...);
 int snprintf(char *s, size_t max, const char *format, ...);
 int vsprintf(char *s, const char *format, va_list arg);
 int vsnprintf(char *s, size_t max, const char *format, va_list arg);
-BUFSIZ
-EOF
 FILENAME_MAX
 FOPEN_MAX
 L_tmpnam
@@ -24,34 +47,20 @@ TMP_MAX
 _IOFBF
 _IOLBF
 _IONBF
-clearerr
 fclose
-feof
-ferror
 fflush
-fgetc
 fgetpos
-fgets
 fopen
 fpos_t
 fprintf
-fputc
-fputs
-fread
 freopen
 fscanf
 fseek
 fsetpos
 ftell
-fwrite
-getc
-getchar
 gets
 perror
 printf
-putc
-putchar
-puts
 remove
 rename
 rewind
@@ -59,9 +68,6 @@ scanf
 setbuf
 setvbuf
 sscanf
-stderr
-stdin
-stdout
 tmpfile
 tmpnam
 ungetc

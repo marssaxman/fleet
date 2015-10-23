@@ -52,7 +52,7 @@ libc.a: $(call objs, c, src, obj/lib)
 runtests: $(call objs, c, src, obj/test) $(call objs, c, test, obj/host)
 	gcc -march=$(ARCH) -m$(BITS) -o $@ $^
 
-LIBCFLAGS := $(CFLAGS) -iquote . -isystem include -MD -MP
+LIBCFLAGS := $(CFLAGS) -iquote src -isystem include -isystem system -MD -MP
 obj/lib/%.o: src/%.c Makefile
 	@mkdir -p $(@D)
 	@echo "$(CC) \$$(LIBCFLAGS) -c $< -o $@"
@@ -64,7 +64,7 @@ obj/test/%.o: src/%.c Makefile
 	@echo "$(CC) \$$(TESTCFLAGS) -c $< -o $@"
 	@$(CC) $(TESTCFLAGS) -c $< -o $@
 
-HOSTCFLAGS := -iquote . -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
+HOSTCFLAGS := -iquote test -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
 obj/host/%.o: test/*.c Makefile
 	@mkdir -p $(@D)
 	@echo "$(CC) \$$(HOSTCFLAGS) -c $< -o $@"
