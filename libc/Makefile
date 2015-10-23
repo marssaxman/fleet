@@ -1,7 +1,3 @@
-include target.mk
-CFLAGS += -iquote . -isystem include
-CFLAGS += -MD -MP
-
 # function (map function,list):
 #  Apply the function to each item in the list.
 map = $(foreach item,$(2),$(call $(1),$(item)))
@@ -26,72 +22,60 @@ setprefix = $(patsubst $(strip $(1))%,$(strip $(2))%, $(filter $(1)%, $(3)))
 #  Drop the old suffix and add a new one.
 setsuffix = $(addsuffix $(1),$(basename $(2)))
 
-# function (objfiles srcdir,objdir,srcfiles)
+# function (objsubst srcdir,objdir,srcfiles)
 #  List the corresponding object files for each source file in the list,
 #  mapping the source file hierarchy to an equivalent object file hierarchy.
-objfiles = $(call setsuffix,.o, $(call setprefix,$(1),$(2),$(3)))
+objsubst = $(call setsuffix,.o, $(call setprefix,$(1),$(2),$(3)))
 
-# Find our source files under src/. Generate the corresponding object file
-# names under obj/, using a parallel directory hierarchy. Generate dep file
-# names to live alongside the object files.
-SRCS := $(call findtype, c, src)
-OBJS := $(call objfiles, src, obj/rel, $(SRCS))
-DEPS := $(OBJS.o=.d)
-TARGET := libc.a
+# function (objs suffixes,srcdir,objdir)
+#  For all files in srcdir having one of the listed suffixes, list the path
+#  its corresponding .o file would have under objdir.
+objs = $(call objsubst,$(2),$(3),$(call findtype,$(1),$(2)))
+
+
+
+
+
 
 default: lib
+all: lib test
+lib: libc.a
+test: runtests
 
-all: lib suite
+-include $(call findtype, c, obj)
 
-lib: $(TARGET)
+include target.mk
 
-$(TARGET): $(OBJS)
+libc.a: $(call objs, c, src, obj/lib)
 	ar rcs $@ $^
 
--include $(DEPS)
-
-obj/rel/%.o: src/%.c Makefile
-	@mkdir -p $(@D)
-	@echo "$(CC) \$$(CFLAGS) -c $< -o $@"
-	@$(CC) $(CFLAGS) -c $< -o $@
-
-# The library source files contain embedded test suites which are only
-# compiled in when the symbol TEST_SUITE_MODE is defined.
-# We will link these sources into a locally hosted executable.
-# It must still compile with the same target flags as the library files.
-
-TESTOBJS := $(patsubst obj/rel%,obj/test%,$(OBJS))
-TESTDEPS := $(TESTOBJS%.o=%.d)
-HOSTSRCS := $(wildcard test/*.c)
-HOSTOBJS := $(patsubst test%.c,obj/host%.o,$(HOSTSRCS))
-HOSTDEPS := $(HOSTOBJS%.o=%.d)
-TESTHOST := runtests
-HOSTCFLAGS += -iquote . -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
-
--include $(TESTDEPS)
--include $(HOSTDEPS)
-
-obj/test/%.o: src/%.c Makefile
-	@mkdir -p $(@D)
-	@echo "$(CC) -DTEST_SUITE_MODE \$$(CFLAGS) -c $< -o $@"
-	@$(CC) $(CFLAGS) -DTEST_SUITE_MODE -c $< -o $@
-
-obj/host/%.o: test/*.c Makefile
-	@mkdir -p $(@D)
-	$(CC) $(HOSTCFLAGS) -c $< -o $@
-
-$(TESTHOST): $(HOSTOBJS) $(TESTOBJS)
+runtests: $(call objs, c, src, obj/test) $(call objs, c, test, obj/host)
 	gcc -march=$(ARCH) -m$(BITS) -o $@ $^
 
-suite: $(TESTHOST)
+LIBCFLAGS := $(CFLAGS) -iquote . -isystem include -MD -MP
+obj/lib/%.o: src/%.c Makefile
+	@mkdir -p $(@D)
+	@echo "$(CC) \$$(LIBCFLAGS) -c $< -o $@"
+	@$(CC) $(LIBCFLAGS) -c $< -o $@
 
-test: $(TESTHOST)
-	$(abspath $(TESTHOST))
+TESTCFLAGS := $(LIBCFLAGS) -DTEST_SUITE_MODE
+obj/test/%.o: src/%.c Makefile
+	@mkdir -p $(@D)
+	@echo "$(CC) \$$(TESTCFLAGS) -c $< -o $@"
+	@$(CC) $(TESTCFLAGS) -DTEST_SUITE_MODE -c $< -o $@
+
+HOSTCFLAGS := -iquote . -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
+obj/host/%.o: test/*.c Makefile
+	@mkdir -p $(@D)
+	@echo "$(CC) \$$(HOSTCFLAGS) -c $< -o $@"
+	@$(CC) $(HOSTCFLAGS) -c $< -o $@
+
+check: test
+	./runtests
 
 clean:
-	-@rm -f $(TARGET) $(TESTHOST)
+	-@rm -f libc.a runtests
 	-@rm -rf $(call findtype, o d, obj)
 
-.PHONY: clean test
-
+.PHONY: check clean
 
