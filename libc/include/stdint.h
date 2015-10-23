@@ -7,6 +7,8 @@
 #ifndef _STDINT_H
 #define _STDINT_H
 
+#include <_wchar_min_max.h>
+
 // signed integer types with exact widths
 typedef signed char int8_t;
 #define INT8_MIN (-1-0x7f)
@@ -113,8 +115,6 @@ typedef unsigned long uintptr_t;
 #define PTRDIFF_MAX INT32_MAX
 #define SIG_ATOMIC_MIN INT32_MIN
 #define SIG_ATOMIC_MAX INT32_MAX
-#define WCHAR_MAX (0xffffffffu+L'\0')
-#define WCHAR_MIN (0+L'\0')
 #define WINT_MIN 0U
 #define WINT_MAX UINT32_MAX
 
