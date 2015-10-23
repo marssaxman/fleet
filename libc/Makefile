@@ -1,5 +1,5 @@
 include target.mk
-CFLAGS += -Iinternal -isystem include
+CFLAGS += -iquote internal -iquote system -isystem include
 CFLAGS += -MD -MP
 
 SRCS := $(wildcard src/*.c) $(wildcard src/*/*.c)
@@ -13,7 +13,7 @@ all: lib suite
 lib: $(TARGET)
 
 $(TARGET): $(OBJS)
-	ar rcs $@ $(OBJS)
+	ar rcs $@ $^
 
 -include $(DEPS)
 
@@ -33,7 +33,7 @@ HOSTSRCS := $(wildcard test/*.c)
 HOSTOBJS := $(patsubst test%.c,obj/host%.o,$(HOSTSRCS))
 HOSTDEPS := $(HOSTOBJS%.o=%.d)
 TESTHOST := runtests
-HOSTCFLAGS += -Itest -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
+HOSTCFLAGS += -iquote test -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
 
 -include $(TESTDEPS)
 -include $(HOSTDEPS)
@@ -48,7 +48,7 @@ obj/host/%.o: test/*.c Makefile
 	$(CC) $(HOSTCFLAGS) -c $< -o $@
 
 $(TESTHOST): $(HOSTOBJS) $(TESTOBJS)
-	gcc -march=$(ARCH) -m$(BITS) -o $(TESTHOST) $(HOSTOBJS) $(TESTOBJS)
+	gcc -march=$(ARCH) -m$(BITS) -o $@ $^
 
 suite: $(TESTHOST)
 
