@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 char *strcpy(char *dest, const char *src)
 {
@@ -8,7 +7,8 @@ char *strcpy(char *dest, const char *src)
 	return out;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strcpy) {
 	char str1[] = "Sample string";
 	char str2[40];
 	char str3[40];
@@ -22,4 +22,5 @@ TESTSUITE {
 	strcpy(&buf[5], "Bleep bloop");
 	CHECK_MEM(buf, "XXXXXBleep bloop\0XXXXXXXXXXXXXXXXXXXXXXX", 40);
 }
+#endif
 

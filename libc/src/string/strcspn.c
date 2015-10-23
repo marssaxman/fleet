@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 size_t strcspn(const char *str, const char *set)
 {
@@ -15,7 +14,8 @@ size_t strcspn(const char *str, const char *set)
 	return str - start;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strcspn) {
 	const char str[] = "fcba73";
 	const char keys[] = "1234567890";
 	CHECK(4 == strcspn(str, keys));
@@ -26,4 +26,5 @@ TESTSUITE {
 	CHECK(strlen(qbf) == strcspn(qbf, ""));
 	CHECK(0 == strcspn("", "hello again"));
 }
+#endif
 

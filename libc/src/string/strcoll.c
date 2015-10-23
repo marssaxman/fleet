@@ -1,12 +1,12 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 int strcoll(const char *l, const char *r)
 {
 	return strcmp(l, r);
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strcoll) {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(0 == strcoll("", ""));
@@ -24,5 +24,6 @@ TESTSUITE {
 	CHECK(0 > strcoll("foo", "foobar"));
 	CHECK(0 < strcoll("foo", "fobbed"));
 }
+#endif
 
 

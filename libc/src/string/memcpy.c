@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 void *memcpy(void *dest, const void *src, size_t n)
 {
@@ -11,7 +10,8 @@ void *memcpy(void *dest, const void *src, size_t n)
 	return dest;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(memcpy) {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	char buf[26];
@@ -31,4 +31,5 @@ TESTSUITE {
 		CHECK_MEM(&buf[i], &lower[i], 26-i);
 	}
 }
+#endif
 

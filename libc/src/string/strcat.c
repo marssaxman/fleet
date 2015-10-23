@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 char *strcat(char *dest, const char *src)
 {
@@ -9,7 +8,8 @@ char *strcat(char *dest, const char *src)
 	return out;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strcat) {
 	char buf[64];
 	strcpy(buf, "hello ");
 	CHECK(buf == strcat(buf, "my name is "));
@@ -17,5 +17,6 @@ TESTSUITE {
 	CHECK(buf == strcat(buf, "inigo montoya"));
 	CHECK_STR(buf, "hello my name is inigo montoya", 64);
 }
+#endif
 
 

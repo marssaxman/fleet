@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 char *strstr(const char *haystack, const char *needle)
 {
@@ -14,7 +13,8 @@ char *strstr(const char *haystack, const char *needle)
 	return NULL;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strstr) {
 	const char fizz[64] = "Hello world, how are you doing this fine evening?";
 	CHECK(&fizz[17] == strstr(fizz, "are you"));
 	CHECK(NULL == strstr(fizz, "Hello world!"));
@@ -23,5 +23,7 @@ TESTSUITE {
 	const char empty[1] = "";
 	CHECK(empty == strstr(empty, ""));
 }
+#endif
+
 
 

@@ -1,8 +1,13 @@
 #ifndef __TESTSUITE_H
 #define __TESTSUITE_H
 
-#ifdef TEST_SUITE_MODE
-#define TESTSUITE __attribute__((constructor)) static void test()
+#ifdef TESTSUITE
+#undef TESTSUITE
+#else
+#error testsuite code must be guarded by #ifdef TESTSUITE
+#endif
+
+#define TESTSUITE(x) __attribute__((constructor)) static void _test_x()
 
 void check(int expect, const char *cond, const char *func, int line);
 #define CHECK(cond) \
@@ -25,15 +30,6 @@ void check_str(
 		int line);
 #define CHECK_STR(actual, expect, max) \
 		check_str((actual), (expect), (max), __FILE__, __LINE__)
-
-#else	// not TEST_SUITE_MODE
-#define TESTSUITE __attribute__((unused)) static void test()
-
-#define CHECK(x) while(0)
-#define CHECK_MEM(a, e, b) while(0)
-#define CHECK_STR(a, e, b) while(0)
-
-#endif
 
 #endif //__TESTSUITE_H
 

@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 char *strncat(char *dest, const char *src, size_t n)
 {
@@ -13,7 +12,8 @@ char *strncat(char *dest, const char *src, size_t n)
 	return out;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strncat) {
 	char buf[64];
 	memset(buf, 'X', 64);
 	strcpy(buf, "around ");
@@ -24,5 +24,6 @@ TESTSUITE {
 	CHECK(buf == strncat(buf, "in eighty days", 8));
 	CHECK_MEM(buf, "around the world in eight\0XXXXXX", 32);
 }
+#endif
 
 

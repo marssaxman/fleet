@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 char *strchr(const char *str, int ch)
 {
@@ -9,7 +8,8 @@ char *strchr(const char *str, int ch)
 	return (*str == ch) ? (char*)str : NULL;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strchr) {
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(&lower[0] == strchr(lower, 'a'));
 	CHECK(&lower[3] == strchr(lower, 'd'));
@@ -22,6 +22,6 @@ TESTSUITE {
 	char dummy[] = "";
 	CHECK(dummy == strchr(dummy, '\0'));
 }
-
+#endif
 
 

@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 char *strpbrk(const char *str, const char *set)
 {
@@ -12,7 +11,8 @@ char *strpbrk(const char *str, const char *set)
 	return NULL;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strpbrk) {
 	char buf[] = "This is a message from the beyond.";
 	char common[] = "ent";
 	const char *ret = strpbrk(buf, common);
@@ -29,4 +29,5 @@ TESTSUITE {
 	CHECK_STR(ret, "nd.", 33-(ret-buf));
 	CHECK(0 == strpbrk(++ret, common));
 }
+#endif
 

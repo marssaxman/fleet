@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 size_t strlen(const char *str)
 {
@@ -10,7 +9,8 @@ size_t strlen(const char *str)
 	return (size_t)(p - str);
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strlen) {
 	const char buf[] = "BIGbrownBOXESofBEETLEboots";
 	CHECK(0 == strlen(""));
 	CHECK(26 == strlen(buf));
@@ -19,5 +19,6 @@ TESTSUITE {
 	CHECK(16 == strlen(hole));
 	CHECK(17 == strlen(&hole[17]));
 }
+#endif
 
 

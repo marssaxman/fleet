@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 int strcmp(const char *l, const char *r)
 {
@@ -10,7 +9,8 @@ int strcmp(const char *l, const char *r)
 	return *(const unsigned char *)l - *(const unsigned char *)r;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strcmp) {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(0 == strcmp("", ""));
@@ -28,5 +28,6 @@ TESTSUITE {
 	CHECK(0 > strcmp("foo", "foobar"));
 	CHECK(0 < strcmp("foo", "fobbed"));
 }
+#endif
 
 

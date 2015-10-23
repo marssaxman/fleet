@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 int memcmp(const void *lptr, const void *rptr, size_t n)
 {
@@ -8,7 +7,8 @@ int memcmp(const void *lptr, const void *rptr, size_t n)
     return n ? *l-*r : 0;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(memcmp) {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(0 != memcmp(upper, lower, 26));
@@ -20,4 +20,5 @@ TESTSUITE {
 	char d[] = "123456789123456789";
 	CHECK(0 == memcmp(&d[0], &d[9], 9));
 }
+#endif
 

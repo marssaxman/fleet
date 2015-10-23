@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 void *memmove(void *dest, const void *src, size_t n)
 {
@@ -21,7 +20,8 @@ void *memmove(void *dest, const void *src, size_t n)
 	return dest;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(memmove) {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	char buf[26];
@@ -83,4 +83,5 @@ TESTSUITE {
 		}
 	}
 }
+#endif
 

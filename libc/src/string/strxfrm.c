@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 size_t strxfrm(char *dest, const char *src, size_t n)
 {
@@ -18,7 +17,8 @@ size_t strxfrm(char *dest, const char *src, size_t n)
 	return out;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strxfrm) {
 	char a[64];
 	char b[64];
 	strcpy(a, "What goes around must come around");
@@ -34,4 +34,5 @@ TESTSUITE {
 	ret = strxfrm(NULL, b, 0);
 	CHECK(ret == strlen(b));
 }
+#endif
 

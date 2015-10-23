@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 char *strtok(char *str, const char *delims)
 {
@@ -21,7 +20,8 @@ char *strtok(char *str, const char *delims)
 	return sbegin;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strtok) {
 	char buf[64];
 	strcpy(buf, "This, that, and the other, you know?");
 	CHECK_STR("This", strtok(buf, ","), 32);
@@ -39,5 +39,6 @@ TESTSUITE {
 		pch = strtok(NULL, " ,.-");
 	}
 }
+#endif
 
 

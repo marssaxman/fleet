@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 void *memset(void *dest, int c, size_t n)
 {
@@ -10,7 +9,8 @@ void *memset(void *dest, int c, size_t n)
 	return dest;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(memset) {
 	char buf[26];
 	static const char naughts[26] = "00000000000000000000000000";
 	static const char crosses[26] = "XXXXXXXXXXXXXXXXXXXXXXXXXX";
@@ -33,4 +33,5 @@ TESTSUITE {
 		}
 	}
 }
+#endif
 

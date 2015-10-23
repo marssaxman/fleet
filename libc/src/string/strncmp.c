@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 int strncmp(const char *l, const char *r, size_t n)
 {
@@ -12,7 +11,8 @@ int strncmp(const char *l, const char *r, size_t n)
 	return 0;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strncmp) {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	// make sure strncmp does what strcmp does when the size is adequate
@@ -36,5 +36,5 @@ TESTSUITE {
 	CHECK(0 > strncmp("flip", "flit", 4));
 	CHECK(0 == strncmp("hopeless", "mismatch", 0));
 }
-
+#endif
 

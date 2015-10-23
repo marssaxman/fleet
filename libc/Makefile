@@ -58,11 +58,11 @@ obj/lib/%.o: src/%.c Makefile
 	@echo "$(CC) \$$(LIBCFLAGS) -c $< -o $@"
 	@$(CC) $(LIBCFLAGS) -c $< -o $@
 
-TESTCFLAGS := $(LIBCFLAGS) -DTEST_SUITE_MODE
+TESTCFLAGS := $(LIBCFLAGS) -DTESTSUITE -include "test/testsuite.h"
 obj/test/%.o: src/%.c Makefile
 	@mkdir -p $(@D)
 	@echo "$(CC) \$$(TESTCFLAGS) -c $< -o $@"
-	@$(CC) $(TESTCFLAGS) -DTEST_SUITE_MODE -c $< -o $@
+	@$(CC) $(TESTCFLAGS) -c $< -o $@
 
 HOSTCFLAGS := -iquote . -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
 obj/host/%.o: test/*.c Makefile

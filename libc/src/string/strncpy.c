@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 char *strncpy(char *dest, const char *src, size_t n)
 {
@@ -11,7 +10,8 @@ char *strncpy(char *dest, const char *src, size_t n)
 	return out;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(strncpy) {
 	static const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	char buf[] = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
@@ -22,4 +22,5 @@ TESTSUITE {
 	strncpy(buf, lower, 10);
 	CHECK_MEM(buf, "abcdefghijKLMNOPQRSTUVWXYZ\0", 27);
 }
+#endif
 

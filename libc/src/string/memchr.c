@@ -1,5 +1,4 @@
 #include <string.h>
-#include "internal/testsuite.h"
 
 void *memchr(const void *buf, int ch, size_t n)
 {
@@ -13,7 +12,8 @@ void *memchr(const void *buf, int ch, size_t n)
 	return NULL;
 }
 
-TESTSUITE {
+#ifdef TESTSUITE
+TESTSUITE(memchr) {
 	static const char lower[] = "abcdefghijklmnopqrstuvwxyz";
 	CHECK(&lower[0] == memchr(lower, 'a', 26));
 	CHECK(&lower[3] == memchr(lower, 'd', 26));
@@ -32,5 +32,6 @@ TESTSUITE {
 	CHECK(0 == memchr(words, 'Q', sizeof(words)));
 	CHECK(&words[sizeof(words)-1] == memchr(words, '\0', sizeof(words)));
 }
+#endif
 
 
