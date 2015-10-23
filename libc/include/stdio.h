@@ -5,15 +5,15 @@
 #include <_null.h>
 #include <_size_t.h>
 
+typedef struct _stream FILE;
+
+#if 0 // implement later
 int sprintf(char *str, const char *format, ...);
 int snprintf(char *s, size_t max, const char *format, ...);
 int vsprintf(char *s, const char *format, va_list arg);
 int vsnprintf(char *s, size_t max, const char *format, va_list arg);
-
-#if 0 // implement later
 BUFSIZ
 EOF
-FILE
 FILENAME_MAX
 FOPEN_MAX
 L_tmpnam
