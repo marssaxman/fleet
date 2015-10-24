@@ -100,7 +100,7 @@ struct uart COM4 = { .port = 0x2E8, .irq = 3 };
 
 static int uart_read(void *ref, void *buf, unsigned bytes);
 static int uart_write(void *ref, const void *buf, unsigned bytes);
-static int uart_close(void *ref);
+static void uart_close(void *ref);
 
 static struct iops uart_ops = {
 	.read = uart_read,
@@ -189,16 +189,15 @@ static int uart_read(void *ref, void *buf, unsigned capacity)
 	return p - (char*)buf;
 }
 
-static int uart_close(void *ref)
+static void uart_close(void *ref)
 {
 	struct uart *uart = (struct uart*)ref;
 	assert(uart->streamid != 0);
+	uart->streamid = 0;
 	// Disable interrupts.
 	_outb(uart->port + IER, 0);
 	// Detach from the ISR.
 	_irq_ignore(uart->irq);
-	uart->streamid = 0;
-	return 0;
 }
 
 

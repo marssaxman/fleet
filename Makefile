@@ -10,6 +10,7 @@ libfleet.a:
 
 clean:
 	-@rm -f libfleet.a
+	-@rm -f startc/libstartc.a kernel/libkernel.a libc/libc.a
 
 .PHONY: clean
 

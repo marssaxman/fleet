@@ -14,6 +14,8 @@ FILE *stdin;
 FILE *stdout;
 FILE *stderr;
 
+int fclose(FILE *stream);
+
 int fgetc(FILE *stream);
 char *fgets(char *str, int num, FILE *stream);
 int getc(FILE *stream);

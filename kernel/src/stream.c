@@ -13,11 +13,9 @@ struct stream {
 // not have to do range or null checks everywhere.
 static int badread(void *r, void *d, unsigned n) { return -EBADF; }
 static int badwrite(void *r, const void *s, unsigned n) { return -EBADF; }
-static int badclose(void *r) { return -EBADF; }
 static struct iops badiops = {
 	.write = badwrite,
 	.read = badread,
-	.close = badclose,
 };
 
 #define STREAM_MAX 16
@@ -45,12 +43,6 @@ int _stream_open(void *ref, struct iops *ops)
 	return -EMFILE;
 }
 
-void _stream_release(int streamid)
-{
-	assert(streamid >=0 && streamid < STREAM_MAX);
-	_streams[streamid].ops = 0;
-}
-
 int write(int id, const void *src, unsigned bytes)
 {
 	struct stream *s = lookup(id);
@@ -66,5 +58,9 @@ int read(int id, void *dest, unsigned bytes)
 int close(int id)
 {
 	struct stream *s = lookup(id);
-	return s->ops->close? s->ops->close(s->ref): -EPERM;
+	if (s->ops == &badiops) return -EBADF;
+	if (s->ops->close) s->ops->close(s->ref);
+	s->ops = 0;
+	return 0;
 }
+
