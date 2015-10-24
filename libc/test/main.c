@@ -1,5 +1,9 @@
 #include <stdio.h>
 
+int _stdin_id = 0;
+int _stdout_id = 0;
+int _stderr_id = 0;
+
 static const char *current_func = 0;
 static unsigned current_fails = 0;
 
