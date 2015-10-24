@@ -1,0 +1,7 @@
+CREATE libfleet.a
+ADDLIB startc/libstartc.a
+ADDLIB kernel/libkernel.a
+ADDLIB libc/libc.a
+SAVE
+END
+
