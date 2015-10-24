@@ -9,3 +9,9 @@ void _panic(const char *msg, ...)
 	_log_vprintf(msg, args);
 	while (1) {}
 }
+
+void _kassertfail(const char *file, int line, const char *cond)
+{
+	_panic("assertion failed at %s:%d: %s\n", file, line, cond);
+}
+
