@@ -1,6 +1,0 @@
-# core
-
-Freestanding C runtime library for C99. Minimal infrastructure necessary to
-boot up a C program, plus utilities for fundamental processor services which
-cannot be manipulated from a high-level language.
-
