@@ -8,19 +8,7 @@
 #include "panic.h"
 #include "uart.h"
 #include "memory.h"
-
-static void check_multiboot(struct multiboot_info *info)
-{
-	// The bootloader has told us how much memory we have and what our
-	// command line arguments were.
-	_log(MULTIBOOT, "Multiboot structure from 0x%d to 0x%d\n",
-			(int)info, (int)info + sizeof(struct multiboot_info));
-	_log(MULTIBOOT, "  ->flags: 0x%d\n", info->flags);
-	if (info->flags & 1<<2) {
-		_log(MULTIBOOT, "  ->cmdline: 0x%d\n", info->cmdline);
-		_log(MULTIBOOT, "    %s\n", (const char*)info->cmdline);
-	}
-}
+#include "stream.h"
 
 void _isr_cpu(unsigned code, struct _cpu_state *regs)
 {
@@ -28,16 +16,23 @@ void _isr_cpu(unsigned code, struct _cpu_state *regs)
 	_panic("Processor exception %hhd at %d\n", code, regs->eip);
 }
 
+// These are defined in sys/errno.h as const, but we'll initialize them here.
+int _stdin_id;
+int _stdout_id;
+int _stderr_id;
+
 // Libstartc runtime calls this entrypoint function.
 void _startc()
 {
-	_log_print("\nfleet kernel status log\n");
-	// Use our boot info to set up a memory map and find our configuration.
-	if (!_multiboot) _panic("Bad boot: no multiboot header\n");
-	// Configure the memory and interrupt systems.
+	assert(_multiboot);
 	_memory_init(_multiboot);
+	_stdin_id = _uart_open(&COM1);
+	_stdout_id = _uart_open(&COM2);
+	_stderr_id = _log_open();
+	// Configure the IRQ table and enable interrupts.
 	_irq_init();
 	_sti();
+	// Get the command line, if the bootloader gave us one.
 	const char *cmdline = "";
 	if (_multiboot->flags & 1<<2) {
 		cmdline = (const char*)_multiboot->cmdline;

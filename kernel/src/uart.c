@@ -3,6 +3,9 @@
 #include "cpu.h"
 #include "irq.h"
 #include <stdint.h>
+#include <sys/errno.h>
+#include "stream.h"
+#include "panic.h"
 
 // Implementation of the primitive PC serial transport.
 
@@ -84,10 +87,26 @@
 #define MSR_X_DSR 0x02 // change in DSR
 #define MSR_X_CTS 0x01 // change in CTS
 
+struct uart {
+	unsigned port;
+	unsigned irq;
+	int streamid;
+};
+
 struct uart COM1 = { .port = 0x3F8, .irq = 4 };
 struct uart COM2 = { .port = 0x2F8, .irq = 3 };
 struct uart COM3 = { .port = 0x3E8, .irq = 4 };
 struct uart COM4 = { .port = 0x2E8, .irq = 3 };
+
+static int uart_read(void *ref, void *buf, unsigned bytes);
+static int uart_write(void *ref, const void *buf, unsigned bytes);
+static int uart_close(void *ref);
+
+static struct iops uart_ops = {
+	.read = uart_read,
+	.write = uart_write,
+	.close = uart_close,
+};
 
 static void uart_irq(void *ref)
 {
@@ -111,8 +130,9 @@ static void uart_irq(void *ref)
 	}
 }
 
-void uart_open(struct uart *uart)
+int _uart_open(struct uart *uart)
 {
+	if (uart->streamid) return -EISCONN;
 	// Switch DLAB on and set the speed to 115200.
 	_outb(uart->port + LCR, LCR_DLAB);
 	_outb(uart->port + DLL, 0x01);
@@ -126,10 +146,14 @@ void uart_open(struct uart *uart)
 	// Enable interrupts so we don't have to waste time polling.
 	// We want to know when data is ready to send or to receive.
 	_outb(uart->port + IER, IER_RX_DATA|IER_THRE);
+	// Create and return a stream ID so system calls can refer to this.
+	uart->streamid = _stream_open(uart, &uart_ops);
 }
 
-size_t uart_write(struct uart *uart, const char *buf, size_t bytes)
+static int uart_write(void *ref, const void *buf, unsigned bytes)
 {
+	struct uart *uart = (struct uart*)ref;
+	assert(uart->streamid != 0);
 	// Write this buffer into the port until its buffer is full.
 	const char *p = buf;
 	const char *end = buf + bytes;
@@ -144,11 +168,13 @@ size_t uart_write(struct uart *uart, const char *buf, size_t bytes)
 		_outb(uart->port + THR, *p++);
 	}
 	// Return the number of bytes we read.
-	return p - buf;
+	return p - (char*)buf;
 }
 
-size_t uart_read(struct uart *uart, char *buf, size_t capacity)
+static int uart_read(void *ref, void *buf, unsigned capacity)
 {
+	struct uart *uart = (struct uart*)ref;
+	assert(uart->streamid != 0);
 	// Read bytes from this port until we empty it or run out of buffer.
 	char *p = buf;
 	char *end = buf + capacity;
@@ -160,15 +186,20 @@ size_t uart_read(struct uart *uart, char *buf, size_t capacity)
 		}
 		*p++ = _inb(uart->port + RBR);
 	}
-	return p - buf;
+	return p - (char*)buf;
 }
 
-void uart_close(struct uart *uart)
+static int uart_close(void *ref)
 {
+	struct uart *uart = (struct uart*)ref;
+	assert(uart->streamid != 0);
 	// Disable interrupts.
 	_outb(uart->port + IER, 0);
 	// Detach from the ISR.
 	_irq_ignore(uart->irq);
+	uart->streamid = 0;
+	return 0;
 }
+
 
 

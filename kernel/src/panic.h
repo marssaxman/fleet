@@ -3,6 +3,6 @@
 
 void _panic(const char *msg, ...);
 void _kassertfail(const char *file, int line, const char *cond);
-#define assert(c) ((void)(c) || _kassertfail(__FILE__, __LINE__, #c))
+#define assert(c) ((c)? ((void)0): _kassertfail(__FILE__, __LINE__, #c))
 
 #endif // PANIC_H

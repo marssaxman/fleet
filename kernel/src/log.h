@@ -3,7 +3,9 @@
 
 #include <stdarg.h>
 
-// Write kernel status information to the legacy COM1 port.
+// The log device is the 0xE9 hypervisor console. It is also used as stderr.
+
+int _log_open();
 
 void _log_putch(char ch);
 void _log_print(const char *str);
