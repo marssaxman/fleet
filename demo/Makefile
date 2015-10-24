@@ -10,11 +10,14 @@ LDLIBS += -lfleet
 
 all: $(BIN)
 
-$(BIN): $(OBJS)
+$(BIN): $(OBJS) ../libfleet.a
 	ld -o $@ $(LDFLAGS) --start-group $^ $(LDLIBS) --end-group
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+../libfleet.a:
+	@cd .. && $(MAKE) -s
 
 clean:
 	-@rm -f $(BIN) $(OBJS)
