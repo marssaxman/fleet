@@ -16,13 +16,12 @@ FILE *stderr;
 
 int fgetc(FILE *stream);
 char *fgets(char *str, int num, FILE *stream);
-inline int getc(FILE *stream) { return fgetc(stream); }
-inline int getchar() { return fgetc(stdin); }
-inline char *gets(char *str, int num) { return fgets(str, num, stdin); }
+int getc(FILE *stream);
+int getchar();
 int fputc(int character, FILE *stream);
 int fputs(const char *str, FILE *stream);
-inline int putc(int c, FILE *stream) { return fputc(c, stream); }
-inline int putchar(int character) { return fputc(character, stdout); }
+int putc(int c, FILE *stream);
+int putchar(int character);
 int puts(const char *str);
 
 size_t fread(void *dest, size_t size, size_t count, FILE *stream);
