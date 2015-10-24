@@ -3,12 +3,12 @@ all: lib
 lib: libkernel.a
 
 include srctree.mk
-include ../startc/link.mk
+include ../startc/target.mk
 
 libkernel.a: $(call objs, c, src, obj)
 	ar rcs $@ $^
 
-CFLAGS += -isystem include
+CFLAGS += -isystem ../startc/include -isystem include
 obj/%.o: src/%.c Makefile
 	@mkdir -p $(@D)
 	@echo "$(CC) \$$(CFLAGS) -c $< -o $@"

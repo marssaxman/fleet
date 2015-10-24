@@ -5,7 +5,7 @@ lib: libc.a
 test: runtests
 
 include srctree.mk
-include ../kernel/link.mk
+include ../kernel/target.mk
 
 -include $(call findtype, c, obj)
 
@@ -15,7 +15,9 @@ libc.a: $(call objs, c, src, obj/lib)
 runtests: $(call objs, c, src, obj/test) $(call objs, c, test, obj/host)
 	gcc -march=$(ARCH) -m$(BITS) -o $@ $^
 
-LIBCFLAGS := $(CFLAGS) -iquote src -isystem include -isystem system -MD -MP
+LIBCFLAGS := $(CFLAGS) -MD -MP
+LIBCFLAGS += -iquote src
+LIBCFLAGS += -isystem include -isystem ../kernel/include
 obj/lib/%.o: src/%.c Makefile
 	@mkdir -p $(@D)
 	@echo "$(CC) \$$(LIBCFLAGS) -c $< -o $@"
