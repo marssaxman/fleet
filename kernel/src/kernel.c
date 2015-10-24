@@ -4,13 +4,10 @@
 #include "multiboot.h"
 #include <startc/i386.h>
 #include <startc/entry.h>
+#include <sys/entry.h>
 #include "panic.h"
-#include "events.h"
 #include "uart.h"
 #include "memory.h"
-
-// Somewhere out there, the user has implemented a main function.
-extern void main(void);
 
 static void check_multiboot(struct multiboot_info *info)
 {
@@ -25,12 +22,6 @@ static void check_multiboot(struct multiboot_info *info)
 	}
 }
 
-static void _tx_clear(void *value)
-{
-	_log_print("TX_CLEAR on COM1");
-}
-static struct signal_action com1_tx_clear;
-
 void _isr_cpu(unsigned code, struct _cpu_state *regs)
 {
 	// Processor signalled that something fatal happened
@@ -43,21 +34,17 @@ void _startc()
 	_log_print("\nfleet kernel status log\n");
 	// Use our boot info to set up a memory map and find our configuration.
 	if (!_multiboot) _panic("Bad boot: no multiboot header\n");
-	check_multiboot(_multiboot);
 	// Configure the memory and interrupt systems.
 	_memory_init(_multiboot);
 	_irq_init();
 	_sti();
-	// Jump into the application entrypoint and let it do its thing.
-	action_init(&com1_tx_clear, _tx_clear, &COM1);
-	signal_listen(&COM1.events.tx_clear, &com1_tx_clear);
-	uart_open(&COM1);
-	uart_write(&COM1, "THIS IS A TEST YO YO YO DUDE MAN", 22);
-	main();
-	// The app is done, so now we sleep and process interrupts forever.
-	while (1) {
-		poll_events();
-		_hlt();
+	const char *cmdline = "";
+	if (_multiboot->flags & 1<<2) {
+		cmdline = (const char*)_multiboot->cmdline;
 	}
+	// Jump into the application entrypoint and let it do its thing.
+	_main(cmdline);
+	// Never return from _startc.
+	while (1) _hlt();
 }
 

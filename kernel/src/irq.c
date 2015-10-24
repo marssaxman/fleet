@@ -23,16 +23,27 @@
 */
 
 #define IRQ_COUNT 16
-static struct signal _irqs[IRQ_COUNT];
-// Enable IRQ2 so we get PIC2 cascade IRQs.
+static struct {
+	void (*action)(void*);
+	void *ref;
+} handlers[IRQ_COUNT];
+
+// Always enable IRQ2 so we can receive the PIC2 cascade IRQs.
 static unsigned irq_enable_mask = 0x0004;
 
-void irq_listen(unsigned irq, struct signal_action *handler)
+void _irq_listen(unsigned irq, void *ref, void (*action)(void*))
 {
-	signal_listen(&_irqs[irq], handler);
+	handlers[irq].action = 0;
+	handlers[irq].ref = ref;
+	handlers[irq].action = action;
 	irq_enable_mask |= 1 << irq;
 	_log_printf("setting IRQ enable mask %d\n", irq_enable_mask);
 	_pic_set_irqs(irq_enable_mask);
+}
+
+void _irq_ignore(unsigned irq)
+{
+	handlers[irq].action = 0;
 }
 
 void _isr_irq(unsigned irq, struct _cpu_state *state)
@@ -41,16 +52,13 @@ void _isr_irq(unsigned irq, struct _cpu_state *state)
 	// suppress further interrupts on this IRQ unless some action requests one
 	irq_enable_mask &= ~(1 << irq);
 	_pic_set_irqs(irq_enable_mask);
-	// raise the signal and run all actions associated with this IRQ
-	signal_raise(&_irqs[irq]);
+	if (handlers[irq].action) {
+		handlers[irq].action(handlers[irq].ref);
+	}
 }
 
 void _irq_init()
 {
-	// Prepare a work queue for each IRQ.
-	for (unsigned i = 0; i < IRQ_COUNT; ++i) {
-		signal_init(&_irqs[i]);
-	}
 	// Set the initial IRQ enable state.
 	_pic_set_irqs(irq_enable_mask);
 }

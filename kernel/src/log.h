@@ -1,5 +1,5 @@
-#ifndef _LOG_H
-#define _LOG_H
+#ifndef LOG_H
+#define LOG_H
 
 #include <stdarg.h>
 
@@ -25,4 +25,4 @@ enum _log_categories
 #define _log(category, format, args...) \
 	do { if (_LOG_##category) _log_printf(format, ## args); } while (0)
 
-#endif //_LOG_H
+#endif // LOG_H

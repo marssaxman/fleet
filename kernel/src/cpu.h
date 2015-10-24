@@ -1,5 +1,5 @@
-#ifndef _CPU_H
-#define _CPU_H
+#ifndef CPU_H
+#define CPU_H
 
 // Disable or enable hardware interrupts.
 extern void _cli();
@@ -17,4 +17,4 @@ extern unsigned _inb(unsigned port);
 extern void _outl(unsigned port, unsigned val);
 extern unsigned _inl(unsigned port);
 
-#endif //_I386_CPU_H
+#endif // CPU_H

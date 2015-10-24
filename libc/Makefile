@@ -5,9 +5,9 @@ lib: libc.a
 test: runtests
 
 include srctree.mk
--include $(call findtype, c, obj)
+include ../kernel/link.mk
 
-include target.mk
+-include $(call findtype, c, obj)
 
 libc.a: $(call objs, c, src, obj/lib)
 	ar rcs $@ $^

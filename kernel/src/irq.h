@@ -1,9 +1,8 @@
-#ifndef _IRQ_H
-#define _IRQ_H
-
-#include "signal.h"
+#ifndef IRQ_H
+#define IRQ_H
 
 void _irq_init();
-void irq_listen(unsigned irq, struct signal_action*);
+void _irq_listen(unsigned irq, void *ref, void(*action)(void*));
+void _irq_ignore(unsigned irq);
 
-#endif //_IRQ_H
+#endif // IRQ_H

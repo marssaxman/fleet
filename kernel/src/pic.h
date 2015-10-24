@@ -1,6 +1,6 @@
-#ifndef _PIC_H
-#define _PIC_H
+#ifndef PIC_H
+#define PIC_H
 
 void _pic_set_irqs(unsigned bitmask);
 
-#endif //_PIC_H
+#endif // PIC_H

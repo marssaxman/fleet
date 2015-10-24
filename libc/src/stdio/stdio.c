@@ -1,26 +1,22 @@
 #include <stdio.h>
 #include "internal/stream.h"
+#include <sys/syscall.h>
 
-// system/libc.h contains extern _libc_stream declarations for these names,
-// but we define them as _stream since the _libc_stream is the first member
-// in our FILE struct.
-
-struct _stream _stdin;
+struct _stream _stdin = { .id = STDIN_FILENO };
 FILE *stdin = &_stdin;
 
-struct _stream _stdout;
+struct _stream _stdout = { .id = STDOUT_FILENO };
 FILE *stdout = &_stdout;
 
-struct _stream _stderr;
+struct _stream _stderr = { .id = STDERR_FILENO };
 FILE *stderr = &_stderr;
 
 int _read(FILE *stream, void *dest, size_t bytes)
 {
-	struct _libc_stream *port = &stream->port;
-	size_t n = port->read? port->read(port->ref, dest, bytes): 0;
+	int n = read(stream->id, dest, bytes);
 	if (n < bytes) {
 		stream->state |= FILE_ERR;
-		if (0 == n) {
+		if (n <= 0) {
 			stream->state |= FILE_EOF;
 		}
 	}
@@ -29,11 +25,10 @@ int _read(FILE *stream, void *dest, size_t bytes)
 
 int _write(FILE *stream, const void *src, size_t bytes)
 {
-	struct _libc_stream *port = &stream->port;
-	size_t n = port->write? port->write(port->ref, src, bytes): 0;
+	int n = write(stream->id, src, bytes);
 	if (n < bytes) {
 		stream->state |= FILE_ERR;
-		if (0 == n) {
+		if (n <= 0) {
 			stream->state |= FILE_EOF;
 		}
 	}

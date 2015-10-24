@@ -1,5 +1,5 @@
-#ifndef _LIST_H
-#define _LIST_H
+#ifndef LIST_H
+#define LIST_H
 
 // Tools managing doubly-linked circular lists as used in virtually every
 // kernel subsystem.
@@ -49,4 +49,4 @@ void list_splice(struct list_link *list, struct list_link *prev);
 #define list_iter_prev(pos, list) \
 	for (pos = (list)->prev; pos != (list); pos = pos->prev)
 
-#endif //_LIST_H
+#endif // LIST_H

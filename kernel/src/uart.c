@@ -2,7 +2,6 @@
 #include "uart.h"
 #include "cpu.h"
 #include "irq.h"
-#include "events.h"
 #include <stdint.h>
 
 // Implementation of the primitive PC serial transport.
@@ -102,8 +101,8 @@ static void uart_irq(void *ref)
 			// so we'll read from the status register
         	_inb(uart->port + MSR);
 		} break;
-		case IIR_THRE: event_signal(&uart->events.tx_clear); break;
-		case IIR_RX_DATA: event_signal(&uart->events.rx_ready); break;
+		case IIR_THRE: /* TX ready */ break;
+		case IIR_RX_DATA: /* RX ready */ break;
 		case IIR_RX_STATUS: {
 			// nothing we can usefully do just yet, but we need to clear
 			// the condition, so we'll read from the status register
@@ -114,8 +113,6 @@ static void uart_irq(void *ref)
 
 void uart_open(struct uart *uart)
 {
-	// Configure the listen task we'll attach to the IRQ handler.
-	action_init(&uart->listen, uart_irq, uart);
 	// Switch DLAB on and set the speed to 115200.
 	_outb(uart->port + LCR, LCR_DLAB);
 	_outb(uart->port + DLL, 0x01);
@@ -125,7 +122,7 @@ void uart_open(struct uart *uart)
 	// Enable FIFO mode and clear buffers.
 	_outb(uart->port + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
 	// Add ourselves to the notify queue for the port's IRQ.
-	irq_listen(uart->irq, &uart->listen);
+	_irq_listen(uart->irq, uart, &uart_irq);
 	// Enable interrupts so we don't have to waste time polling.
 	// We want to know when data is ready to send or to receive.
 	_outb(uart->port + IER, IER_RX_DATA|IER_THRE);
@@ -141,7 +138,6 @@ size_t uart_write(struct uart *uart, const char *buf, size_t bytes)
 		uint8_t lsr = _inb(uart->port + LSR);
 		if (0 == (lsr & LSR_TX_READY)) {
 			// Wait to send more until the UART signals buffer cleared.
-			irq_listen(uart->irq, &uart->listen);
 			break;
 		}
 		// Add this byte to the FIFO.
@@ -160,7 +156,6 @@ size_t uart_read(struct uart *uart, char *buf, size_t capacity)
 		uint8_t lsr = _inb(uart->port + LSR);
 		if (0 == (lsr & LSR_RX_READY)) {
 			// Wait until the port signals data availability.
-			irq_listen(uart->irq, &uart->listen);
 			break;
 		}
 		*p++ = _inb(uart->port + RBR);
@@ -172,6 +167,8 @@ void uart_close(struct uart *uart)
 {
 	// Disable interrupts.
 	_outb(uart->port + IER, 0);
+	// Detach from the ISR.
+	_irq_ignore(uart->irq);
 }
 
 

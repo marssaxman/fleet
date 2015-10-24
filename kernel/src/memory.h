@@ -1,5 +1,5 @@
-#ifndef _MEMORY_H
-#define _MEMORY_H
+#ifndef MEMORY_H
+#define MEMORY_H
 
 struct multiboot_info;
 void _memory_init(struct multiboot_info *info);
@@ -9,4 +9,4 @@ void _memory_init(struct multiboot_info *info);
 // Always succeeds; panics when it runs out of memory.
 void *_memory_alloc(unsigned page_count);
 
-#endif //_MEMORY_H
+#endif // MEMORY_H

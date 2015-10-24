@@ -8,6 +8,7 @@ include ../startc/link.mk
 libkernel.a: $(call objs, c, src, obj)
 	ar rcs $@ $^
 
+CFLAGS += -isystem include
 obj/%.o: src/%.c Makefile
 	@mkdir -p $(@D)
 	@echo "$(CC) \$$(CFLAGS) -c $< -o $@"
