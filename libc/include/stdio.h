@@ -6,7 +6,10 @@
 #include <_size_t.h>
 
 #define EOF (-1)
-#define BUFSIZ 1024
+#define BUFSIZ 4096
+#define _IONBUF 0
+#define _IOLBUF 1
+#define _IOFBUF 2
 
 typedef struct _stream FILE;
 
@@ -16,6 +19,8 @@ FILE *stderr;
 
 int fclose(FILE *stream);
 int fflush(FILE *stream);
+void setbuf(FILE *stream, char *buffer);
+int setvbuf(FILE *stream, char *buffer, int mode, size_t bytes);
 
 int fgetc(FILE *stream);
 char *fgets(char *str, int num, FILE *stream);
@@ -46,9 +51,6 @@ SEEK_CUR
 SEEK_END
 SEEK_SET
 TMP_MAX
-_IOFBF
-_IOLBF
-_IONBF
 fgetpos
 fopen
 fpos_t
@@ -65,8 +67,6 @@ remove
 rename
 rewind
 scanf
-setbuf
-setvbuf
 sscanf
 tmpfile
 tmpnam

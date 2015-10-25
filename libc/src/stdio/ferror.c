@@ -3,7 +3,7 @@
 
 int ferror(FILE *stream)
 {
-	return stream->state & FILE_ERR;
+	return stream->state & STREAM_ERR;
 }
 
 

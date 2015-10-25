@@ -3,6 +3,6 @@
 
 int feof(FILE *stream)
 {
-	return stream->state & FILE_EOF;
+	return stream->state & STREAM_EOF;
 }
 

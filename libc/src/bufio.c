@@ -11,7 +11,7 @@ static int check_err(int ret, FILE *stream)
 {
 	if (ret < 0) {
 		errno = -ret;
-		stream->state |= FILE_ERR;
+		stream->state |= STREAM_ERR;
 		ret = EOF;
 	}
 	return ret;
@@ -25,9 +25,9 @@ static size_t check_size(int n, size_t bytes, FILE *stream)
 {
 	n = check_err(n, stream);
 	if (n < bytes) {
-		stream->state |= FILE_ERR;
+		stream->state |= STREAM_ERR;
 		if (n == 0) {
-			stream->state |= FILE_EOF;
+			stream->state |= STREAM_EOF;
 		}
 		if (n < 0) {
 			n = 0;
