@@ -1,4 +1,4 @@
-#include "internal/stdio.h"
+#include <stdio.h>
 #include "internal/stream.h"
 
 int ferror(FILE *stream)

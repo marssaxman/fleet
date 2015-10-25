@@ -4,14 +4,6 @@
 #include <sys/stdio.h>
 #include <errno.h>
 
-struct _stream _stdin;
-FILE *stdin = &_stdin;
-struct _stream _stdout;
-FILE *stdout = &_stdout;
-struct _stream _stderr;
-FILE *stderr = &_stderr;
-
-
 // Check the result of a system call: if it was an error code, set errno,
 // set the stream's error flag, and return the C error code instead (EOF).
 // If the call succeeded, return its result unchanged.
@@ -68,10 +60,3 @@ size_t _write(FILE *stream, const void *src, size_t bytes)
 	return check_size(ret, bytes, stream);
 }
 
-void _stdio_init()
-{
-	// load the stream IDs from sys/stdio
-	_stdin.id = _stdin_id;
-	_stdout.id = _stdout_id;
-	_stderr.id = _stderr_id;
-}

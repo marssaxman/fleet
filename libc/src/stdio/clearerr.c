@@ -1,4 +1,4 @@
-#include "internal/stdio.h"
+#include "internal/bufio.h"
 #include "internal/stream.h"
 
 void clearerr(FILE *stream)

@@ -1,4 +1,4 @@
-#include "internal/stdio.h"
+#include "internal/bufio.h"
 
 int fflush(FILE *stream)
 {

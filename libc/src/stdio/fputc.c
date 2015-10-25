@@ -1,4 +1,4 @@
-#include "internal/stdio.h"
+#include "internal/bufio.h"
 
 int fputc(int character, FILE *stream)
 {

@@ -1,5 +1,5 @@
 #include <string.h>
-#include "internal/stdio.h"
+#include "internal/bufio.h"
 
 int fputs(const char *str, FILE *stream)
 {

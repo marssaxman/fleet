@@ -1,4 +1,4 @@
-#include "internal/stdio.h"
+#include "internal/bufio.h"
 
 size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)
 {
