@@ -15,6 +15,7 @@ FILE *stdout;
 FILE *stderr;
 
 int fclose(FILE *stream);
+int fflush(FILE *stream);
 
 int fgetc(FILE *stream);
 char *fgets(char *str, int num, FILE *stream);
@@ -48,8 +49,6 @@ TMP_MAX
 _IOFBF
 _IOLBF
 _IONBF
-fclose
-fflush
 fgetpos
 fopen
 fpos_t

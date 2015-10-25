@@ -11,16 +11,18 @@ struct stream {
 // Reserve stream id 0 for a canonical bad stream, which always returns EBADF.
 // This way we can map all out-of-bounds streamids to a real stream record and
 // not have to do range or null checks everywhere.
-static int badread(void *r, void *d, unsigned n) { return -EBADF; }
-static int badwrite(void *r, const void *s, unsigned n) { return -EBADF; }
-static struct iops badiops = {
-	.write = badwrite,
-	.read = badread,
+static int bad_sync(void *r) { return -EBADF; }
+static int bad_read(void *r, void *d, unsigned n) { return -EBADF; }
+static int bad_write(void *r, const void *s, unsigned n) { return -EBADF; }
+static struct iops bad_ops = {
+	.sync = bad_sync,
+	.write = bad_write,
+	.read = bad_read,
 };
 
 #define STREAM_MAX 16
 static struct stream _streams[STREAM_MAX] = {
-	{ .ref = 0, .ops = &badiops },
+	{ .ref = 0, .ops = &bad_ops },
 };
 
 static inline struct stream *lookup(int id)
@@ -32,7 +34,7 @@ static inline struct stream *lookup(int id)
 
 int _stream_open(void *ref, struct iops *ops)
 {
-	for (int i = 0; i < STREAM_MAX; ++i) {
+	for (int i = 1; i < STREAM_MAX; ++i) {
 		struct stream *s = _streams + i;
 		if (0 == s->ops) {
 			s->ref = ref;
@@ -46,21 +48,30 @@ int _stream_open(void *ref, struct iops *ops)
 int write(int id, const void *src, unsigned bytes)
 {
 	struct stream *s = lookup(id);
-	return s->ops->write? s->ops->write(s->ref, src, bytes): -EPERM;
+	if (!s->ops->write) return -EPERM;
+	return s->ops->write(s->ref, src, bytes);
 }
 
 int read(int id, void *dest, unsigned bytes)
 {
 	struct stream *s = lookup(id);
-	return s->ops->read? s->ops->read(s->ref, dest, bytes): -EPERM;
+	if (!s->ops->read) return -EPERM;
+	return s->ops->read(s->ref, dest, bytes);
 }
 
 int close(int id)
 {
 	struct stream *s = lookup(id);
-	if (s->ops == &badiops) return -EBADF;
+	if (s->ops == &bad_ops) return -EBADF;
 	if (s->ops->close) s->ops->close(s->ref);
 	s->ops = 0;
 	return 0;
+}
+
+int sync(int id)
+{
+	struct stream *s = lookup(id);
+	if (!s->ops->sync) return -EINVAL;
+	return s->ops->sync(s->ref);
 }
 

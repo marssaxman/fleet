@@ -3,7 +3,8 @@
 
 int fputs(const char *str, FILE *stream)
 {
-	size_t n = _write(stream, str, strlen(str));
-	return ferror(stream)? n: EOF;
+	size_t bytes = strlen(str);
+	size_t n = _write(stream, str, bytes);
+	return (n == bytes)? n: EOF;
 }
 

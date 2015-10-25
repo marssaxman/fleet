@@ -4,6 +4,8 @@
 
 int fclose(FILE *stream)
 {
-	return close(stream->id);
+	int syncret = _sync(stream);
+	int closeret = _close(stream);
+	return (syncret || closeret)? EOF: 0;
 }
 
