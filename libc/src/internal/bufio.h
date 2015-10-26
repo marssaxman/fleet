@@ -5,7 +5,7 @@
 
 // Return 0 on success, < 0 on failure.
 int _close(FILE*);
-int _sync(FILE*);
+int _flush(FILE*);
 int _buffer(FILE*, char *buf, size_t size);
 
 // Return size read/written on success, 0 on failure.

@@ -1,6 +1,6 @@
 #include <errno.h>
 
-extern int errno;
+int errno;
 
 char *strerror(int num)
 {

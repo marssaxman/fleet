@@ -4,7 +4,7 @@
 #include "irq.h"
 #include <stdint.h>
 #include <sys/errno.h>
-#include "stream.h"
+#include <sys/socket.h>
 #include "panic.h"
 
 // Implementation of the primitive PC serial transport.
@@ -147,25 +147,20 @@ int _uart_open(struct uart *uart)
 	// We want to know when data is ready to send or to receive.
 	_outb(uart->port + IER, IER_RX_DATA|IER_THRE);
 	// Create and return a stream ID so system calls can refer to this.
-	uart->streamid = _stream_open(uart, &uart_ops);
+	uart->streamid = open(uart, &uart_ops);
 }
 
 static int uart_write(void *ref, const void *buf, unsigned bytes)
 {
 	struct uart *uart = (struct uart*)ref;
-	assert(uart->streamid != 0);
-	// Write this buffer into the port until its buffer is full.
 	const char *p = buf;
 	const char *end = buf + bytes;
-	while (p < end) {
-		// Make sure the UART can receive more data.
-		uint8_t lsr = _inb(uart->port + LSR);
-		if (0 == (lsr & LSR_TX_READY)) {
-			// Wait to send more until the UART signals buffer cleared.
-			break;
-		}
+	unsigned lsr_addr = uart->port + LSR;
+	unsigned thr_addr = uart->port + THR;
+	// Write into the port until our buffer is empty or its buffer is full.
+	while (_inb(lsr_addr) & LSR_TX_READY && p < end) {
 		// Add this byte to the FIFO.
-		_outb(uart->port + THR, *p++);
+		_outb(thr_addr, *p++);
 	}
 	// Return the number of bytes we read.
 	return p - (char*)buf;
@@ -174,17 +169,13 @@ static int uart_write(void *ref, const void *buf, unsigned bytes)
 static int uart_read(void *ref, void *buf, unsigned capacity)
 {
 	struct uart *uart = (struct uart*)ref;
-	assert(uart->streamid != 0);
-	// Read bytes from this port until we empty it or run out of buffer.
 	char *p = buf;
 	char *end = buf + capacity;
-	while (p < end) {
-		uint8_t lsr = _inb(uart->port + LSR);
-		if (0 == (lsr & LSR_RX_READY)) {
-			// Wait until the port signals data availability.
-			break;
-		}
-		*p++ = _inb(uart->port + RBR);
+	unsigned lsr_addr = uart->port + LSR;
+	unsigned rbr_addr = uart->port + RBR;
+	// Read bytes from this port until we empty it or run out of buffer.
+	while (_inb(lsr_addr) & LSR_RX_READY && p < end) {
+		*p++ = _inb(rbr_addr);
 	}
 	return p - (char*)buf;
 }

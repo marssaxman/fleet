@@ -2,7 +2,7 @@
 #include <stdarg.h>
 #include "log.h"
 #include "cpu.h"
-#include "stream.h"
+#include <sys/socket.h>
 #include <sys/errno.h>
 
 // Write log messages to the hypervisor's debug console.
@@ -16,7 +16,7 @@ static struct iops log_ops = {
 int _log_open()
 {
 	if (log_stream_id) return -EISCONN;
-	return log_stream_id = _stream_open(0, &log_ops);
+	return log_stream_id = open(0, &log_ops);
 }
 
 static int log_write(void *ref, const void *buf, unsigned size)

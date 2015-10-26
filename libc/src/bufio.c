@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "internal/stream.h"
-#include <sys/syscall.h>
+#include <sys/socket.h>
 #include <sys/stdio.h>
 #include <errno.h>
 
@@ -44,8 +44,7 @@ int _close(FILE *stream)
 
 int _flush(FILE *stream)
 {
-	int ret = flush(stream->id);
-	return check_err(ret, stream);
+	return 0;
 }
 
 int _read(FILE *stream, void *dest, size_t bytes)

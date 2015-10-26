@@ -2,6 +2,6 @@
 
 int fflush(FILE *stream)
 {
-	return _sync(stream);
+	return _flush(stream);
 }
 
