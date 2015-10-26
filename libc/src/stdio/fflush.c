@@ -1,7 +1,8 @@
-#include "internal/bufio.h"
+#include "internal/stream.h"
 
 int fflush(FILE *stream)
 {
-	return _flush(stream);
+	// no implementation for flush yet
+	return 0;
 }
 

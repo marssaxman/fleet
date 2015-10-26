@@ -1,7 +1,7 @@
-#include "internal/bufio.h"
+#include <stdio.h>
 
 int fputc(int character, FILE *stream)
 {
-	return _write(stream, &character, 1) > 0? character: EOF;
+	return fwrite(&character, sizeof(char), 1, stream) == 1? character: EOF;
 }
 

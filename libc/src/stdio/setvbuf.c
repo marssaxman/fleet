@@ -1,4 +1,3 @@
-#include "internal/bufio.h"
 #include "internal/stream.h"
 
 int setvbuf(FILE *stream, char *buffer, int mode, size_t size)
@@ -10,7 +9,8 @@ int setvbuf(FILE *stream, char *buffer, int mode, size_t size)
 		// We are supposed to allocate a buffer, but we don't have malloc.
 		return -1;
 	}
-	_buffer(stream, buffer, size);
+	stream->buf_begin = stream->buf_end = stream->buf_addr = buffer;
+	stream->buf_size = size;
 	if (mode == _IOLBUF) {
 		stream->state |= STREAM_LINESYNC;
 	} else {

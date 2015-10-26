@@ -1,8 +1,8 @@
-#include "internal/bufio.h"
+#include <stdio.h>
 
 int fgetc(FILE *stream)
 {
 	char out = '\0';
-	return _read(stream, &out, 1) == 1? out: EOF;
+	return fread(&out, sizeof(char), 1, stream) == 1? out: EOF;
 }
 
