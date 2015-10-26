@@ -2,29 +2,31 @@
 #include <stdarg.h>
 #include "log.h"
 #include "cpu.h"
-#include "stream.h"
+#include "socket.h"
 #include <sys/errno.h>
 
 // Write log messages to the hypervisor's debug console.
 
-static int log_write(void*, const void *buf, unsigned size);
+static int log_transmit(void*, struct transfer*);
 static int log_stream_id;
 static struct iops log_ops = {
-	.write = log_write,
+	.transmit = log_transmit,
 };
 
 int _log_open()
 {
-	if (log_stream_id) return -EISCONN;
-	return log_stream_id = _stream_open(0, &log_ops);
+	if (log_stream_id) return EISCONN;
+	return log_stream_id = _open(0, &log_ops);
 }
 
-static int log_write(void *ref, const void *buf, unsigned size)
+static int log_transmit(void *ref, struct transfer *xfer)
 {
-	const char *src = buf;
-	while (size--) {
+	const char *src = xfer->buffer;
+	size_t bytes = xfer->length;
+	while (bytes--) {
 		_outb(0xE9, *src++);
 	}
+	xfer->completion(xfer, xfer->length);
 }
 
 void _log_putchar(char ch)

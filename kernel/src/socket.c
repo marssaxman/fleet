@@ -24,7 +24,7 @@ socket_t _open(void *ref, const struct iops *ops)
 	return EMFILE;
 }
 
-int transmit(socket_t id, const struct transfer *xfer)
+int transmit(socket_t id, struct transfer *xfer)
 {
 	if (id < 0 || id >= SOCKET_MAX) return EBADF;
 	struct socket *s = &_sockets[id];
@@ -33,7 +33,7 @@ int transmit(socket_t id, const struct transfer *xfer)
 	return s->ops->transmit(s->ref, xfer);
 }
 
-int receive(socket_t id, const struct transfer *xfer)
+int receive(socket_t id, struct transfer *xfer)
 {
 	if (id < 0 || id >= SOCKET_MAX) return EBADF;
 	struct socket *s = &_sockets[id];

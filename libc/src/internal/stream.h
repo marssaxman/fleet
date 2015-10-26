@@ -11,12 +11,6 @@ struct _stream
 {
 	unsigned state;
 	int id;
-	// the whole stream buffer
-	char *buf;
-	size_t buflen;
-	// the section of buffer currently in use
-	char *head;
-	char *tail;
 };
 
 #endif //_LIBC_INTERNAL_STREAM_H

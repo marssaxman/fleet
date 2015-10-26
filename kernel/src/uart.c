@@ -134,8 +134,8 @@ static void begin(struct transfer *xfer, struct buf *buf)
 static void complete(struct transfer **xfer_field, struct buf *buf)
 {
 	struct transfer *xfer = *xfer_field;
-	*xfer_field = xfer->completion(xfer, buf->limit - buf->base);
-	begin(*xfer_field, buf);
+	xfer->completion(xfer, buf->limit - buf->base);
+	*xfer_field = 0;
 }
 
 static void disable_interrupts(struct uart *uart)
