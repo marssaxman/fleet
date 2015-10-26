@@ -1,22 +1,22 @@
 #ifndef _LIBC_INTERNAL_STREAM_H
 #define _LIBC_INTERNAL_STREAM_H
 
-#define STREAM_READ 0x01 // currently reading from the stream
-#define STREAM_WRITE 0x02 // currently writing to the stream
-#define STREAM_EOF 0x04 // C standard feof() indicator
-#define STREAM_ERR 0x08 // C standard ferror() indicator
-#define STREAM_LINESYNC 0x0F // must flush buffer after each newline
+#define STREAM_EOF 1 // C standard feof() indicator
+#define STREAM_ERR 2 // C standard ferror() indicator
+#define STREAM_ALLOC 4 // we own the buffer and must free() it
+#define STREAM_LINESYNC 8 // must flush buffer & sync IO on each newline
 
 struct _stream
 {
 	unsigned state;
+	// stream id used in kernel calls
 	int id;
-	// the whole stream buffer
-	char *buf;
-	size_t buflen;
-	// the section of buffer currently in use
-	char *head;
-	char *tail;
+	// buffer location & size, if present
+	char *buf_addr;
+	size_t buf_size;
+	// range of buffer contents currently in use
+	char *buf_begin;
+	char *buf_end;
 };
 
 #endif //_LIBC_INTERNAL_STREAM_H

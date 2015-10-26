@@ -8,7 +8,7 @@
 #include "panic.h"
 #include "uart.h"
 #include "memory.h"
-#include "socket.h"
+#include "stream.h"
 
 void _isr_cpu(unsigned code, struct _cpu_state *regs)
 {

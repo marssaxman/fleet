@@ -6,7 +6,6 @@
 #define EMFILE 3
 #define EISCONN 4
 #define EINVAL 5
-#define EBUSY 6
 
 #endif //_SYS_ERRNO_H
 

@@ -3,14 +3,18 @@
 
 int setvbuf(FILE *stream, char *buffer, int mode, size_t size)
 {
-	switch (mode) {
-		case _IONBUF: buffer = NULL; size = 0; break;
-		case _IOLBUF: stream->state |= STREAM_LINESYNC; break;
-		case _IOFBUF: stream->state &= ~STREAM_LINESYNC; break;
-		default: return EOF;
+	if (mode == _IONBUF) {
+		buffer = NULL;
+		size = 0;
+	} else if (buffer == NULL) {
+		// We are supposed to allocate a buffer, but we don't have malloc.
+		return -1;
 	}
-	if (size < 0) return EOF;
-	_sync(stream);
 	_buffer(stream, buffer, size);
+	if (mode == _IOLBUF) {
+		stream->state |= STREAM_LINESYNC;
+	} else {
+		stream->state &= ~STREAM_LINESYNC;
+	}
 }
 
