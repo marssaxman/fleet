@@ -16,6 +16,9 @@ typedef struct _stream FILE;
 FILE *stdin;
 FILE *stdout;
 FILE *stderr;
+#define stdin stdin
+#define stdout stdout
+#define stderr stderr
 
 int fclose(FILE *stream);
 int fflush(FILE *stream);

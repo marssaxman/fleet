@@ -4,7 +4,7 @@
 #include "irq.h"
 #include <stdint.h>
 #include <sys/errno.h>
-#include "stream.h"
+#include "socket.h"
 #include "panic.h"
 
 // Implementation of the primitive PC serial transport.
@@ -87,10 +87,23 @@
 #define MSR_X_DSR 0x02 // change in DSR
 #define MSR_X_CTS 0x01 // change in CTS
 
+struct buf
+{
+	char *base;
+	char *pos;
+	char *limit;
+};
+
 struct uart {
 	unsigned port;
 	unsigned irq;
 	int streamid;
+	// we are transferring data if transmit != 0
+	struct transfer *transmit;
+	struct buf xmit;
+	// we are receiving data if receive != 0
+	struct transfer *receive;
+	struct buf rcev;
 };
 
 struct uart COM1 = { .port = 0x3F8, .irq = 4 };
@@ -98,15 +111,84 @@ struct uart COM2 = { .port = 0x2F8, .irq = 3 };
 struct uart COM3 = { .port = 0x3E8, .irq = 4 };
 struct uart COM4 = { .port = 0x2E8, .irq = 3 };
 
-static int uart_read(void *ref, void *buf, unsigned bytes);
-static int uart_write(void *ref, const void *buf, unsigned bytes);
-static void uart_close(void *ref);
+static int uart_transmit(void*, struct transfer*);
+static int uart_receive(void*, struct transfer*);
+static int uart_sync(void*);
+static void uart_close(void*);
 
 static struct iops uart_ops = {
-	.read = uart_read,
-	.write = uart_write,
+	.transmit = uart_transmit,
+	.receive = uart_receive,
+	.sync = uart_sync,
 	.close = uart_close,
 };
+
+static void begin(struct transfer *xfer, struct buf *buf)
+{
+	if (xfer) {
+		buf->pos = buf->base = xfer->buffer;
+		buf->limit = buf->base + xfer->length;
+	}
+}
+
+static void complete(struct transfer **xfer_field, struct buf *buf)
+{
+	struct transfer *xfer = *xfer_field;
+	*xfer_field = xfer->completion(xfer, buf->limit - buf->base);
+	begin(*xfer_field, buf);
+}
+
+static void disable_interrupts(struct uart *uart)
+{
+	unsigned ier = uart->port + IER;
+	_outb(ier, 0);
+}
+
+static void enable_interrupts(struct uart *uart)
+{
+	unsigned ier = uart->port + IER;
+	unsigned flags = _inb(ier);
+	flags = uart->transmit? (flags|IER_THRE): (flags & ~IER_THRE);
+	flags = uart->receive? (flags|IER_RX_DATA): (flags & ~IER_RX_DATA);
+	_outb(ier, flags);
+}
+
+static void xmitloop(struct uart *uart)
+{
+	unsigned lsr = uart->port + LSR;
+	unsigned thr = uart->port + THR;
+	unsigned ier = uart->port + IER;
+	// Keep working as long as we have data to send and a port ready to
+	// transmit it.
+	while (uart->transmit && (_inb(lsr) & LSR_TX_READY)) {
+		if (uart->xmit.pos < uart->xmit.limit) {
+			_outb(thr, *(uart->xmit.pos)++);
+		} else {
+			// We ran out of data. Call the completion proc, which may take
+			// this as an opportunity to queue up some more data.
+			complete(&uart->transmit, &uart->xmit);
+		}
+	}
+}
+
+static void rcevloop(struct uart *uart)
+{
+	unsigned lsr = uart->port + LSR;
+	unsigned rbr = uart->port + RBR;
+	unsigned ier = uart->port + IER;
+	// Keep working as long as we have a buffer ready to receive and a port
+	// with data to put in it.
+	while (uart->receive && (_inb(lsr) & LSR_RX_READY)) {
+		if (uart->rcev.pos < uart->rcev.limit) {
+			*(uart->rcev.pos)++ = _inb(rbr);
+		} else {
+			// We ran out of buffer. Call its completion proc, which will
+			// either return a new transfer object to begin receiving from, or
+			// will return NULL and end the loop.
+			complete(&uart->receive, &uart->rcev);
+		}
+	}
+}
 
 static void uart_irq(void *ref)
 {
@@ -120,19 +202,26 @@ static void uart_irq(void *ref)
 			// so we'll read from the status register
         	_inb(uart->port + MSR);
 		} break;
-		case IIR_THRE: /* TX ready */ break;
-		case IIR_RX_DATA: /* RX ready */ break;
+		case IIR_THRE: {
+			// Transmit holding register empty: time to send more data.
+			xmitloop(uart);
+		} break;
+		case IIR_RX_DATA: {
+			// Transmit receive buffer non-empty: time to read some bytes.
+			rcevloop(uart);
+		} break;
 		case IIR_RX_STATUS: {
 			// nothing we can usefully do just yet, but we need to clear
 			// the condition, so we'll read from the status register
         	_inb(uart->port + LSR);
 		} break;
 	}
+	enable_interrupts(uart);
 }
 
 int _uart_open(struct uart *uart)
 {
-	if (uart->streamid) return -EISCONN;
+	if (uart->streamid) return EISCONN;
 	// Switch DLAB on and set the speed to 115200.
 	_outb(uart->port + LCR, LCR_DLAB);
 	_outb(uart->port + DLL, 0x01);
@@ -141,52 +230,51 @@ int _uart_open(struct uart *uart)
 	_outb(uart->port + LCR, LCR_WORD_8);
 	// Enable FIFO mode and clear buffers.
 	_outb(uart->port + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
-	// Add ourselves to the notify queue for the port's IRQ.
+	// Install our proc as the handler for this port's IRQ.
 	_irq_listen(uart->irq, uart, &uart_irq);
-	// Enable interrupts so we don't have to waste time polling.
-	// We want to know when data is ready to send or to receive.
-	_outb(uart->port + IER, IER_RX_DATA|IER_THRE);
 	// Create and return a stream ID so system calls can refer to this.
-	uart->streamid = _stream_open(uart, &uart_ops);
+	uart->streamid = _open(uart, &uart_ops);
 }
 
-static int uart_write(void *ref, const void *buf, unsigned bytes)
+static int uart_transmit(void *ref, struct transfer *xfer)
 {
 	struct uart *uart = (struct uart*)ref;
-	assert(uart->streamid != 0);
-	// Write this buffer into the port until its buffer is full.
-	const char *p = buf;
-	const char *end = buf + bytes;
-	while (p < end) {
-		// Make sure the UART can receive more data.
-		uint8_t lsr = _inb(uart->port + LSR);
-		if (0 == (lsr & LSR_TX_READY)) {
-			// Wait to send more until the UART signals buffer cleared.
-			break;
-		}
-		// Add this byte to the FIFO.
-		_outb(uart->port + THR, *p++);
+	disable_interrupts(uart);
+	int err = 0;
+	if (0 == uart->transmit) {
+		uart->transmit = xfer;
+		begin(xfer, &uart->xmit);
+		xmitloop(uart);
+	} else {
+		err = EBUSY;
 	}
-	// Return the number of bytes we read.
-	return p - (char*)buf;
+	enable_interrupts(uart);
+	return err;
 }
 
-static int uart_read(void *ref, void *buf, unsigned capacity)
+static int uart_receive(void *ref, struct transfer *xfer)
 {
 	struct uart *uart = (struct uart*)ref;
-	assert(uart->streamid != 0);
-	// Read bytes from this port until we empty it or run out of buffer.
-	char *p = buf;
-	char *end = buf + capacity;
-	while (p < end) {
-		uint8_t lsr = _inb(uart->port + LSR);
-		if (0 == (lsr & LSR_RX_READY)) {
-			// Wait until the port signals data availability.
-			break;
-		}
-		*p++ = _inb(uart->port + RBR);
+	disable_interrupts(uart);
+	int err = 0;
+	if (0 == uart->receive) {
+		uart->receive = xfer;
+		begin(xfer, &uart->rcev);
+		rcevloop(uart);
+	} else {
+		err = EBUSY;
 	}
-	return p - (char*)buf;
+	enable_interrupts(uart);
+	return err;
+}
+
+static int uart_sync(void *ref)
+{
+	struct uart *uart = (struct uart*)ref;
+	disable_interrupts(uart);
+	if (uart->receive) complete(&uart->receive, &uart->rcev);
+	if (uart->transmit) complete(&uart->transmit, &uart->xmit);
+	enable_interrupts(uart);
 }
 
 static void uart_close(void *ref)
