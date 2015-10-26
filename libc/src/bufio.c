@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include "internal/stream.h"
-#include <sys/socket.h>
+#include <sys/syscall.h>
 #include <sys/stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <stdbool.h>
 
 // Check the result of a system call: if it was an error code, set errno,
 // set the stream's error flag, and return the C error code instead (EOF).
@@ -46,26 +45,16 @@ int _close(FILE *stream)
 
 int _flush(FILE *stream)
 {
-	int ret = sync(stream->id);
-	stream->state &= ~(STREAM_WRITE|STREAM_READ);
+	int ret = flush(stream->id);
 	return check_err(ret, stream);
 }
 
 void _buffer(FILE *stream, void *buf, size_t bytes)
 {
-}
-
-struct buffer_xfer
-{
-	struct transfer xfer;
-	volatile bool done;
-	volatile size_t bytes;
-};
-
-static struct transfer *complete(struct transfer *xfer, size_t bytes)
-{
-	((struct buffer_xfer*)xfer)->bytes = bytes;
-	((struct buffer_xfer*)xfer)->done = true;
+	stream->buf = buf;
+	stream->buflen = bytes;
+	stream->pos = buf;
+	stream->limit = buf;
 }
 
 int _read(FILE *stream, void *dest, size_t bytes)
@@ -77,15 +66,29 @@ int _read(FILE *stream, void *dest, size_t bytes)
 		return 0;
 	}
 	stream->state |= STREAM_READ;
-	struct buffer_xfer bfx = {{complete, dest, bytes}, 0, 0};
-	int ret = receive(stream->id, &bfx.xfer);
-	if (ret) return -ret;
-	while (!bfx.done) { /* sleep */ }
-	return bfx.bytes;
-}
-
-static struct transfer *read_complete(struct transfer *xfer, size_t bytes)
-{
+	// If this is an unbuffered stream, go make the syscall immediately.
+	if (0 == stream->buf) {
+		int ret = read(stream->id, dest, bytes);
+		return check_size(ret, bytes, stream);
+	}
+	size_t remaining = bytes;
+	while (remaining > 0) {
+		size_t avail = stream->tail - stream->head;
+		size_t copy = (avail <= remaining)? avail: remaining;
+		dest = memcpy(dest, stream->head, copy) + copy;
+		stream->head += copy;
+		remaining -= copy;
+		if (stream->head == stream->tail) {
+			// The buffer's empty; time to refill it.
+			stream->head = stream->tail = stream->buf;
+			int ret = read(stream->id, stream->buf, stream->buflen);
+			if (ret < 0) return check_err(ret, stream);
+			if (ret == 0) break;
+			stream->tail += ret;
+		}
+	}
+	// Partial success: return the quantity read.
+	return check_size(bytes - remaining, bytes, stream);
 }
 
 size_t _write(FILE *stream, const void *src, size_t bytes)
@@ -95,11 +98,20 @@ size_t _write(FILE *stream, const void *src, size_t bytes)
 		stream->state |= STREAM_ERR;
 		return 0;
 	}
-	stream->state |= STREAM_WRITE;
-	struct buffer_xfer bfx = {{complete, (void*)src, bytes}, 0, 0};
-	int ret = transmit(stream->id, &bfx.xfer);
-	if (ret) return -ret;
-	while (!bfx.done) { /* sleep */ }
-	return bfx.bytes;
+	// If there's no buffer, pass the write through to the kernel.
+	if (0 == stream->buflen) {
+		int ret = write(stream->id, src, bytes);
+		return check_size(ret, bytes, stream);
+	}
+	size_t remaining = bytes;
+	while (remaining > 0) {
+		// Copy data into the end of the buffer.
+		size_t avail = stream->buflen - (stream->tail - stream->buf);
+		size_t copy = (avail <= remaining)? avail: remaining;
+		
+		// If the buffer is full, flush it.
+		
+	}
+
 }
 

@@ -5,25 +5,11 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include <stdio.h>
-#include <string.h>
 
 int main(int argc, char *argv[])
 {
 //	puts("Hello, world!");
 	fputs("Hello, world!\n", stderr);
-	const char *msg = "The quick brown fox jumped over the lazy dog's back.";
-	char buf[256] = {0};
-	int len = strlen(msg);
-	for (int i = 0; i < len; ++i) {
-		buf[i] = msg[i];
-		fputs(buf, stderr);
-		fputc('\n', stderr);
-	}
-	for (int i = 0; i < len; ++i) {
-		buf[i] = ' ';
-		fputs(buf, stderr);
-		fputc('\n', stderr);
-	}
 	return 0;
 }
 

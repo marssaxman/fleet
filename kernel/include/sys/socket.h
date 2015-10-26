@@ -1,15 +1,13 @@
 #ifndef _SYS_SOCKET_H
 #define _SYS_SOCKET_H
 
-#include <stddef.h>
-
 // A socket is a communication endpoint.
 typedef int socket_t;
 
 // A transfer record describes a transfer of data through a socket.
 struct transfer
 {
-	void (*completion)(struct transfer*, size_t bytes);
+	struct transfer *(*completion)(struct transfer*, size_t bytes);
 	void *buffer;
 	size_t length;
 };
