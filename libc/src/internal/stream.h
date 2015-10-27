@@ -5,8 +5,8 @@
 
 #define STREAM_EOF 1 // C standard feof() indicator
 #define STREAM_ERR 2 // C standard ferror() indicator
-#define STREAM_ALLOC 4 // we own the buffer and must free() it
-#define STREAM_LINESYNC 8 // must flush buffer & sync IO on each newline
+#define STREAM_ALLOC 4 // we own the buffer and must free() it on close
+#define STREAM_LINESYNC 8 // must flush buffer after each newline
 
 struct _stream
 {
@@ -17,7 +17,7 @@ struct _stream
 	char *buf_addr;
 	size_t buf_size;
 	// range of buffer contents currently in use
-	char *buf_begin;
+	char *buf_pos;
 	char *buf_end;
 };
 
