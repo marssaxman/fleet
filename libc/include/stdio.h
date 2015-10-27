@@ -6,7 +6,9 @@
 #include <_size_t.h>
 
 #define EOF (-1)
-#define BUFSIZ 4096
+#define BUFSIZ 1024
+
+// setvbuf modes: no buffer, line buffer, or full buffer
 #define _IONBUF 0
 #define _IOLBUF 1
 #define _IOFBUF 2

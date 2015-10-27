@@ -12,7 +12,7 @@ int fflush(FILE *stream)
 	// input, the behavior is undefined. We will simply do nothing.
 	if (stream->state & STREAM_READ) return 0;
 	// Nor have we any work to do for a non-buffered stream.
-	if (0 == stream->buf_addr) return 0;
+	if (0 == stream->buf_size) return 0;
 	// How much data does the buffer actually contain?
 	size_t bytes = stream->buf_pos - stream->buf_addr;
 	if (0 == bytes) return 0;

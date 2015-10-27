@@ -1,4 +1,4 @@
-#include "internal/bufio.h"
+#include <stdio.h>
 
 int puts(const char *str)
 {

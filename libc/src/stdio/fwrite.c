@@ -28,7 +28,7 @@ static int bufwrite(FILE *stream, const char *src, size_t bytes)
 	// and write directly from the source buffer, up to an even multiple of
 	// the stream buffer size.
 	if (bytes >= stream->buf_size) {
-		size_t copy = (bytes / stream->buf_size) * stream->buf_size;
+		size_t copy = bytes - (bytes % stream->buf_size);
 		int ret = write(stream->id, src, copy);
 		if (ret >= 0) total += ret;
 		if (ret < copy) return total;
@@ -51,13 +51,13 @@ size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)
 	// Must not write to a stream used for reading without an intervening
 	// seek/setpos/rewind.
 	if (stream->state & STREAM_READ) {
-		errno = -1; ??
+		errno = -1; //??
 		stream->state |= STREAM_ERR;
 		return 0;
 	}
 	stream->state |= STREAM_WRITE;
 	int ret = 0;
-	if (stream->buf_addr) {
+	if (stream->buf_size > 0) {
 		ret = bufwrite(stream, src, bytes);
 	} else {
 		ret = write(stream->id, src, bytes);
