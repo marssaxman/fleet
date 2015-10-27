@@ -22,9 +22,10 @@ int _log_open()
 static int log_write(void *ref, const void *buf, unsigned size)
 {
 	const char *src = buf;
-	while (size--) {
+	for (unsigned i = 0; i < size; ++i) {
 		_outb(0xE9, *src++);
 	}
+	return size;
 }
 
 void _log_putchar(char ch)
