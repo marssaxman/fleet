@@ -5,43 +5,52 @@
 
 static int bufwrite(FILE *stream, const char *src, size_t bytes)
 {
-	// If the source data will fit in the stream buffer without filling it,
-	// the write operation reduces to a copy.
-	size_t bufavail = stream->buf_end - stream->buf_pos;
-	if (bufavail > bytes) {
-		memcpy(stream->buf_pos, src, bytes);
-		stream->buf_pos += bytes;
-		return bytes;
-	}
-	// The data we want to write is no smaller than the buffer space. If there
-	// is data in the buffer already, finish filling it and flush it.
 	size_t total = 0;
-	if (stream->buf_pos > stream->buf_addr) {
-		memcpy(stream->buf_pos, src, bufavail);
-		total += bufavail;
-		stream->buf_pos = stream->buf_end;
-		if (fflush(stream)) return EOF;
-		src += bufavail;
-		bytes -= bufavail;
-	}
-	// If the source buffer is larger than the stream buffer, skip the copy
-	// and write directly from the source buffer, up to an even multiple of
-	// the stream buffer size.
-	if (bytes >= stream->buf_size) {
-		size_t copy = bytes - (bytes % stream->buf_size);
-		int ret = write(stream->id, src, copy);
-		if (ret >= 0) total += ret;
-		if (ret < copy) return total;
-		bytes -= copy;
+	if (stream->buf_count > 0 && stream->buf_size > stream->buf_count) {
+		// There's data in the stream buffer, so we need to write it out before
+		// any of the new stuff we're adding, but there's still space in the
+		// buffer. Copy in as much of the source data as will fit.
+		size_t remain = bytes - total;
+		size_t avail = stream->buf_size - stream->buf_count;
+		size_t copy = (avail > remain)? remain: avail;
+		memcpy(stream->buf_addr + stream->buf_count, src, copy);
+		stream->buf_count += copy;
 		src += copy;
+		total += copy;
 	}
-	// Copy the remaining bytes into the stream buffer.
-	if (bytes > 0) {
-		memcpy(stream->buf_pos, src, bytes);
-		stream->buf_pos += bytes;
-		total += bytes;
+	if (stream->buf_count == stream->buf_size) {
+		// The stream buffer is full, so we have to flush it before we can
+		// queue up any more outgoing data.
+		int expect = stream->buf_size;
+		stream->buf_count = 0;
+		int ret = write(stream->id, stream->buf_addr, expect);
+		if (ret < 0) return ret;
+		if (ret < expect) return total;
 	}
-	return total;
+	if (bytes - total >= stream->buf_size) {
+		// The data remaining to write is bigger than the stream buffer, so
+		// we might as well copy it directly out from the source buffer rather
+		// than wasting time copying it into the stream buffer first.
+		size_t remaining = bytes - total;
+		size_t copy = remaining - (remaining % stream->buf_size);
+		int ret = write(stream->id, src, copy);
+		if (ret < 0) return ret;
+		total += ret;
+		src += ret;
+		if (ret < copy) return total;
+	}
+	if (bytes > total) {
+		// We have some bytes left, not enough to fill the stream buffer. Copy
+		// them in and leave them to write out next time.
+		size_t avail = stream->buf_size - stream->buf_count;
+		size_t remain = bytes - total;
+		size_t copy = (avail > remain)? remain: avail;
+		memcpy(stream->buf_addr + stream->buf_count, src, copy);
+		stream->buf_count += copy;
+		src += copy;
+		total += copy;
+	}
+	return bytes;
 }
 
 size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)

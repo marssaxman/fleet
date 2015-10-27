@@ -2,16 +2,25 @@
 
 int setvbuf(FILE *stream, char *buffer, int mode, size_t size)
 {
+	if (!stream) return -1;
+	if (mode != _IONBUF && mode != _IOLBUF && mode != _IOFBUF) return -1;
 	if (mode == _IONBUF) {
+		// The standard says we will ignore the buffer and size parameters
+		// when configuring a stream for no buffer.
 		buffer = NULL;
 		size = 0;
-	} else if (buffer == NULL) {
-		// We are supposed to allocate a buffer, but we don't have malloc.
+	}
+	// Functionally speaking, size = 0 also means _IONBUF regardless of mode.
+	// If buffer is NULL and size > 0, we are supposed to malloc a buffer,
+	// but we don't have malloc yet so we can't.
+	if (buffer == NULL && size > 0) {
 		return -1;
 	}
-	stream->buf_pos = stream->buf_addr = buffer;
+	// Configure the buffer.
+	stream->buf_addr = buffer;
 	stream->buf_size = size;
-	stream->buf_end = buffer + size;
+	stream->buf_count = 0;
+	// Set the line sync flag, which is an alternate limit on buffer size.
 	if (mode == _IOLBUF) {
 		stream->state |= STREAM_LINESYNC;
 	} else {

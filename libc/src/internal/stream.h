@@ -18,9 +18,8 @@ struct _stream
 	// buffer location & size, if present
 	char *buf_addr;
 	size_t buf_size;
-	// range of buffer contents currently in use
-	char *buf_pos;
-	char *buf_end;
+	// number of data bytes contained in the buffer
+	size_t buf_count;
 };
 
 #endif //_LIBC_INTERNAL_STREAM_H
