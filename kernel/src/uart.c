@@ -87,6 +87,14 @@
 #define MSR_X_DSR 0x02 // change in DSR
 #define MSR_X_CTS 0x01 // change in CTS
 
+// The modem control register manages flow control.
+#define MCR_DTR 0x01	// data terminal is ready for input
+#define MCR_RTS 0x02	// please send data
+#define MCR_AUX1 0x04
+#define MCR_AUX2 0x08
+#define MCR_LOOPBACK 0x10
+#define MCR_AUTOFLOW 0x20
+
 struct uart {
 	unsigned port;
 	unsigned irq;
