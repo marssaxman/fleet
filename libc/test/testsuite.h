@@ -7,7 +7,7 @@
 #error testsuite code must be guarded by #ifdef TESTSUITE
 #endif
 
-#define TESTSUITE(x) __attribute__((constructor)) static void _test_x()
+#define TESTSUITE(x) __attribute__((constructor)) static void _test_##x()
 
 void check(int expect, const char *cond, const char *func, int line);
 #define CHECK(cond) \

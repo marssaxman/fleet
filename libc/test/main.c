@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <dlfcn.h>
 
 int _stdin_id = 0;
 int _stdout_id = 0;
@@ -155,6 +156,18 @@ void check_str(
 
 int main()
 {
+	// The test app is built for the host and must link against a libc which
+	// is compatible with that environment. The libc we want to test is built
+	// as a shared object, but we don't link it against the host directly.
+	// In fact, the host does not link against any of the test libc's symbols.
+	// Instead, the test suite functions are given the constructor attribute,
+	// and the act of loading libc.so causes the tests to be executed as a
+	// side effect. We use RTLD_DEEPBIND to indicate that libc.so wants its
+	// own symbols in preference to those of the system, since we definitely
+	// don't want it calling equivalently-named functions from the host libc!
+	// Furthermore, we use RTLD_LOCAL to prevent other libraries loaded in the
+	// test app process from seeing our test libc's symbols.
+	dlopen("./libc.so", RTLD_NOW|RTLD_LOCAL|RTLD_DEEPBIND);
 	write_test_conclusion();
 	return 0;
 }
