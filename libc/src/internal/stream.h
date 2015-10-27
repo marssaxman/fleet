@@ -3,10 +3,12 @@
 
 #include <stdio.h>
 
-#define STREAM_EOF 1 // C standard feof() indicator
-#define STREAM_ERR 2 // C standard ferror() indicator
-#define STREAM_ALLOC 4 // we own the buffer and must free() it on close
-#define STREAM_LINESYNC 8 // must flush buffer after each newline
+#define STREAM_EOF 0x01 // C standard feof() indicator
+#define STREAM_ERR 0x02 // C standard ferror() indicator
+#define STREAM_ALLOC 0x04 // we own the buffer and must free() it on close
+#define STREAM_LINESYNC 0x08 // must flush buffer after each newline
+#define STREAM_READ 0x0F // currently in read mode
+#define STREAM_WRITE 0x10 // currently in write mode
 
 struct _stream
 {

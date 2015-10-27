@@ -158,9 +158,13 @@ static int uart_write(void *ref, const void *buf, unsigned bytes)
 	unsigned lsr_addr = uart->port + LSR;
 	unsigned thr_addr = uart->port + THR;
 	// Write into the port until our buffer is empty or its buffer is full.
-	while (_inb(lsr_addr) & LSR_TX_READY && p < end) {
-		// Add this byte to the FIFO.
-		_outb(thr_addr, *p++);
+	while (p < end) {
+		if (_inb(lsr_addr) & LSR_TX_READY) {
+			// Add this byte to the FIFO.
+			_outb(thr_addr, *p++);
+		} else {
+			// Wastefully burn CPU cycles on blocking IO.
+		}
 	}
 	// Return the number of bytes we read.
 	return p - (char*)buf;
@@ -174,8 +178,13 @@ static int uart_read(void *ref, void *buf, unsigned capacity)
 	unsigned lsr_addr = uart->port + LSR;
 	unsigned rbr_addr = uart->port + RBR;
 	// Read bytes from this port until we empty it or run out of buffer.
-	while (_inb(lsr_addr) & LSR_RX_READY && p < end) {
-		*p++ = _inb(rbr_addr);
+	while (p < end) {
+		if (_inb(lsr_addr) & LSR_RX_READY) {
+			// Copy in the next byte from the FIFO.
+			*p++ = _inb(rbr_addr);
+		} else {
+			// Burn CPU cycles for no good reason blocking on IO.
+		}
 	}
 	return p - (char*)buf;
 }

@@ -48,11 +48,18 @@ size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)
 {
 	size_t bytes = size*count;
 	if (0 == bytes) return 0;
+	// Must not write to a stream used for reading without an intervening
+	// seek/setpos/rewind.
+	if (stream->state & STREAM_READ) {
+		errno = -1; ??
+		stream->state |= STREAM_ERR;
+		return 0;
+	}
+	stream->state |= STREAM_WRITE;
 	int ret = 0;
 	if (stream->buf_addr) {
 		ret = bufwrite(stream, src, bytes);
 	} else {
-		// No buffer. Write the source buffer to the socket directly.
 		ret = write(stream->id, src, bytes);
 	}
 	if (ret < bytes) {
