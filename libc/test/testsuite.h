@@ -31,5 +31,15 @@ void check_str(
 #define CHECK_STR(actual, expect, max) \
 		check_str((actual), (expect), (max), __FILE__, __LINE__)
 
+
+// libc expects to invoke system calls defined in libkernel.
+// when running in the test environment, these calls would get resolved
+// against equivalently-named functions in the host system's libc, which
+// would not really work the way anyone hoped. We will rename these functions.
+#define open libc_test_open
+#define read libc_test_read
+#define write libc_test_write
+#define close libc_test_close
+
 #endif //__TESTSUITE_H
 

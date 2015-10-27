@@ -1,9 +1,24 @@
 #include <stdio.h>
 #include <dlfcn.h>
 
+// Symbols linked against by libc.so
 int _stdin_id = 0;
 int _stdout_id = 0;
 int _stderr_id = 0;
+void check(int flag, const char *cond, const char *func, int line);
+void check_mem(
+		const void *actual,
+		const void *expect,
+		int bytes,
+		const char *func,
+		int line);
+void check_str(
+		const char *actual,
+		const char *expect,
+		int bytes,
+		const char *func,
+		int line);
+
 
 static const char *current_func = 0;
 static unsigned current_fails = 0;

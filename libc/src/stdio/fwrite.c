@@ -79,4 +79,17 @@ size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)
 	return ret / size;
 }
 
-
+#ifdef TESTSUITE
+#include "memsocket.h"
+TESTSUITE(fwrite) {
+	char buf[1024];
+	struct memsocket ms = {.buf_addr = buf, .buf_size = 1024, .data_len = 0};
+	struct _stream stream = { .id = open_memsocket(&ms) };
+	CHECK(stream.id >= 0);
+	const char msg[] = "testing, testing\n";
+	write(stream.id, msg, strlen(msg));
+	close(stream.id);
+	CHECK(ms.data_len = strlen(msg));
+	CHECK_MEM(ms.buf_addr, msg, ms.data_len);
+}
+#endif
