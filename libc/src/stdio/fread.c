@@ -3,56 +3,46 @@
 #include <errno.h>
 #include <string.h>
 
-static char *bufcpy(char *dest, FILE *stream, size_t bytes)
+static int bufread(FILE *stream, char *dest, size_t bytes)
 {
-	char *buf_pos = &stream->buf_addr[stream->buf_size - stream->buf_count];
-	memcpy(dest, buf_pos, bytes);
-	stream->buf_count -= bytes;
-	return &dest[bytes];
-}
-
-static int bufread(FILE *stream, void *dest, size_t bytes)
-{
-	// If there is enough data in the buffer to satisfy this request, perform
-	// a simple copy and return.
-	if (stream->buf_count >= bytes) {
-		bufcpy(dest, stream, bytes);
-		return bytes;
-	}
-	// We want to read more data than we have in the buffer. That's fine, but
-	// we should use up whatever we have before reading more from the socket.
-	size_t remaining = bytes;
+	size_t total = 0;
+	char *buf_end = stream->buf_addr + stream->buf_size;
 	if (stream->buf_count > 0) {
-		dest = bufcpy(dest, stream, stream->buf_count);
-		remaining -= stream->buf_count;
+		// There is data in this input buffer. Copy as much of it into the
+		// destination buffer as we can fit.
+		size_t space = bytes - total;
+		size_t copy = (space > stream->buf_count)? stream->buf_count: space;
+		memcpy(dest, buf_end - stream->buf_count, copy);
+		stream->buf_count -= copy;
+		total += copy;
+		dest += copy;
 	}
-	// If the amount we want to read is greater than the buffer size, read
-	// directly into the destination buffer instead of copying through the
-	// stream. We'll read in even units of the buffer size, though, and read
-	// a full buffer's worth at the end.
+	size_t remaining = bytes - total;
 	if (remaining >= stream->buf_size) {
+		// We want to read more data than the stream buffer will hold. Read
+		// directly from the socket into the destination buffer instead.
 		size_t copy = remaining - (remaining % stream->buf_size);
 		int ret = read(stream->id, dest, copy);
-		if (ret >= 0) {
-			remaining -= ret;
-			dest += ret;
-		}
-		if (ret < copy) return bytes - remaining;
+		if (ret < 0) return ret;
+		total += ret;
+		dest += ret;
+		if (ret < copy) return total;
+		remaining = bytes - total;
 	}
-	// If there's more data to read, read a full buffer's worth, then copy out
-	// as much as we need to complete the current request.
 	if (remaining > 0) {
+		// The buffer is empty, but we still need more data. Refill the stream
+		// buffer, then copy as much of it into the destination buffer as it
+		// can still hold.
 		int ret = read(stream->id, stream->buf_addr, stream->buf_size);
+		if (ret < 0) return ret;
+		stream->buf_count = ret;
 		if (ret > 0 && ret < stream->buf_size) {
-			char *buf_pos = &stream->buf_addr[stream->buf_size - ret];
-			memcpy(buf_pos, stream->buf_addr, ret);
+			memmove(buf_end - ret, stream->buf_addr, ret);
 		}
-		if (ret > 0) {
-			stream->buf_count = ret;
-			remaining -= ret;
-		}
+		memcpy(dest, buf_end - stream->buf_count, remaining);
+		stream->buf_count -= remaining;
 	}
-	return bytes - remaining;
+	return total;
 }
 
 size_t fread(void *dest, size_t size, size_t count, FILE *stream)
