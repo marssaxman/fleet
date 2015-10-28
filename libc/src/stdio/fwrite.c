@@ -81,15 +81,82 @@ size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)
 
 #ifdef TESTSUITE
 #include "memsocket.h"
-TESTSUITE(fwrite) {
-	char buf[1024];
-	struct memsocket ms = {.buf_addr = buf, .buf_size = 1024, .data_len = 0};
-	struct _stream stream = { .id = open_memsocket(&ms) };
+
+static char streambuf[1024];
+static struct memsocket ms = {.buf_addr = streambuf, .buf_size = 1024 };
+struct _stream stream;
+static void initstream(void)
+{
+	ms.data_len = 0;
+	stream.id = open_memsocket(&ms);
 	CHECK(stream.id >= 0);
-	const char msg[] = "testing, testing\n";
-	write(stream.id, msg, strlen(msg));
+}
+static void resetstream(void)
+{
+	ms.data_len = 0;
+}
+static void exitstream(void)
+{
 	close(stream.id);
-	CHECK(ms.data_len = strlen(msg));
-	CHECK_MEM(ms.buf_addr, msg, ms.data_len);
+}
+
+static char the_tempest[] =
+	"Our revels now are ended. These our actors,\n"
+	"As I foretold you, were all spirits and\n"
+	"Are melted into air, into thin air:\n"
+	"And, like the baseless fabric of this vision,\n"
+	"The cloud-cappd towers, the gorgeous palaces,\n"
+	"The solemn temples, the great globe itself,\n"
+	"Yea, all which it inherit, shall dissolve\n"
+	"And, like this insubstantial pageant faded,\n"
+	"Leave not a rack behind. We are such stuff\n"
+	"As dreams are made on, and our little life\n"
+	"Is rounded with a sleep.\n";
+size_t the_tempest_len;
+
+static int primes[16] = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53};
+
+static void run_copy(unsigned prime_index, unsigned stride)
+{
+	resetstream();
+	const char *src = the_tempest;
+	size_t bytes_left = the_tempest_len;
+	size_t chunk_size = primes[prime_index];
+	while (bytes_left >= chunk_size) {
+		fwrite(src, sizeof(char), chunk_size, &stream);
+		bytes_left -= chunk_size;
+		src += chunk_size;
+		prime_index = (prime_index + stride) % 16;
+		chunk_size = primes[prime_index];
+	}
+	fwrite(src, sizeof(char), bytes_left, &stream);
+	fflush(&stream);
+	CHECK(ms.data_len == the_tempest_len);
+	CHECK_MEM(ms.buf_addr, the_tempest, the_tempest_len);
+}
+
+static void copytest()
+{
+	for (unsigned i = 0; i < 16; ++i) {
+		run_copy(i, 0);
+		run_copy(i, 1);
+	}
+}
+
+TESTSUITE(fwrite) {
+	initstream();
+	the_tempest_len = strlen(the_tempest);
+	// Test the buffered write mechanism by writing this text to a memory
+	// stream using a variety of chunk lengths and buffer sizes, using no
+	// buffering.
+	setvbuf(&stream, 0, _IONBUF, 0);
+	copytest();
+	// Repeat the exercise, using a variety of buffer lengths.
+	char writebuf[256];
+	for (unsigned i = 0; i < 16; ++i) {
+		setvbuf(&stream, writebuf, _IOFBUF, primes[i]);
+		copytest();
+	}
+	exitstream();
 }
 #endif
