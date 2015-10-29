@@ -115,15 +115,18 @@ static char the_tempest[] =
 size_t the_tempest_len;
 
 static int primes[16] = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53};
+static char writebuf[64];
 
-static void run_copy(unsigned prime_index, unsigned stride)
+static void run_copy(unsigned buflen, unsigned prime_index, unsigned stride)
 {
 	resetstream();
+	setvbuf(&stream, writebuf, buflen>0?_IOFBUF:_IONBUF, buflen);
 	const char *src = the_tempest;
 	size_t bytes_left = the_tempest_len;
 	size_t chunk_size = primes[prime_index];
 	while (bytes_left >= chunk_size) {
 		fwrite(src, sizeof(char), chunk_size, &stream);
+		CHECK(buflen == 0 || ms.data_len % buflen == 0);
 		bytes_left -= chunk_size;
 		src += chunk_size;
 		prime_index = (prime_index + stride) % 16;
@@ -135,11 +138,11 @@ static void run_copy(unsigned prime_index, unsigned stride)
 	CHECK_MEM(ms.buf_addr, the_tempest, the_tempest_len);
 }
 
-static void copytest()
+static void copytest(unsigned buflen)
 {
 	for (unsigned i = 0; i < 16; ++i) {
-		run_copy(i, 0);
-		run_copy(i, 1);
+		run_copy(buflen, i, 0);
+		run_copy(buflen, i, 1);
 	}
 }
 
@@ -149,13 +152,10 @@ TESTSUITE(fwrite) {
 	// Test the buffered write mechanism by writing this text to a memory
 	// stream using a variety of chunk lengths and buffer sizes, using no
 	// buffering.
-	setvbuf(&stream, 0, _IONBUF, 0);
-	copytest();
+	copytest(0);
 	// Repeat the exercise, using a variety of buffer lengths.
-	char writebuf[256];
 	for (unsigned i = 0; i < 16; ++i) {
-		setvbuf(&stream, writebuf, _IOFBUF, primes[i]);
-		copytest();
+		copytest(primes[i]);
 	}
 	exitstream();
 }
