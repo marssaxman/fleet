@@ -83,17 +83,18 @@ size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)
 #include "memsocket.h"
 
 static char streambuf[1024];
-static struct memsocket ms = {.buf_addr = streambuf, .buf_size = 1024 };
+static struct memsocket ms;
 struct _stream stream;
 static void initstream(void)
 {
 	ms.data_len = 0;
-	stream.id = open_memsocket(&ms);
+	stream.id = open_memsocket(streambuf, 1024, &ms);
 	CHECK(stream.id >= 0);
 }
 static void resetstream(void)
 {
 	ms.data_len = 0;
+	ms.data_pos = 0;
 }
 static void exitstream(void)
 {

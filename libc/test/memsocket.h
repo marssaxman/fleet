@@ -5,9 +5,10 @@ struct memsocket
 {
 	void *buf_addr;
 	unsigned buf_size;
+	unsigned data_pos;
 	unsigned data_len;
 };
 
-int open_memsocket(struct memsocket*);
+int open_memsocket(void *addr, unsigned size, struct memsocket*);
 
 #endif //LIBC_TEST_MEMSOCKET_H
