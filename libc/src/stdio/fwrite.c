@@ -53,6 +53,27 @@ static int bufwrite(FILE *stream, const char *src, size_t bytes)
 	return bytes;
 }
 
+static int linewrite(FILE *stream, const char *src, size_t bytes)
+{
+	size_t total = 0;
+	char *dest = stream->buf_addr + stream->buf_count;
+	while (total < bytes) {
+		if (stream->buf_count < stream->buf_size) {
+			char c = *src++;
+			*dest++ = c;
+			stream->buf_count++;
+			total++;
+			if (c != '\n') continue;
+		}
+		int ret = write(stream->id, stream->buf_addr, stream->buf_count);
+		if (ret < 0) return ret;
+		if (ret < stream->buf_count) break;
+		stream->buf_count = 0;
+		dest = stream->buf_addr;
+	}
+	return total;
+}
+
 size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)
 {
 	size_t bytes = size*count;
@@ -67,12 +88,16 @@ size_t fwrite(const void *src, size_t size, size_t count, FILE *stream)
 	stream->state |= STREAM_WRITE;
 	int ret = 0;
 	if (stream->buf_size > 0) {
-		ret = bufwrite(stream, src, bytes);
+		if (stream->state & STREAM_LINESYNC) {
+			ret = linewrite(stream, src, bytes);
+		} else {
+			ret = bufwrite(stream, src, bytes);
+		}
 	} else {
 		ret = write(stream->id, src, bytes);
 	}
 	if (ret < bytes) {
-		errno = -ret;
+		errno = (ret < 0)? -ret: -1; //???
 		stream->state |= STREAM_ERR;
 		return 0;
 	}
@@ -126,7 +151,7 @@ static void run_copy(unsigned buflen, unsigned prime_index, unsigned stride)
 	size_t bytes_left = the_tempest_len;
 	size_t chunk_size = primes[prime_index];
 	while (bytes_left >= chunk_size) {
-		fwrite(src, sizeof(char), chunk_size, &stream);
+		CHECK(chunk_size == fwrite(src, sizeof(char), chunk_size, &stream));
 		CHECK(buflen == 0 || ms.data_len % buflen == 0);
 		bytes_left -= chunk_size;
 		src += chunk_size;
@@ -144,6 +169,35 @@ static void copytest(unsigned buflen)
 	for (unsigned i = 0; i < 16; ++i) {
 		run_copy(buflen, i, 0);
 		run_copy(buflen, i, 1);
+	}
+}
+
+static void run_line(unsigned buflen, unsigned prime_index, unsigned stride)
+{
+	resetstream();
+	CHECK(buflen > 0);
+	setvbuf(&stream, writebuf, _IOLBUF, buflen);
+	const char *src = the_tempest;
+	size_t bytes_left = the_tempest_len;
+	size_t chunk_size = primes[prime_index];
+	while (bytes_left >= chunk_size) {
+		CHECK(chunk_size == fwrite(src, sizeof(char), chunk_size, &stream));
+		bytes_left -= chunk_size;
+		src += chunk_size;
+		prime_index = (prime_index + stride) % 16;
+		chunk_size = primes[prime_index];
+	}
+	fwrite(src, sizeof(char), bytes_left, &stream);
+	fflush(&stream);
+	CHECK(ms.data_len == the_tempest_len);
+	CHECK_MEM(ms.buf_addr, the_tempest, the_tempest_len);
+}
+
+static void linetest(unsigned buflen)
+{
+	for (unsigned i = 0; i < 16; ++i) {
+		run_line(buflen, i, 0);
+		run_line(buflen, i, 1);
 	}
 }
 
