@@ -132,7 +132,7 @@ static void exitstream(void)
 static void run_copy(unsigned buflen, unsigned prime_index, unsigned stride)
 {
 	resetstream();
-	setvbuf(&stream, readbuf, buflen>0?_IOFBUF:_IONBUF, buflen);
+	setvbuf(&stream, readbuf, buflen>0?_IOFBF:_IONBF, buflen);
 	char *dest = destbuf;
 	size_t bytes_left = ms.data_len;
 	size_t chunk_size = primes[prime_index];

@@ -2,6 +2,6 @@
 
 void setbuf(FILE *stream, char *buffer)
 {
-	setvbuf(stream, buffer, buffer?_IOFBUF:_IONBUF, buffer?BUFSIZ:0);
+	setvbuf(stream, buffer, buffer?_IOFBF:_IONBF, buffer?BUFSIZ:0);
 }
 

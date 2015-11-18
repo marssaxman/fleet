@@ -9,9 +9,9 @@
 #define BUFSIZ 1024
 
 // setvbuf modes: no buffer, line buffer, or full buffer
-#define _IONBUF 0
-#define _IOLBUF 1
-#define _IOFBUF 2
+#define _IONBF 0
+#define _IOLBF 1
+#define _IOFBF 2
 
 typedef struct _stream FILE;
 

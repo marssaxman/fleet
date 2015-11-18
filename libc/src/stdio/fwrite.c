@@ -148,7 +148,7 @@ static char writebuf[64];
 static void run_copy(unsigned buflen, unsigned prime_index, unsigned stride)
 {
 	resetstream();
-	setvbuf(&stream, writebuf, buflen>0?_IOFBUF:_IONBUF, buflen);
+	setvbuf(&stream, writebuf, buflen>0?_IOFBF:_IONBF, buflen);
 	const char *src = the_tempest;
 	size_t bytes_left = the_tempest_len;
 	size_t chunk_size = primes[prime_index];
