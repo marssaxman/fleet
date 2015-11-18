@@ -12,6 +12,10 @@
 
 struct _stream
 {
+	// list of active streams, so we can flush all / close all when necessary
+	struct _stream *next;
+	struct _stream **back;
+	// bitmask with some combination of above flags
 	unsigned state;
 	// stream id used in kernel calls
 	int id;
@@ -21,5 +25,9 @@ struct _stream
 	// number of data bytes contained in the buffer
 	size_t buf_count;
 };
+
+extern struct _stream *_stream_list;
+void _init_stream(struct _stream*);
+void _exit_stream(struct _stream*);
 
 #endif //_LIBC_INTERNAL_STREAM_H

@@ -62,6 +62,7 @@ size_t fread(void *dest, size_t size, size_t count, FILE *stream)
 	if (stream->buf_size > 0) {
 		ret = bufread(stream, dest, bytes);
 	} else {
+		fflush(0);
 		ret = read(stream->id, dest, bytes);
 	}
 	if (ret < 0) {
@@ -112,6 +113,7 @@ static struct memsocket ms;
 static struct _stream stream;
 static void initstream(void)
 {
+	_init_stream(&stream);
 	stream.id = open_memsocket(prospero, strlen(prospero), &ms);
 	ms.data_len = ms.buf_size;
 	CHECK(ms.data_len == strlen(prospero));
@@ -124,6 +126,7 @@ static void resetstream(void)
 static void exitstream(void)
 {
 	close(stream.id);
+	_exit_stream(&stream);
 }
 
 static void run_copy(unsigned buflen, unsigned prime_index, unsigned stride)

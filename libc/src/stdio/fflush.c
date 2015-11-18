@@ -30,12 +30,18 @@ static int flushread(FILE *stream)
 
 int fflush(FILE *stream)
 {
-	// If stream is NULL, we are supposed to flush *all* streams. Yoiks.
-	// Guess we'll have to implement some kind of list of file structs...?
-	if (!stream) return EOF;
-	if (stream->state & STREAM_WRITE) return flushwrite(stream);
-	if (stream->state & STREAM_READ) return flushread(stream);
-	stream->buf_count = 0;
+	// If stream is NULL, we are supposed to flush all output streams.
+	// Otherwise, we flush the specified stream only.
+	if (stream) {
+		if (stream->state & STREAM_WRITE) return flushwrite(stream);
+		if (stream->state & STREAM_READ) return flushread(stream);
+		stream->buf_count = 0;
+	} else for (stream = _stream_list; stream; stream = stream->next) {
+		if (stream->state & STREAM_WRITE) {
+			int ret = flushwrite(stream);
+			if (ret != 0) return ret;
+		}
+	}
 	return 0;
 }
 

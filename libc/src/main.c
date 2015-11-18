@@ -14,6 +14,9 @@ FILE *stderr = &_stderr;
 
 int _main(const char *cmdline)
 {
+	_init_stream(&_stdin);
+	_init_stream(&_stdout);
+	_init_stream(&_stderr);
 	_stdin.id = _stdin_id;
 	_stdout.id = _stdout_id;
 	_stderr.id = _stderr_id;

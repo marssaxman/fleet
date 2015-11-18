@@ -112,6 +112,7 @@ static struct memsocket ms;
 struct _stream stream;
 static void initstream(void)
 {
+	_init_stream(&stream);
 	ms.data_len = 0;
 	stream.id = open_memsocket(streambuf, 1024, &ms);
 	CHECK(stream.id >= 0);
@@ -124,6 +125,7 @@ static void resetstream(void)
 static void exitstream(void)
 {
 	close(stream.id);
+	_exit_stream(&stream);
 }
 
 static char the_tempest[] =
