@@ -1,4 +1,4 @@
-#include "internal/stream.h"
+#include "stream.h"
 #include <sys/socket.h>
 #include <errno.h>
 #include <string.h>
@@ -178,7 +178,7 @@ static void run_line(unsigned buflen, unsigned prime_index, unsigned stride)
 {
 	resetstream();
 	CHECK(buflen > 0);
-	setvbuf(&stream, writebuf, _IOLBUF, buflen);
+	setvbuf(&stream, writebuf, _IOLBF, buflen);
 	const char *src = the_tempest;
 	size_t bytes_left = the_tempest_len;
 	size_t chunk_size = primes[prime_index];

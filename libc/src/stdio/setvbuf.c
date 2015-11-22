@@ -1,4 +1,4 @@
-#include "internal/stream.h"
+#include "stream.h"
 
 int setvbuf(FILE *stream, char *buffer, int mode, size_t size)
 {

@@ -1,4 +1,4 @@
-#include "internal/stream.h"
+#include "stream.h"
 
 void clearerr(FILE *stream)
 {

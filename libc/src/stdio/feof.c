@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "internal/stream.h"
+#include "stream.h"
 
 int feof(FILE *stream)
 {

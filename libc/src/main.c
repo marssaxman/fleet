@@ -1,7 +1,7 @@
 #include <sys/entry.h>
 #include <sys/stdio.h>
 #include <stdio.h>
-#include "internal/stream.h"
+#include "stdio/stream.h"
 
 extern int main(int argc, char *argv[]);
 
@@ -20,6 +20,8 @@ int _main(const char *cmdline)
 	_stdin.id = _stdin_id;
 	_stdout.id = _stdout_id;
 	_stderr.id = _stderr_id;
-	return main(0, 0);
+	int ret = main(0, 0);
+	fflush(0);
+	return ret;
 }
 

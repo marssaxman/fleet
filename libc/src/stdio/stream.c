@@ -1,4 +1,4 @@
-#include "internal/stream.h"
+#include "stream.h"
 
 struct _stream *_stream_list;
 

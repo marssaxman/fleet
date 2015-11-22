@@ -1,4 +1,4 @@
-#include "internal/stream.h"
+#include "stream.h"
 #include <sys/socket.h>
 
 int fclose(FILE *stream)

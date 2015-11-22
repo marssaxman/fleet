@@ -24,6 +24,10 @@ int fflush(FILE *stream);
 void setbuf(FILE *stream, char *buffer);
 int setvbuf(FILE *stream, char *buffer, int mode, size_t bytes);
 
+int printf(const char *format, ...);
+int fprintf(FILE *stream, const char *format, ...);
+int vfprintf(FILE *stream, const char *format, va_list arg);
+
 int fgetc(FILE *stream);
 char *fgets(char *str, int num, FILE *stream);
 int getc(FILE *stream);
@@ -73,7 +77,6 @@ sscanf
 tmpfile
 tmpnam
 ungetc
-vfprintf
 vfscanf
 vprintf
 vscanf
