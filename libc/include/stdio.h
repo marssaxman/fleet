@@ -27,6 +27,10 @@ int setvbuf(FILE *stream, char *buffer, int mode, size_t bytes);
 int printf(const char *format, ...);
 int fprintf(FILE *stream, const char *format, ...);
 int vfprintf(FILE *stream, const char *format, va_list arg);
+int sprintf(char *str, const char *format, ...);
+int snprintf(char *s, size_t max, const char *format, ...);
+int vsprintf(char *s, const char *format, va_list arg);
+int vsnprintf(char *s, size_t max, const char *format, va_list arg);
 
 int fgetc(FILE *stream);
 char *fgets(char *str, int num, FILE *stream);
@@ -46,10 +50,6 @@ int feof(FILE *stream);
 int ferror(FILE *stream);
 
 #if 0 // implement later
-int sprintf(char *str, const char *format, ...);
-int snprintf(char *s, size_t max, const char *format, ...);
-int vsprintf(char *s, const char *format, va_list arg);
-int vsnprintf(char *s, size_t max, const char *format, va_list arg);
 FILENAME_MAX
 FOPEN_MAX
 L_tmpnam
