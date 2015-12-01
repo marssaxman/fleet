@@ -5,6 +5,10 @@
 #include <_size_t.h>
 #include <_wchar_t.h>
 
+typedef int(*_compar)(const void*, const void*);
+void *bsearch (const void *key, const void *base, size_t n, size_t w, _compar);
+void qsort(void *base, size_t n, size_t w, _compar);
+
 #if 0 // still to implement
 EXIT_FAILURE
 EXIT_SUCCESS
@@ -18,7 +22,6 @@ atof
 atoi
 atol
 atoll
-bsearch
 calloc
 div
 div_t
@@ -35,7 +38,6 @@ malloc
 mblen
 mbstowcs
 mbtowc
-qsort
 rand
 realloc
 srand
