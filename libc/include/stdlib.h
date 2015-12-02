@@ -39,11 +39,14 @@ div_t div(int, int);
 ldiv_t ldiv(long, long);
 lldiv_t lldiv(long long, long long);
 
+#define RAND_MAX (0x7FFFFFFF)
+int rand(void);
+void srand(unsigned seed);
+
 #if 0 // still to implement
 EXIT_FAILURE
 EXIT_SUCCESS
 MB_CUR_MAX
-RAND_MAX
 _Exit
 abort
 atexit
@@ -55,9 +58,7 @@ malloc
 mblen
 mbstowcs
 mbtowc
-rand
 realloc
-srand
 system
 wcstombs
 wctomb
