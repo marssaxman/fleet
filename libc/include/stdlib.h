@@ -21,6 +21,18 @@ typedef int(*_compar)(const void*, const void*);
 void *bsearch (const void *key, const void *base, size_t n, size_t w, _compar);
 void qsort(void *base, size_t n, size_t w, _compar);
 
+int abs(int);
+long labs(long);
+long long llabs(long long);
+
+typedef struct { int quot, rem; } div_t;
+typedef struct { long quot, rem; } ldiv_t;
+typedef struct { long long quot, rem; } lldiv_t;
+
+div_t div(int, int);
+ldiv_t ldiv(long, long);
+lldiv_t lldiv(long long, long long);
+
 #if 0 // still to implement
 EXIT_FAILURE
 EXIT_SUCCESS
@@ -28,20 +40,11 @@ MB_CUR_MAX
 RAND_MAX
 _Exit
 abort
-abs
 atexit
 calloc
-div
-div_t
 exit
 free
 getenv
-labs
-ldiv
-ldiv_t
-llabs
-lldiv
-lldiv_t
 malloc
 mblen
 mbstowcs
