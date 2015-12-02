@@ -1,6 +1,15 @@
 #ifndef _MATH_H
 #define _MATH_H
 
+#define HUGE_VAL __builtin_huge_val()
+#define HUGE_VALF __builtin_huge_valf()
+#define HUGE_VALL __builtin_huge_vall()
+#define INFINITY __builtin_inff()
+#define NAN __builtin_nanf("")
+
+#define MATH_ERRNO 1
+#define MATH_ERREXCEPT 2
+
 #if 0 // to implement
 FP_FAST_FMA
 FP_FAST_FMAF
@@ -12,13 +21,6 @@ FP_NAN
 FP_NORMAL
 FP_SUBNORMAL
 FP_ZERO
-HUGE_VAL
-HUGE_VALF
-HUGE_VALL
-INFINITY
-MATH_ERREXCEPT
-MATH_ERRNO
-NAN
 acos
 acos
 acosf

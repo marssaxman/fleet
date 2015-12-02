@@ -5,6 +5,18 @@
 #include <_size_t.h>
 #include <_wchar_t.h>
 
+double atof(const char *str);
+int atoi(const char *str);
+long atol(const char *str);
+long long atoll(const char *str);
+float strtof(const char *str, char **end);
+double strtod(const char *str, char **end);
+long double strtold(const char *str, char **end);
+long strtol(const char *str, char **end, int radix);
+long long strtoll(const char *str, char **end, int radix);
+unsigned long strtoul(const char *str, char **end, int radix);
+unsigned long long strtoull(const char *str, char **end, int radix);
+
 typedef int(*_compar)(const void*, const void*);
 void *bsearch (const void *key, const void *base, size_t n, size_t w, _compar);
 void qsort(void *base, size_t n, size_t w, _compar);
@@ -18,10 +30,6 @@ _Exit
 abort
 abs
 atexit
-atof
-atoi
-atol
-atoll
 calloc
 div
 div_t
@@ -41,13 +49,6 @@ mbtowc
 rand
 realloc
 srand
-strtod
-strtof
-strtol
-strtold
-strtoll
-strtoul
-strtoull
 system
 wcstombs
 wctomb
