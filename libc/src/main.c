@@ -7,16 +7,20 @@
 #include <sys/entry.h>
 #include <sys/stdio.h>
 #include <stdio.h>
+#include <setjmp.h>
 #include "stdio/stream.h"
 
 extern int main(int argc, char *argv[]);
 
-struct _stream _stdin;
+static struct _stream _stdin;
 FILE *stdin = &_stdin;
-struct _stream _stdout;
+static struct _stream _stdout;
 FILE *stdout = &_stdout;
-struct _stream _stderr;
+static struct _stream _stderr;
 FILE *stderr = &_stderr;
+
+static jmp_buf exitjmp;
+static int ret_status;
 
 int _main(const char *cmdline)
 {
@@ -26,8 +30,15 @@ int _main(const char *cmdline)
 	_stdin.id = _stdin_id;
 	_stdout.id = _stdout_id;
 	_stderr.id = _stderr_id;
-	int ret = main(0, 0);
+	if (0 == setjmp(exitjmp)) {
+		ret_status = main(0, 0);
+	}
 	fflush(0);
-	return ret;
+	return ret_status;
 }
 
+void _Exit(int status)
+{
+	ret_status = status;
+	longjmp(exitjmp, 1);
+}

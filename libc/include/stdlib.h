@@ -43,15 +43,16 @@ lldiv_t lldiv(long long, long long);
 int rand(void);
 void srand(unsigned seed);
 
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
+void _Exit(int status);
+int atexit(void (*func)(void));
+void exit(int status);
+
 #if 0 // still to implement
-EXIT_FAILURE
-EXIT_SUCCESS
 MB_CUR_MAX
-_Exit
 abort
-atexit
 calloc
-exit
 free
 getenv
 malloc
