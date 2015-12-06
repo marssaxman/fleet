@@ -23,13 +23,13 @@ static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
 {
 	// Write the string in least-to-most significant order, then reverse it.
 	unsigned len = 0;
+	char *l = buf;
 	do {
 		*buf++ = digits[i % radix];
 		i /= radix;
 		len++;
 	} while (i > 0);
-	char *l = buf;
-	char *h = &buf[len-1];
+	char *h = l + len - 1;
 	while (l < h) {
 		char temp = *h;
 		*h-- = *l;
@@ -220,8 +220,46 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 }
 
 #ifdef TESTSUITE
-TESTSUITE(format) {
-
+static const char *tdigs = "0123456789ABCDEF";
+char buf[FORMAT_BUFFER_SIZE];
+static char *testutoa(uint64_t n, int radix)
+{
+	buf[utoa(buf, n, radix, tdigs)] = '\0';
+	return buf;
+}
+static char *enhex(uint64_t n)
+{
+	return testutoa(n, 16);
+}
+static char *endec(uint64_t n)
+{
+	return testutoa(n, 10);
+}
+static char *enoct(uint64_t n)
+{
+	return testutoa(n, 8);
+}
+TESTSUITE(utoa) {
+	CHECK_STR(enoct(0), "0", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enoct(1), "1", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(0), "0", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(1), "1", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(0), "0", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(1), "1", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(100), "100", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(127), "127", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(0x64), "64", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(0x7F), "7F", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(0x03E8), "3E8", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(32749), "32749", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(0xFFE1), "FFE1", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(0xFFFF), "FFFF", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(2305843009213693952LL), "2305843009213693952", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(0x7FFFFFFFFFFFFFFFULL), "7FFFFFFFFFFFFFFF", FORMAT_BUFFER_SIZE);
+	CHECK_STR(enhex(0xFFFFFFFFFFFFFFFFULL), "FFFFFFFFFFFFFFFF", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(9999999999999999999ULL), "9999999999999999999", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(9223372036854775807LL), "9223372036854775807", FORMAT_BUFFER_SIZE);
+	CHECK_STR(endec(18446744073709551615ULL), "18446744073709551615", FORMAT_BUFFER_SIZE);
 }
 #endif
 

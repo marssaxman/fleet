@@ -20,6 +20,8 @@ struct format_chunk
 };
 
 // The formatter maintains its internal state in this record; don't alter it.
+// We need a buffer large enough to contain any formatted number.
+#define FORMAT_BUFFER_SIZE 32
 struct format_state
 {
 	const char *fmt;
