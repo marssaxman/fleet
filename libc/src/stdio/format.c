@@ -41,8 +41,8 @@ static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
 static int64_t iarg(size_t s, va_list arg)
 {
 	switch (s) {
-		case 1: return va_arg(arg, int); //int8_t
-		case 2: return va_arg(arg, int); //int16_t
+		case 1: return (int8_t)va_arg(arg, int);
+		case 2: return (int16_t)va_arg(arg, int);
 		case 4: return va_arg(arg, int32_t);
 		case 8: return va_arg(arg, int64_t);
 		default: return va_arg(arg, int);
@@ -52,8 +52,8 @@ static int64_t iarg(size_t s, va_list arg)
 static uint64_t uarg(size_t s, va_list arg)
 {
 	switch (s) {
-		case 1: return va_arg(arg, unsigned); //uint8_t
-		case 2: return va_arg(arg, unsigned); //uint16_t
+		case 1: return (uint8_t)va_arg(arg, unsigned);
+		case 2: return (uint16_t)va_arg(arg, unsigned);
 		case 4: return va_arg(arg, uint32_t);
 		case 8: return va_arg(arg, uint64_t);
 		default: return va_arg(arg, unsigned);
@@ -291,8 +291,8 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%s", "foo"), "foo", size);
 	CHECK_STR(enfmt("%c", 'Q'), "Q", size);
 	CHECK_STR(enfmt("%c", 0x41424344), "D", size);
-	CHECK_STR(enfmt("%hhX", 0xFEDCBA9876543210), "76543210", size);
-	CHECK_STR(enfmt("%hX", 0xFEDCBA9876543210), "76543210", size);
+	CHECK_STR(enfmt("%hhX", 0xFEDCBA9876543210), "10", size);
+	CHECK_STR(enfmt("%hX", 0xFEDCBA9876543210), "3210", size);
 	CHECK_STR(enfmt("%lX", 0xFEDCBA9876543210), "76543210", size);
 	CHECK_STR(enfmt("%llX", 0xFEDCBA9876543210), "FEDCBA9876543210", size);
 	CHECK_STR(enfmt("%Q", 0), "Q", size);
