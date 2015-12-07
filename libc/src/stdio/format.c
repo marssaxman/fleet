@@ -109,7 +109,8 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 			left_justify = true;
 			minimum_width *= -1;
 		}
-	} else while ('0' >= *fmt && *fmt <= '9') {
+		fmt++;
+	} else while (*fmt >= '0' && *fmt <= '9') {
 		minimum_width = minimum_width * 10 + *fmt++ - '0';
 	}
 
@@ -117,7 +118,7 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 	// consists of a digit string or a '*' indicating that the value should
 	// be read from the argument list.
 	int precision = 0;
-	bool has_precision = *fmt == '.';
+	bool has_precision = (*fmt == '.');
 	if (has_precision) {
 		if ('*' == *++fmt) {
 			precision = va_arg(arg, int);
@@ -294,8 +295,10 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%hX", 0xFEDCBA9876543210), "76543210", size);
 	CHECK_STR(enfmt("%lX", 0xFEDCBA9876543210), "76543210", size);
 	CHECK_STR(enfmt("%llX", 0xFEDCBA9876543210), "FEDCBA9876543210", size);
+	CHECK_STR(enfmt("%Q", 0), "Q", size);
+	CHECK_STR(enfmt("%-1q", 0), "q", size);
 	CHECK_STR(enfmt("%%", 0), "%", size);
-	//CHECK_STR(enfmt("%Q", 0), "Q", size);
+	CHECK_STR(enfmt("%Q", 0), "Q", size);
 }
 #endif
 
