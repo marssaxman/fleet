@@ -7,13 +7,13 @@ test: runtests libc.so
 include srctree.mk
 include ../kernel/target.mk
 
-LIBCFLAGS := $(CFLAGS) -MD -MP
+LIBCFLAGS := $(CFLAGS) -MD -MP -Werror
 LIBCFLAGS += -iquote src
 LIBCFLAGS += -isystem include -isystem ../kernel/include
 TESTCFLAGS := $(LIBCFLAGS) -fPIC -DTESTSUITE
 TESTCFLAGS += -include "test/testsuite.h" -iquote test
 TESTLDFLAGS := -nodefaultlibs -march=$(ARCH) -m$(BITS) -static-libgcc
-HOSTCFLAGS := -march=$(ARCH) -m$(BITS) -MD -MP -std=c99
+HOSTCFLAGS := -march=$(ARCH) -m$(BITS) -MD -MP -std=c99 -Werror
 HOSTCFLAGS += -iquote src -iquote ../
 
 -include $(call findtype, c, obj)

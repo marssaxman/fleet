@@ -10,6 +10,8 @@
 
 // compiled inside the host environment, not the test environment
 
+int libc_test_open(void *, struct iops*);
+
 static int memsocket_write(void *ref, const void *buf, unsigned bytes)
 {
 	struct memsocket *ms = (struct memsocket*)ref;
