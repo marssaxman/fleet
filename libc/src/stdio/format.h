@@ -25,7 +25,7 @@ struct format_chunk
 struct format_state
 {
 	const char *fmt;
-	char buffer[1];
+	char buffer[FORMAT_BUFFER_SIZE];
 };
 
 void _format_start(struct format_state*, const char *format_string);
