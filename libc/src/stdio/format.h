@@ -24,10 +24,17 @@ struct format_chunk
 #define FORMAT_BUFFER_SIZE 32
 struct format_state
 {
+	// Pointer to the first unread format string character
 	const char *fmt;
+
+	// Characters which have been produced by the current format specifier but
+	// not yet returned from _format_next
 	size_t leading_spaces;
-	char buffer[FORMAT_BUFFER_SIZE];
+	struct format_chunk body;
 	size_t trailing_spaces;
+
+	// Temporary storage for specifiers other than %s
+	char buffer[FORMAT_BUFFER_SIZE];
 };
 
 void _format_start(struct format_state*, const char *format_string);

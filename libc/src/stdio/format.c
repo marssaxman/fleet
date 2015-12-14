@@ -16,8 +16,9 @@
 // floating-point types (fFeEgGaA)
 // number-of-characters specifier(n) - unlikely to be supported ever
 // pointer type (p)
-// width field is ignored
-// left/right justification is ignored
+
+#define MAX_PADDING 32
+static const char padding[MAX_PADDING] = "                                ";
 
 void _format_start(struct format_state *state, const char *format_string)
 {
@@ -27,6 +28,9 @@ void _format_start(struct format_state *state, const char *format_string)
 
 bool _format_done(struct format_state *state)
 {
+	if (state->leading_spaces) return false;
+	if (state->body.size) return false;
+	if (state->trailing_spaces) return false;
 	return '\0' == *state->fmt;
 }
 
@@ -71,25 +75,17 @@ static uint64_t uarg(size_t s, va_list arg)
 	}
 }
 
-struct format_chunk _format_next(struct format_state *state, va_list arg)
+static void scan_literal(struct format_state *state)
 {
-	// Only call _format_next if you know there is more format string to read;
-	// check this with !_format_done(state). We expect that state->fmt is not
-	// null and that it contains at least one non-null character.
-
-	// If the format string begins with literal text, scan up to the next
-	// format specifier, or the end of the string, and return that chunk.
-	if (*state->fmt != '%') {
-		struct format_chunk out = {state->fmt, 0};
-		while (*state->fmt != '\0' && *state->fmt != '%') {
-			state->fmt++;
-		}
-		out.size = state->fmt - out.addr;
-		if (out.size > 0) {
-			return out;
-		}
+	state->body.addr = state->fmt;
+	while (*state->fmt != '\0' && *state->fmt != '%') {
+		state->fmt++;
 	}
+	state->body.size = state->fmt - state->body.addr;
+}
 
+static void parse_specifier(struct format_state *state, va_list arg)
+{
 	// We did not find a literal text chunk, so we must have found a specifier.
 	// A format specifier has this syntax:
 	// %[flags][width][.precision][length]specifier
@@ -107,7 +103,7 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 		case '+': plus_for_positive = true; continue;
 		case ' ': space_for_positive = true; continue;
 		case '#': alternate_form = true; continue;
-		case '0': left_justify = true; continue;
+		case '0': pad_with_zero = true; continue;
 		default: --fmt;
 	} while(0);
 
@@ -172,20 +168,22 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 	// is the format specifier.
 	char specifier = *fmt;
 	state->fmt = ++fmt;
-	struct format_chunk out = {state->buffer, 0};
+	state->body.addr = state->buffer;
+	state->body.size = 0;
 	switch (specifier) {
 		case 'c': {
 			state->buffer[0] = va_arg(arg, int);
-			out.size = 1;
+			state->body.size = 1;
 		} break;
 		case 's': {
-			out.addr = va_arg(arg, const char*);
-			if (out.addr) {
+			const char *str = va_arg(arg, const char*);
+			state->body.addr = str;
+			if (str) {
 				if (has_precision) {
-					const char *q = memchr(out.addr, '\0', precision);
-					out.size = q? (q - out.addr): precision;
+					const char *q = memchr(str, '\0', precision);
+					state->body.size = q? (q - str): precision;
 				} else {
-					out.size = strlen(out.addr);
+					state->body.size = strlen(str);
 				}
 			}
 		} break;
@@ -202,7 +200,7 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 				*dest++ = ' ';
 			}
 			dest += utoa(dest, num, 10, digits_lower);
-			out.size = (intptr_t)dest - (intptr_t)out.addr;
+			state->body.size = (intptr_t)dest - (intptr_t)state->buffer;
 		} break;
 		case 'x': {
 			uint64_t num = uarg(length, arg);
@@ -212,7 +210,7 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 				*dest++ = 'x';
 			}
 			dest += utoa(dest, num, 16, digits_lower);
-			out.size = (intptr_t)dest - (intptr_t)out.addr;
+			state->body.size = (intptr_t)dest - (intptr_t)state->buffer;
 		} break;
 		case 'X': {
 			uint64_t num = uarg(length, arg);
@@ -222,7 +220,7 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 				*dest++ = 'X';
 			}
 			dest += utoa(dest, num, 16, digits_upper);
-			out.size = (intptr_t)dest - (intptr_t)out.addr;
+			state->body.size = (intptr_t)dest - (intptr_t)state->buffer;
 		} break;
 		case 'o': {
 			uint64_t num = uarg(length, arg);
@@ -231,13 +229,55 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 				*dest++ = '0';
 			}
 			dest += utoa(dest, num, 8, digits_lower);
-			out.size = (intptr_t)dest - (intptr_t)out.addr;
+			state->body.size = (intptr_t)dest - (intptr_t)state->buffer;
 		} break;
 		case '%':
 		default: {
 			state->buffer[0] = specifier;
-			out.size = 1;
+			state->body.size = 1;
 		} break;
+	}
+
+	// If the text we've generated for this specifier is smaller than the
+	// minimum field width, pad it out with spaces.
+	if (minimum_width > state->body.size) {
+		int padding = minimum_width - state->body.size;
+		if (left_justify) {
+			state->trailing_spaces = padding;
+		} else {
+			state->leading_spaces = padding;
+		}
+	}
+}
+
+struct format_chunk _format_next(struct format_state *state, va_list arg)
+{
+	struct format_chunk out = {padding, 0};
+	while (!_format_done(state)) {
+		if (state->leading_spaces > 0) {
+			out.addr = padding;
+			out.size = state->leading_spaces;
+			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
+			state->leading_spaces -= out.size;
+			break;
+		}
+		if (state->body.size > 0) {
+			out = state->body;
+			state->body.size = 0;
+			break;
+		}
+		if (state->trailing_spaces > 0) {
+			out.addr = padding;
+			out.size = state->trailing_spaces;
+			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
+			state->trailing_spaces -= out.size;
+			break;
+		}
+		if ('%' == *state->fmt) {
+			parse_specifier(state, arg);
+		} else {
+			scan_literal(state);
+		}
 	}
 	return out;
 }
@@ -268,11 +308,15 @@ static char *enfmt(const char *fmt, ...)
 	CHECK(!_format_done(&st));
 	va_list arg;
 	va_start(arg, fmt);
-	struct format_chunk chunk = _format_next(&st, arg);
+	static char buf[1024];
+	char *dest = buf;
+	while (!_format_done(&st)) {
+		struct format_chunk chunk = _format_next(&st, arg);
+		memcpy(dest, chunk.addr, chunk.size);
+		dest += chunk.size;
+	}
 	va_end(arg);
-	static char buf[FORMAT_BUFFER_SIZE];
-	memcpy(buf, chunk.addr, chunk.size);
-	buf[chunk.size] = '\0';
+	*dest = '\0';
 	return buf;
 }
 TESTSUITE(format) {
@@ -321,6 +365,11 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%-1q", 0), "q", size);
 	CHECK_STR(enfmt("%%", 0), "%", size);
 	CHECK_STR(enfmt("%Q", 0), "Q", size);
+	CHECK_STR(enfmt("%8s", "foo"), "     foo", size);
+	CHECK_STR(enfmt("%8s", "foobarbaz"), "foobarbaz", size);
+	CHECK_STR(enfmt("%-8s", "foo"), "foo     ", size);
+	CHECK_STR(enfmt("%-8s", "foobarbaz"), "foobarbaz", size);
+	CHECK_STR(enfmt("X%8sX", ""), "X        X", size);
 //	CHECK_STR(enfmt("%.7d", 12345), "0012345", size);
 //	CHECK_STR(enfmt("%.7d", 123456789), "123456789", size);
 //	CHECK_STR(enfmt("%#.6x", 0x1010), "0x001010", size);
