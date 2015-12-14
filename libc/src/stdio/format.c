@@ -19,8 +19,7 @@ bool _format_done(struct format_state *state)
 	return '\0' == *state->fmt;
 }
 
-static unsigned utoa(
-		char *buf, uint64_t i, int radix, const char *digits, int minlen)
+static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
 {
 	// Write the string in least-to-most significant order, then reverse it.
 	unsigned len = 0;
@@ -30,10 +29,6 @@ static unsigned utoa(
 		i /= radix;
 		len++;
 	} while (i > 0);
-	while (len < minlen) {
-		*buf++ = '0';
-		len++;
-	}
 	char *h = l + len - 1;
 	while (l < h) {
 		char temp = *h;
@@ -194,7 +189,7 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 			} else if (space_for_positive) {
 				*dest++ = ' ';
 			}
-			dest += utoa(dest, num, 10, digits_lower, precision);
+			dest += utoa(dest, num, 10, digits_lower);
 		} break;
 		case 'x': {
 			uint64_t num = uarg(length, arg);
@@ -202,7 +197,7 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 				*dest++ = '0';
 				*dest++ = 'x';
 			}
-			dest += utoa(dest, num, 16, digits_lower, precision);
+			dest += utoa(dest, num, 16, digits_lower);
 		} break;
 		case 'X': {
 			uint64_t num = uarg(length, arg);
@@ -210,14 +205,14 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 				*dest++ = '0';
 				*dest++ = 'X';
 			}
-			dest += utoa(dest, num, 16, digits_upper, precision);
+			dest += utoa(dest, num, 16, digits_upper);
 		} break;
 		case 'o': {
 			uint64_t num = uarg(length, arg);
 			if (alternate_form) {
 				*dest++ = '0';
 			}
-			dest += utoa(dest, num, 8, digits_lower, precision);
+			dest += utoa(dest, num, 8, digits_lower);
 		} break;
 		case '%':
 		default: {
@@ -232,7 +227,7 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 static char *testutoa(uint64_t n, int radix)
 {
 	static char buf[FORMAT_BUFFER_SIZE];
-	buf[utoa(buf, n, radix, "0123456789ABCDEF", 0)] = '\0';
+	buf[utoa(buf, n, radix, "0123456789ABCDEF")] = '\0';
 	return buf;
 }
 static char *enhex(uint64_t n)
@@ -307,10 +302,10 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%-1q", 0), "q", size);
 	CHECK_STR(enfmt("%%", 0), "%", size);
 	CHECK_STR(enfmt("%Q", 0), "Q", size);
-	CHECK_STR(enfmt("%.7d", 12345), "0012345", size);
-	CHECK_STR(enfmt("%.7d", 123456789), "123456789", size);
-	CHECK_STR(enfmt("%#.6x", 0x1010), "0x001010", size);
-	CHECK_STR(enfmt("%.6d", -1099), "-001099", size);
+//	CHECK_STR(enfmt("%.7d", 12345), "0012345", size);
+//	CHECK_STR(enfmt("%.7d", 123456789), "123456789", size);
+//	CHECK_STR(enfmt("%#.6x", 0x1010), "0x001010", size);
+//	CHECK_STR(enfmt("%.6d", -1099), "-001099", size);
 }
 #endif
 
