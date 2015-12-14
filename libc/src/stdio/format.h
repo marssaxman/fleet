@@ -30,13 +30,12 @@ struct format_state
 	// Characters which have been produced by the current format specifier but
 	// not yet returned from _format_next
 	size_t leading_spaces;
-	size_t prefix_size;
+	int prefix;
 	struct format_chunk body;
 	size_t trailing_spaces;
 
 	// Temporary storage for specifiers other than %s
 	char buffer[FORMAT_BUFFER_SIZE];
-	char prefix[2];
 };
 
 void _format_start(struct format_state*, const char *format_string);
