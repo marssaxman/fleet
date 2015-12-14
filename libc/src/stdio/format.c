@@ -29,6 +29,7 @@ void _format_start(struct format_state *state, const char *format_string)
 bool _format_done(struct format_state *state)
 {
 	if (state->leading_spaces) return false;
+	if (state->prefix_size) return false;
 	if (state->body.size) return false;
 	if (state->trailing_spaces) return false;
 	return '\0' == *state->fmt;
@@ -190,46 +191,44 @@ static void parse_specifier(struct format_state *state, va_list arg)
 		case 'i':
 		case 'd': {
 			int64_t num = iarg(length, arg);
-			char *dest = state->buffer;
 			if (num < 0) {
 				num = -num;
-				*dest++ = '-';
+				state->prefix_size = 1;
+				state->prefix[0] = '-';
 			} else if (plus_for_positive) {
-				*dest++ = '+';
+				state->prefix_size = 1;
+				state->prefix[0] = '+';
 			} else if (space_for_positive) {
-				*dest++ = ' ';
+				state->prefix_size = 1;
+				state->prefix[0] = ' ';
 			}
-			dest += utoa(dest, num, 10, digits_lower);
-			state->body.size = (intptr_t)dest - (intptr_t)state->buffer;
+			state->body.size = utoa(state->buffer, num, 10, digits_lower);
 		} break;
 		case 'x': {
-			uint64_t num = uarg(length, arg);
-			char *dest = state->buffer;
 			if (alternate_form) {
-				*dest++ = '0';
-				*dest++ = 'x';
+				state->prefix_size = 2;
+				state->prefix[0] = '0';
+				state->prefix[1] = 'x';
 			}
-			dest += utoa(dest, num, 16, digits_lower);
-			state->body.size = (intptr_t)dest - (intptr_t)state->buffer;
+			uint64_t num = uarg(length, arg);
+			state->body.size = utoa(state->buffer, num, 16, digits_lower);
 		} break;
 		case 'X': {
-			uint64_t num = uarg(length, arg);
-			char *dest = state->buffer;
 			if (alternate_form) {
-				*dest++ = '0';
-				*dest++ = 'X';
+				state->prefix_size = 2;
+				state->prefix[0] = '0';
+				state->prefix[1] = 'X';
 			}
-			dest += utoa(dest, num, 16, digits_upper);
-			state->body.size = (intptr_t)dest - (intptr_t)state->buffer;
+			uint64_t num = uarg(length, arg);
+			state->body.size = utoa(state->buffer, num, 16, digits_upper);
 		} break;
 		case 'o': {
-			uint64_t num = uarg(length, arg);
-			char *dest = state->buffer;
 			if (alternate_form) {
-				*dest++ = '0';
+				state->prefix_size = 1;
+				state->prefix[0] = '0';
 			}
-			dest += utoa(dest, num, 8, digits_lower);
-			state->body.size = (intptr_t)dest - (intptr_t)state->buffer;
+			uint64_t num = uarg(length, arg);
+			state->body.size = utoa(state->buffer, num, 8, digits_lower);
 		} break;
 		case '%':
 		default: {
@@ -259,6 +258,12 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 			out.size = state->leading_spaces;
 			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
 			state->leading_spaces -= out.size;
+			break;
+		}
+		if (state->prefix_size) {
+			out.addr = state->prefix;
+			out.size = state->prefix_size;
+			state->prefix_size = 0;
 			break;
 		}
 		if (state->body.size > 0) {
