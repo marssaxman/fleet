@@ -25,7 +25,9 @@ struct format_chunk
 struct format_state
 {
 	const char *fmt;
+	size_t leading_spaces;
 	char buffer[FORMAT_BUFFER_SIZE];
+	size_t trailing_spaces;
 };
 
 void _format_start(struct format_state*, const char *format_string);

@@ -9,8 +9,19 @@
 #include <stddef.h>
 #include <string.h>
 
+// Not yet implemented:
+// %ls - length specifier ignored, all strings are char*
+// %lc - length specifier ignored, all chars are char
+// precision for integer types (dioxX)
+// floating-point types (fFeEgGaA)
+// number-of-characters specifier(n) - unlikely to be supported ever
+// pointer type (p)
+// width field is ignored
+// left/right justification is ignored
+
 void _format_start(struct format_state *state, const char *format_string)
 {
+	memset(state, 0, sizeof(struct format_state));
 	state->fmt = format_string;
 }
 
@@ -161,13 +172,14 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 	// is the format specifier.
 	char specifier = *fmt;
 	state->fmt = ++fmt;
-	char *dest = state->buffer;
+	struct format_chunk out = {state->buffer, 0};
 	switch (specifier) {
 		case 'c': {
-			*dest++ = va_arg(arg, int);
+			state->buffer[0] = va_arg(arg, int);
+			out.size = 1;
 		} break;
 		case 's': {
-			struct format_chunk out = {va_arg(arg, const char*), 0};
+			out.addr = va_arg(arg, const char*);
 			if (out.addr) {
 				if (has_precision) {
 					const char *q = memchr(out.addr, '\0', precision);
@@ -176,11 +188,11 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 					out.size = strlen(out.addr);
 				}
 			}
-			return out;
-		}
+		} break;
 		case 'i':
 		case 'd': {
 			int64_t num = iarg(length, arg);
+			char *dest = state->buffer;
 			if (num < 0) {
 				num = -num;
 				*dest++ = '-';
@@ -190,36 +202,43 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 				*dest++ = ' ';
 			}
 			dest += utoa(dest, num, 10, digits_lower);
+			out.size = (intptr_t)dest - (intptr_t)out.addr;
 		} break;
 		case 'x': {
 			uint64_t num = uarg(length, arg);
+			char *dest = state->buffer;
 			if (alternate_form) {
 				*dest++ = '0';
 				*dest++ = 'x';
 			}
 			dest += utoa(dest, num, 16, digits_lower);
+			out.size = (intptr_t)dest - (intptr_t)out.addr;
 		} break;
 		case 'X': {
 			uint64_t num = uarg(length, arg);
+			char *dest = state->buffer;
 			if (alternate_form) {
 				*dest++ = '0';
 				*dest++ = 'X';
 			}
 			dest += utoa(dest, num, 16, digits_upper);
+			out.size = (intptr_t)dest - (intptr_t)out.addr;
 		} break;
 		case 'o': {
 			uint64_t num = uarg(length, arg);
+			char *dest = state->buffer;
 			if (alternate_form) {
 				*dest++ = '0';
 			}
 			dest += utoa(dest, num, 8, digits_lower);
+			out.size = (intptr_t)dest - (intptr_t)out.addr;
 		} break;
 		case '%':
 		default: {
-			*dest++ = specifier;
+			state->buffer[0] = specifier;
+			out.size = 1;
 		} break;
 	}
-	struct format_chunk out = {state->buffer, dest - state->buffer};
 	return out;
 }
 
