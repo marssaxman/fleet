@@ -372,24 +372,6 @@ struct format_chunk _format_next(struct format_state *state, va_list *arg)
 }
 
 #ifdef TESTSUITE
-static char *testutoa(uint64_t n, int radix)
-{
-	static char buf[FORMAT_BUFFER_SIZE];
-	buf[utoa(buf, n, radix, "0123456789ABCDEF")] = '\0';
-	return buf;
-}
-static char *enhex(uint64_t n)
-{
-	return testutoa(n, 16);
-}
-static char *endec(uint64_t n)
-{
-	return testutoa(n, 10);
-}
-static char *enoct(uint64_t n)
-{
-	return testutoa(n, 8);
-}
 static char *enfmt(const char *fmt, ...)
 {
 	static struct format_state st;
@@ -410,27 +392,27 @@ static char *enfmt(const char *fmt, ...)
 }
 TESTSUITE(format) {
 	size_t size = FORMAT_BUFFER_SIZE;
-	CHECK_STR(enoct(0), "0", size);
-	CHECK_STR(enoct(1), "1", size);
-	CHECK_STR(endec(0), "0", size);
-	CHECK_STR(endec(1), "1", size);
-	CHECK_STR(enhex(0), "0", size);
-	CHECK_STR(enhex(1), "1", size);
-	CHECK_STR(endec(100), "100", size);
-	CHECK_STR(endec(127), "127", size);
-	CHECK_STR(enhex(0x64), "64", size);
-	CHECK_STR(enhex(0x7F), "7F", size);
-	CHECK_STR(enhex(0x03E8), "3E8", size);
-	CHECK_STR(endec(32749), "32749", size);
-	CHECK_STR(enhex(0xFFE1), "FFE1", size);
-	CHECK_STR(enhex(0xFFFF), "FFFF", size);
-	CHECK_STR(endec(2305843009213693952LL), "2305843009213693952", size);
-	CHECK_STR(enhex(0x7FFFFFFFFFFFFFFFULL), "7FFFFFFFFFFFFFFF", size);
-	CHECK_STR(enhex(0xFFFFFFFFFFFFFFFFULL), "FFFFFFFFFFFFFFFF", size);
-	CHECK_STR(endec(9999999999999999999ULL), "9999999999999999999", size);
-	CHECK_STR(endec(9223372036854775807LL), "9223372036854775807", size);
-	CHECK_STR(endec(18446744073709551615ULL), "18446744073709551615", size);
-	CHECK_STR(enoct(01777777777777777777777), "1777777777777777777777", size);
+	CHECK_STR(enfmt("%o", 0), "0", size);
+	CHECK_STR(enfmt("%o", 1), "1", size);
+	CHECK_STR(enfmt("%d", 0), "0", size);
+	CHECK_STR(enfmt("%d", 1), "1", size);
+	CHECK_STR(enfmt("%X", 0), "0", size);
+	CHECK_STR(enfmt("%X", 1), "1", size);
+	CHECK_STR(enfmt("%d", 100), "100", size);
+	CHECK_STR(enfmt("%d", 127), "127", size);
+	CHECK_STR(enfmt("%X", 0x64), "64", size);
+	CHECK_STR(enfmt("%X", 0x7F), "7F", size);
+	CHECK_STR(enfmt("%X", 0x03E8), "3E8", size);
+	CHECK_STR(enfmt("%d", 32749), "32749", size);
+	CHECK_STR(enfmt("%X", 0xFFE1), "FFE1", size);
+	CHECK_STR(enfmt("%X", 0xFFFF), "FFFF", size);
+	CHECK_STR(enfmt("%lld", 2305843009213693952LL), "2305843009213693952", size);
+	CHECK_STR(enfmt("%llX", 0x7FFFFFFFFFFFFFFFULL), "7FFFFFFFFFFFFFFF", size);
+	CHECK_STR(enfmt("%llX", 0xFFFFFFFFFFFFFFFFULL), "FFFFFFFFFFFFFFFF", size);
+	CHECK_STR(enfmt("%lld", 999999999999999999ULL), "999999999999999999", size);
+	CHECK_STR(enfmt("%lld", 9223372036854775807LL), "9223372036854775807", size);
+	CHECK_STR(enfmt("%lld", 8446744073709551615ULL), "8446744073709551615", size);
+	CHECK_STR(enfmt("%llo", 0xFFFFFFFFFFFFFFFF), "1777777777777777777777", size);
 	CHECK_STR(enfmt("%d", 1), "1", size);
 	CHECK_STR(enfmt("%i", 0), "0", size);
 	CHECK_STR(enfmt("%d", -1), "-1", size);
@@ -444,6 +426,10 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("% i", 113976), " 113976", size);
 	CHECK_STR(enfmt("% i", -113976), "-113976", size);
 	CHECK_STR(enfmt("%s", "foo"), "foo", size);
+	CHECK_STR(enfmt("%.5s", "foobaramatimatus"), "fooba", size);
+	CHECK_STR(enfmt("%9.5s", "foobaramatimatus"), "    fooba", size);
+	CHECK_STR(enfmt("%5.9s", "foo"), "  foo", size);
+	CHECK_STR(enfmt("%5.9s", "foobaramatimatus"), "foobarama", size);
 	CHECK_STR(enfmt("%c", 'Q'), "Q", size);
 	CHECK_STR(enfmt("%c", 0x41424344), "D", size);
 	CHECK_STR(enfmt("%hhX", 0xFEDCBA9876543210), "10", size);
