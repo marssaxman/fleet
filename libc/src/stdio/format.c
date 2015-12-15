@@ -13,7 +13,6 @@
 // %s and %c ignore 'l' specifier; all strings are char*
 // floating-point conversions are not yet implemented
 // %n is not and will likely never be supported
-// integer conversions with precision=0 and value=0 produce "0", not ""
 
 #define MAX_PADDING 32
 static const char padding[MAX_PADDING] = "                                ";
@@ -108,7 +107,7 @@ static const char *parse(const char *fmt, va_list *arg, struct spec *spec)
 	// consists of a digit string or a '*' indicating that the value should
 	// be read from the argument list.
 	spec->precision = 0;
-	if (*fmt == '.') {
+	if ('.' == *fmt) {
 		spec->flags |= FLAG_HAS_PRECISION;
 		if ('*' == *++fmt) {
 			spec->precision = va_arg(*arg, int);
@@ -116,6 +115,7 @@ static const char *parse(const char *fmt, va_list *arg, struct spec *spec)
 				spec->precision = 0;
 				spec->flags &= ~FLAG_HAS_PRECISION;
 			}
+			fmt++;
 		} else while (*fmt >= '0' && *fmt <= '9') {
 			spec->precision = spec->precision * 10 + *fmt++ - '0';
 		}
@@ -182,23 +182,20 @@ static void utoa(
 		int radix,
 		const char *digits)
 {
-	// Write the string in least-to-most significant order, then reverse it.
-	unsigned len = 0;
-	char *buf = state->buffer;
-	char *l = buf;
-	do {
-		*buf++ = digits[i % radix];
-		i /= radix;
-		len++;
-	} while (i > 0);
-	char *h = l + len - 1;
-	while (l < h) {
-		char temp = *h;
-		*h-- = *l;
-		*l++ = temp;
+	// Render the integer 'i' into the format_state buffer, then point the
+	// state's 'body' chunk at the section of buffer we used. We will write
+	// the number from the end of the buffer back toward the beginning, since
+	// that gives us most-to-least significant digit order, and leaves the
+	// beginning of the buffer free for padding and/or prefixes if necessary.
+	char *buf = state->buffer + FORMAT_BUFFER_SIZE;
+	if (i > 0 || !(spec->flags & FLAG_HAS_PRECISION) || spec->precision > 0) {
+		do {
+			*--buf = digits[i % radix];
+			i /= radix;
+		} while (i > 0);
 	}
-	state->body.addr = state->buffer;
-	state->body.size = len;
+	state->body.addr = buf;
+	state->body.size = FORMAT_BUFFER_SIZE - (buf - state->buffer);
 	bool has_precision = spec->flags & FLAG_HAS_PRECISION;
 	if (has_precision && spec->precision > state->body.size) {
 		state->leading_zeros = spec->precision - state->body.size;
@@ -499,6 +496,9 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%040d", -99), "-0000000000000000000000000000000000000099", size);
 	CHECK_STR(enfmt("%.40d", 99), "0000000000000000000000000000000000000099", size);
 	CHECK_STR(enfmt("%.40d", -99), "-0000000000000000000000000000000000000099", size);
+	CHECK_STR(enfmt("X%.0dX", 0), "XX", size);
+	CHECK_STR(enfmt("X%.*dX", 0, 0), "XX", size);
+	CHECK_STR(enfmt("X%.*dX", -2, 0), "X0X", size);
 }
 #endif
 
