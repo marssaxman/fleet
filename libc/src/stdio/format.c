@@ -16,10 +16,12 @@
 // %n is not and will likely never be supported
 // integer conversions with precision=0 and value=0 produce "0", not ""
 
-
 #define MAX_PADDING 32
 static const char padding[MAX_PADDING] = "                                ";
 static const char zeros[MAX_PADDING] = "00000000000000000000000000000000";
+static const char *digits_lower = "0123456789abcdef";
+static const char *digits_upper = "0123456789ABCDEF";
+
 enum prefix {
 	PREFIX_NONE = 0,
 	PREFIX_PLUS = 1,
@@ -29,6 +31,7 @@ enum prefix {
 	PREFIX_UPHEX = 5,
 	PREFIX_LOWHEX = 6
 };
+
 static const struct format_chunk prefix_chunk[7] = {
 	{"", 0}, // PREFIX_NONE
 	{"+", 1}, // PREFIX_PLUS
@@ -39,21 +42,22 @@ static const struct format_chunk prefix_chunk[7] = {
 	{"0x", 2}, // PREFIX_LOWHEX
 };
 
-void _format_start(struct format_state *state, const char *format_string)
-{
-	memset(state, 0, sizeof(struct format_state));
-	state->fmt = format_string;
-}
+enum flags {
+	FLAG_LEFT_JUSTIFY = 0x01,
+	FLAG_PLUS_POSITIVE = 0x02,
+	FLAG_SPACE_POSITIVE = 0x04,
+	FLAG_ALTERNATE_FORM = 0x08,
+	FLAG_PAD_WITH_ZERO = 0x10,
+	FLAG_HAS_PRECISION = 0x20
+};
 
-bool _format_done(struct format_state *state)
-{
-	if (state->leading_spaces) return false;
-	if (state->prefix) return false;
-	if (state->leading_zeros) return false;
-	if (state->body.size) return false;
-	if (state->trailing_spaces) return false;
-	return '\0' == *state->fmt;
-}
+struct spec {
+	int minimum_width;
+	int precision;
+	int data_size;
+	char flags;
+	char conversion;
+};
 
 static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
 {
@@ -105,104 +109,119 @@ static void scan_literal(struct format_state *state)
 	state->body.size = state->fmt - state->body.addr;
 }
 
-static void parse_specifier(struct format_state *state, va_list *arg)
+static const char *parse(const char *fmt, va_list *arg, struct spec *spec)
 {
-	// We did not find a literal text chunk, so we must have found a specifier.
 	// A format specifier has this syntax:
 	// %[flags][width][.precision][length]specifier
-	// Skip the leading % character.
-	const char *fmt = ++state->fmt;
+	// This function parses the body of the specifier, so 'fmt' should point
+	// at the first character following the leading '%'.
+	// We will return the address of the character following the specifier.
 
 	// Flags may come in any combination and any order. Left-justification
 	// can apply to any conversion, but '+' and ' ' only apply to float and
 	// signed-integer conversions, '#' only applies to octal, hex, and float
 	// conversions, and '0' only applies to float conversions and to integer
 	// conversions which have no specified precision.
-	bool left_justify = false;
-	bool plus_for_positive = false;
-	bool space_for_positive = false;
-	bool alternate_form = false;
-	bool pad_with_zero = false;
+	spec->flags = 0;
 	do switch (*fmt++) {
-		case '-': left_justify = true; continue;
-		case '+': plus_for_positive = true; continue;
-		case ' ': space_for_positive = true; continue;
-		case '#': alternate_form = true; continue;
-		case '0': pad_with_zero = true; continue;
+		case '-': spec->flags |= FLAG_LEFT_JUSTIFY; continue;
+		case '+': spec->flags |= FLAG_PLUS_POSITIVE; continue;
+		case ' ': spec->flags |= FLAG_SPACE_POSITIVE; continue;
+		case '#': spec->flags |= FLAG_ALTERNATE_FORM; continue;
+		case '0': spec->flags |= FLAG_PAD_WITH_ZERO; continue;
 		default: --fmt;
 	} while(0);
-	// Zero-padding only applies to right-justified conversions; if the '-'
-	// flag was preset, we'll ignore '0', whichever order they occurred in.
-	if (left_justify) {
-		pad_with_zero = false;
-	}
-	// Using a space for positive numbers only applies if we are not already
-	// using a plus sign; if the '+' flag was present, ignore ' '.
-	if (plus_for_positive) {
-		space_for_positive = false;
-	}
 
 	// Width is a series of digits or a single '*' character indicating that
 	// the value should come from the argument list.
-	int minimum_width = 0;
+	spec->minimum_width = 0;
 	if ('*' == *fmt) {
-		minimum_width = va_arg(*arg, int);
-		if (minimum_width < 0) {
-			left_justify = true;
-			minimum_width *= -1;
+		spec->minimum_width = va_arg(*arg, int);
+		if (spec->minimum_width < 0) {
+			spec->flags |= FLAG_LEFT_JUSTIFY;
+			spec->minimum_width *= -1;
 		}
 		fmt++;
 	} else while (*fmt >= '0' && *fmt <= '9') {
-		minimum_width = minimum_width * 10 + *fmt++ - '0';
+		spec->minimum_width = spec->minimum_width * 10 + *fmt++ - '0';
 	}
 
 	// Precision begins with a '.' character if present; like the width, it
 	// consists of a digit string or a '*' indicating that the value should
 	// be read from the argument list.
-	int precision = 0;
-	bool has_precision = (*fmt == '.');
-	if (has_precision) {
+	spec->precision = 0;
+	if (*fmt == '.') {
+		spec->flags |= FLAG_HAS_PRECISION;
 		if ('*' == *++fmt) {
-			precision = va_arg(*arg, int);
-			if (precision < 0) {
-				precision = 0;
-				has_precision = false;
+			spec->precision = va_arg(*arg, int);
+			if (spec->precision < 0) {
+				spec->precision = 0;
+				spec->flags &= ~FLAG_HAS_PRECISION;
 			}
 		} else while (*fmt >= '0' && *fmt <= '9') {
-			precision = precision * 10 + *fmt++ - '0';
+			spec->precision = spec->precision * 10 + *fmt++ - '0';
 		}
 	}
 
-	// We assume that signed and unsigned types have the same size.
-	int length = sizeof(int);
+	// Size, which is called "length" in the spec, specifies the size of the
+	// input data relative to sizeof(int). We assume that signed and unsigned
+	// types have the same size.
+	spec->data_size = sizeof(int);
 	switch (*fmt++) {
 		case 'h': {
-			length = sizeof(short);
+			spec->data_size = sizeof(short);
 			if ('h' == *fmt) {
 				fmt++;
-				length = sizeof(char);
+				spec->data_size = sizeof(char);
 			}
 		} break;
 		case 'l': {
-			length = sizeof(long);
+			spec->data_size = sizeof(long);
 			if ('l' == *fmt) {
 				fmt++;
-				length = sizeof(long long);
+				spec->data_size = sizeof(long long);
 			}
 		} break;
-		case 'j': length = sizeof(intmax_t); break;
-		case 'z': length = sizeof(size_t); break;
-		case 't': length = sizeof(ptrdiff_t); break;
+		case 'j': spec->data_size = sizeof(intmax_t); break;
+		case 'z': spec->data_size = sizeof(size_t); break;
+		case 't': spec->data_size = sizeof(ptrdiff_t); break;
 		default: --fmt;
 	}
 
-	static const char *digits_lower = "0123456789abcdef";
-	static const char *digits_upper = "0123456789ABCDEF";
+	// The last remaining character is the conversion specifier.
+	spec->conversion = *fmt++;
 
-	// Having parsed all of the parameters, if present, the remaining character
-	// is the format specifier.
-	char specifier = *fmt;
-	state->fmt = ++fmt;
+	return fmt;
+}
+
+static void convert(struct format_state *state, va_list *arg)
+{
+	// Skip the leading % character and parse the specifier body.
+	struct spec spec = {0};
+	state->fmt = parse(++state->fmt, arg, &spec);
+
+	// Zero-padding only applies to right-justified conversions; if the '-'
+	// flag was preset, we'll ignore '0', whichever order they occurred in.
+	if (spec.flags & FLAG_LEFT_JUSTIFY) {
+		spec.flags &= ~FLAG_PAD_WITH_ZERO;
+	}
+	// Using a space for positive numbers only applies if we are not already
+	// using a plus sign; if the '+' flag was present, ignore ' '.
+	if (spec.flags & FLAG_PLUS_POSITIVE) {
+		spec.flags &= ~FLAG_SPACE_POSITIVE;
+	}
+
+	bool left_justify = spec.flags & FLAG_LEFT_JUSTIFY;
+	bool plus_for_positive = spec.flags & FLAG_PLUS_POSITIVE;
+	bool space_for_positive = spec.flags & FLAG_SPACE_POSITIVE;
+	bool alternate_form = spec.flags & FLAG_ALTERNATE_FORM;
+	bool pad_with_zero = spec.flags & FLAG_PAD_WITH_ZERO;
+	int minimum_width = spec.minimum_width;
+	bool has_precision = spec.flags & FLAG_HAS_PRECISION;
+	int precision = spec.precision;
+	int length = spec.data_size;
+	char specifier = spec.conversion;
+
 	state->body.addr = state->buffer;
 	state->body.size = 0;
 	switch (specifier) {
@@ -292,6 +311,22 @@ static void parse_specifier(struct format_state *state, va_list *arg)
 	}
 }
 
+void _format_start(struct format_state *state, const char *format_string)
+{
+	memset(state, 0, sizeof(struct format_state));
+	state->fmt = format_string;
+}
+
+bool _format_done(struct format_state *state)
+{
+	if (state->leading_spaces) return false;
+	if (state->prefix) return false;
+	if (state->leading_zeros) return false;
+	if (state->body.size) return false;
+	if (state->trailing_spaces) return false;
+	return '\0' == *state->fmt;
+}
+
 struct format_chunk _format_next(struct format_state *state, va_list *arg)
 {
 	struct format_chunk out = {0, 0};
@@ -328,7 +363,7 @@ struct format_chunk _format_next(struct format_state *state, va_list *arg)
 			break;
 		}
 		if ('%' == *state->fmt) {
-			parse_specifier(state, arg);
+			convert(state, arg);
 		} else {
 			scan_literal(state);
 		}

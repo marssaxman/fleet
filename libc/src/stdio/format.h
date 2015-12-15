@@ -7,7 +7,7 @@
 #ifndef _LIBC_INTERNAL_FORMAT_H
 #define _LIBC_INTERNAL_FORMAT_H
 
-#include <_size_t.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdarg.h>
 
