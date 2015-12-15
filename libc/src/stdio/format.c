@@ -9,16 +9,17 @@
 #include <stddef.h>
 #include <string.h>
 
-// Not yet implemented:
-// %ls - length specifier ignored, all strings are char*
-// %lc - length specifier ignored, all chars are char
-// precision for integer types (dioxX)
-// floating-point types (fFeEgGaA)
-// number-of-characters specifier(n) - unlikely to be supported ever
-// pointer type (p)
+// ERRATA:
+// %s and %c ignore 'l' specifier; all strings are char*
+// floating-point conversions are not yet implemented
+// %p is not yet implemented
+// %n is not and will likely never be supported
+// integer conversions with precision=0 and value=0 produce "0", not ""
+
 
 #define MAX_PADDING 32
 static const char padding[MAX_PADDING] = "                                ";
+static const char zeros[MAX_PADDING] = "00000000000000000000000000000000";
 enum prefix {
 	PREFIX_NONE = 0,
 	PREFIX_PLUS = 1,
@@ -48,6 +49,7 @@ bool _format_done(struct format_state *state)
 {
 	if (state->leading_spaces) return false;
 	if (state->prefix) return false;
+	if (state->leading_zeros) return false;
 	if (state->body.size) return false;
 	if (state->trailing_spaces) return false;
 	return '\0' == *state->fmt;
@@ -72,25 +74,25 @@ static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
 	return len;
 }
 
-static int64_t iarg(size_t s, va_list arg)
+static int64_t iarg(size_t s, va_list *arg)
 {
 	switch (s) {
-		case 1: return (int8_t)va_arg(arg, int);
-		case 2: return (int16_t)va_arg(arg, int);
-		case 4: return va_arg(arg, int32_t);
-		case 8: return va_arg(arg, int64_t);
-		default: return va_arg(arg, int);
+		case 1: return (int8_t)va_arg(*arg, int);
+		case 2: return (int16_t)va_arg(*arg, int);
+		case 4: return va_arg(*arg, int32_t);
+		case 8: return va_arg(*arg, int64_t);
+		default: return va_arg(*arg, int);
 	}
 }
 
-static uint64_t uarg(size_t s, va_list arg)
+static uint64_t uarg(size_t s, va_list *arg)
 {
 	switch (s) {
-		case 1: return (uint8_t)va_arg(arg, unsigned);
-		case 2: return (uint16_t)va_arg(arg, unsigned);
-		case 4: return va_arg(arg, uint32_t);
-		case 8: return va_arg(arg, uint64_t);
-		default: return va_arg(arg, unsigned);
+		case 1: return (uint8_t)va_arg(*arg, unsigned);
+		case 2: return (uint16_t)va_arg(*arg, unsigned);
+		case 4: return va_arg(*arg, uint32_t);
+		case 8: return va_arg(*arg, uint64_t);
+		default: return va_arg(*arg, unsigned);
 	}
 }
 
@@ -103,7 +105,7 @@ static void scan_literal(struct format_state *state)
 	state->body.size = state->fmt - state->body.addr;
 }
 
-static void parse_specifier(struct format_state *state, va_list arg)
+static void parse_specifier(struct format_state *state, va_list *arg)
 {
 	// We did not find a literal text chunk, so we must have found a specifier.
 	// A format specifier has this syntax:
@@ -111,7 +113,11 @@ static void parse_specifier(struct format_state *state, va_list arg)
 	// Skip the leading % character.
 	const char *fmt = ++state->fmt;
 
-	// Flags may come in any combination and any order.
+	// Flags may come in any combination and any order. Left-justification
+	// can apply to any conversion, but '+' and ' ' only apply to float and
+	// signed-integer conversions, '#' only applies to octal, hex, and float
+	// conversions, and '0' only applies to float conversions and to integer
+	// conversions which have no specified precision.
 	bool left_justify = false;
 	bool plus_for_positive = false;
 	bool space_for_positive = false;
@@ -125,12 +131,22 @@ static void parse_specifier(struct format_state *state, va_list arg)
 		case '0': pad_with_zero = true; continue;
 		default: --fmt;
 	} while(0);
+	// Zero-padding only applies to right-justified conversions; if the '-'
+	// flag was preset, we'll ignore '0', whichever order they occurred in.
+	if (left_justify) {
+		pad_with_zero = false;
+	}
+	// Using a space for positive numbers only applies if we are not already
+	// using a plus sign; if the '+' flag was present, ignore ' '.
+	if (plus_for_positive) {
+		space_for_positive = false;
+	}
 
 	// Width is a series of digits or a single '*' character indicating that
 	// the value should come from the argument list.
 	int minimum_width = 0;
 	if ('*' == *fmt) {
-		minimum_width = va_arg(arg, int);
+		minimum_width = va_arg(*arg, int);
 		if (minimum_width < 0) {
 			left_justify = true;
 			minimum_width *= -1;
@@ -147,7 +163,7 @@ static void parse_specifier(struct format_state *state, va_list arg)
 	bool has_precision = (*fmt == '.');
 	if (has_precision) {
 		if ('*' == *++fmt) {
-			precision = va_arg(arg, int);
+			precision = va_arg(*arg, int);
 			if (precision < 0) {
 				precision = 0;
 				has_precision = false;
@@ -191,11 +207,11 @@ static void parse_specifier(struct format_state *state, va_list arg)
 	state->body.size = 0;
 	switch (specifier) {
 		case 'c': {
-			state->buffer[0] = va_arg(arg, int);
+			state->buffer[0] = va_arg(*arg, int);
 			state->body.size = 1;
 		} break;
 		case 's': {
-			const char *str = va_arg(arg, const char*);
+			const char *str = va_arg(*arg, const char*);
 			state->body.addr = str;
 			if (str) {
 				if (has_precision) {
@@ -218,27 +234,33 @@ static void parse_specifier(struct format_state *state, va_list arg)
 				state->prefix = PREFIX_SPACE;
 			}
 			state->body.size = utoa(state->buffer, num, 10, digits_lower);
+			if (has_precision && precision > state->body.size) {
+				state->leading_zeros = precision - state->body.size;
+			}
 		} break;
 		case 'x': {
-			if (alternate_form) {
-				state->prefix = PREFIX_LOWHEX;
-			}
+			state->prefix = alternate_form? PREFIX_LOWHEX: PREFIX_NONE;
 			uint64_t num = uarg(length, arg);
 			state->body.size = utoa(state->buffer, num, 16, digits_lower);
+			if (has_precision && precision > state->body.size) {
+				state->leading_zeros = precision - state->body.size;
+			}
 		} break;
 		case 'X': {
-			if (alternate_form) {
-				state->prefix = PREFIX_UPHEX;
-			}
+			state->prefix = alternate_form? PREFIX_UPHEX: PREFIX_NONE;
 			uint64_t num = uarg(length, arg);
 			state->body.size = utoa(state->buffer, num, 16, digits_upper);
+			if (has_precision && precision > state->body.size) {
+				state->leading_zeros = precision - state->body.size;
+			}
 		} break;
 		case 'o': {
-			if (alternate_form) {
-				state->prefix = PREFIX_OCTAL;
-			}
+			state->prefix = alternate_form? PREFIX_OCTAL: PREFIX_NONE;
 			uint64_t num = uarg(length, arg);
 			state->body.size = utoa(state->buffer, num, 8, digits_lower);
+			if (has_precision && precision > state->body.size) {
+				state->leading_zeros = precision - state->body.size;
+			}
 		} break;
 		case '%':
 		default: {
@@ -247,23 +269,34 @@ static void parse_specifier(struct format_state *state, va_list arg)
 		} break;
 	}
 
+	// Combining the three possible body elements, how many characters did
+	// we just generate?
+	size_t width = 0;
+	width += state->leading_spaces;
+	width += prefix_chunk[state->prefix].size;
+	width += state->leading_zeros;
+	width += state->body.size;
+	width += state->trailing_spaces;
+
 	// If the text we've generated for this specifier is smaller than the
 	// minimum field width, pad it out with spaces.
-	if (minimum_width > state->body.size) {
-		int padding = minimum_width - state->body.size;
+	if (minimum_width > width) {
+		int padding = minimum_width - width;
 		if (left_justify) {
-			state->trailing_spaces = padding;
+			state->trailing_spaces += padding;
+		} else if (pad_with_zero) {
+			state->leading_zeros += padding;
 		} else {
-			state->leading_spaces = padding;
+			state->leading_spaces += padding;
 		}
 	}
 }
 
-struct format_chunk _format_next(struct format_state *state, va_list arg)
+struct format_chunk _format_next(struct format_state *state, va_list *arg)
 {
-	struct format_chunk out = {padding, 0};
+	struct format_chunk out = {0, 0};
 	while (!_format_done(state)) {
-		if (state->leading_spaces > 0) {
+		if (state->leading_spaces) {
 			out.addr = padding;
 			out.size = state->leading_spaces;
 			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
@@ -275,12 +308,19 @@ struct format_chunk _format_next(struct format_state *state, va_list arg)
 			state->prefix = PREFIX_NONE;
 			break;
 		}
-		if (state->body.size > 0) {
+		if (state->leading_zeros) {
+			out.addr = zeros;
+			out.size = state->leading_zeros;
+			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
+			state->leading_zeros -= out.size;
+			break;
+		}
+		if (state->body.size) {
 			out = state->body;
 			state->body.size = 0;
 			break;
 		}
-		if (state->trailing_spaces > 0) {
+		if (state->trailing_spaces) {
 			out.addr = padding;
 			out.size = state->trailing_spaces;
 			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
@@ -325,7 +365,7 @@ static char *enfmt(const char *fmt, ...)
 	static char buf[1024];
 	char *dest = buf;
 	while (!_format_done(&st)) {
-		struct format_chunk chunk = _format_next(&st, arg);
+		struct format_chunk chunk = _format_next(&st, &arg);
 		memcpy(dest, chunk.addr, chunk.size);
 		dest += chunk.size;
 	}
@@ -384,10 +424,23 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%-8s", "foo"), "foo     ", size);
 	CHECK_STR(enfmt("%-8s", "foobarbaz"), "foobarbaz", size);
 	CHECK_STR(enfmt("X%8sX", ""), "X        X", size);
-//	CHECK_STR(enfmt("%.7d", 12345), "0012345", size);
-//	CHECK_STR(enfmt("%.7d", 123456789), "123456789", size);
-//	CHECK_STR(enfmt("%#.6x", 0x1010), "0x001010", size);
-//	CHECK_STR(enfmt("%.6d", -1099), "-001099", size);
+	CHECK_STR(enfmt("%+8d", -12345), "  -12345", size);
+	CHECK_STR(enfmt("%8d", -12345), "  -12345", size);
+	CHECK_STR(enfmt("%+8d", 12345), "  +12345", size);
+	CHECK_STR(enfmt("%8d", 12345), "   12345", size);
+	CHECK_STR(enfmt("%.7d", 12345), "0012345", size);
+	CHECK_STR(enfmt("%.7d", 123456789), "123456789", size);
+	CHECK_STR(enfmt("%#.6x", 0x1010), "0x001010", size);
+	CHECK_STR(enfmt("%.6d", -1099), "-001099", size);
+	CHECK_STR(enfmt("%*d", 6, 4909), "  4909", size);
+	CHECK_STR(enfmt("%*d:%0*d", 6, 4909, 6, 101), "  4909:000101", size);
+	CHECK_STR(enfmt("%04d %05d %06d", 1, 2, 3), "0001 00002 000003", size);
+	CHECK_STR(enfmt("%03d %04d %05d", -1, -2, -3), "-01 -002 -0003", size);
+	CHECK_STR(enfmt("%.3d %.4d %.5d", -1, -2, -3), "-001 -0002 -00003", size);
+	CHECK_STR(enfmt("%06.5d", 5), "000005", size);
+	CHECK_STR(enfmt("%06.5d", -5), "-00005", size);
+	CHECK_STR(enfmt("%6.4d", 5), "  0005", size);
+	CHECK_STR(enfmt("%6.4d", -5), " -0005", size);
 }
 #endif
 

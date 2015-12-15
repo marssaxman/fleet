@@ -31,6 +31,7 @@ struct format_state
 	// not yet returned from _format_next
 	size_t leading_spaces;
 	int prefix;
+	size_t leading_zeros;
 	struct format_chunk body;
 	size_t trailing_spaces;
 
@@ -40,6 +41,6 @@ struct format_state
 
 void _format_start(struct format_state*, const char *format_string);
 bool _format_done(struct format_state*);
-struct format_chunk _format_next(struct format_state*, va_list arg);
+struct format_chunk _format_next(struct format_state*, va_list *arg);
 
 #endif //_LIBC_INTERNAL_FORMAT_H
