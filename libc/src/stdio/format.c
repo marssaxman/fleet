@@ -59,47 +59,6 @@ struct spec {
 	char conversion;
 };
 
-static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
-{
-	// Write the string in least-to-most significant order, then reverse it.
-	unsigned len = 0;
-	char *l = buf;
-	do {
-		*buf++ = digits[i % radix];
-		i /= radix;
-		len++;
-	} while (i > 0);
-	char *h = l + len - 1;
-	while (l < h) {
-		char temp = *h;
-		*h-- = *l;
-		*l++ = temp;
-	}
-	return len;
-}
-
-static int64_t iarg(size_t s, va_list *arg)
-{
-	switch (s) {
-		case 1: return (int8_t)va_arg(*arg, int);
-		case 2: return (int16_t)va_arg(*arg, int);
-		case 4: return va_arg(*arg, int32_t);
-		case 8: return va_arg(*arg, int64_t);
-		default: return va_arg(*arg, int);
-	}
-}
-
-static uint64_t uarg(size_t s, va_list *arg)
-{
-	switch (s) {
-		case 1: return (uint8_t)va_arg(*arg, unsigned);
-		case 2: return (uint16_t)va_arg(*arg, unsigned);
-		case 4: return va_arg(*arg, uint32_t);
-		case 8: return va_arg(*arg, uint64_t);
-		default: return va_arg(*arg, unsigned);
-	}
-}
-
 static void scan_literal(struct format_state *state)
 {
 	state->body.addr = state->fmt;
@@ -194,6 +153,120 @@ static const char *parse(const char *fmt, va_list *arg, struct spec *spec)
 	return fmt;
 }
 
+static void cvt_c(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	state->buffer[0] = va_arg(*arg, int);
+	state->body.addr = state->buffer;
+	state->body.size = 1;
+}
+
+static void cvt_s(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	const char *str = va_arg(*arg, const char*);
+	state->body.addr = str;
+	if (str) {
+		if (spec->flags & FLAG_HAS_PRECISION) {
+			const char *q = memchr(str, '\0', spec->precision);
+			state->body.size = q? (q - str): spec->precision;
+		} else {
+			state->body.size = strlen(str);
+		}
+	} else {
+		state->body.size = 0;
+	}
+}
+
+static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
+{
+	// Write the string in least-to-most significant order, then reverse it.
+	unsigned len = 0;
+	char *l = buf;
+	do {
+		*buf++ = digits[i % radix];
+		i /= radix;
+		len++;
+	} while (i > 0);
+	char *h = l + len - 1;
+	while (l < h) {
+		char temp = *h;
+		*h-- = *l;
+		*l++ = temp;
+	}
+	return len;
+}
+
+static int64_t iarg(size_t s, va_list *arg)
+{
+	switch (s) {
+		case 1: return (int8_t)va_arg(*arg, int);
+		case 2: return (int16_t)va_arg(*arg, int);
+		case 4: return va_arg(*arg, int32_t);
+		case 8: return va_arg(*arg, int64_t);
+		default: return va_arg(*arg, int);
+	}
+}
+
+static uint64_t uarg(size_t s, va_list *arg)
+{
+	switch (s) {
+		case 1: return (uint8_t)va_arg(*arg, unsigned);
+		case 2: return (uint16_t)va_arg(*arg, unsigned);
+		case 4: return va_arg(*arg, uint32_t);
+		case 8: return va_arg(*arg, uint64_t);
+		default: return va_arg(*arg, unsigned);
+	}
+}
+
+static void int_precision(struct format_state *state, struct spec *spec)
+{
+	bool has_precision = spec->flags & FLAG_HAS_PRECISION;
+	if (has_precision && spec->precision > state->body.size) {
+		state->leading_zeros = spec->precision - state->body.size;
+	}
+}
+
+static void cvt_d(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	int64_t num = iarg(spec->data_size, arg);
+	if (num < 0) {
+		num = -num;
+		state->prefix = PREFIX_MINUS;
+	} else if (spec->flags & FLAG_PLUS_POSITIVE) {
+		state->prefix = PREFIX_PLUS;
+	} else if (spec->flags & FLAG_SPACE_POSITIVE) {
+		state->prefix = PREFIX_SPACE;
+	}
+	state->body.size = utoa(state->buffer, num, 10, digits_lower);
+	int_precision(state, spec);
+}
+
+static void cvt_x(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
+	state->prefix = alternate_form? PREFIX_LOWHEX: PREFIX_NONE;
+	uint64_t num = uarg(spec->data_size, arg);
+	state->body.size = utoa(state->buffer, num, 16, digits_lower);
+	int_precision(state, spec);
+}
+
+static void cvt_X(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
+	state->prefix = alternate_form? PREFIX_UPHEX: PREFIX_NONE;
+	uint64_t num = uarg(spec->data_size, arg);
+	state->body.size = utoa(state->buffer, num, 16, digits_upper);
+	int_precision(state, spec);
+}
+
+static void cvt_o(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
+	state->prefix = alternate_form? PREFIX_OCTAL: PREFIX_NONE;
+	uint64_t num = uarg(spec->data_size, arg);
+	state->body.size = utoa(state->buffer, num, 8, digits_lower);
+	int_precision(state, spec);
+}
+
 static void convert(struct format_state *state, va_list *arg)
 {
 	// Skip the leading % character and parse the specifier body.
@@ -225,62 +298,13 @@ static void convert(struct format_state *state, va_list *arg)
 	state->body.addr = state->buffer;
 	state->body.size = 0;
 	switch (specifier) {
-		case 'c': {
-			state->buffer[0] = va_arg(*arg, int);
-			state->body.size = 1;
-		} break;
-		case 's': {
-			const char *str = va_arg(*arg, const char*);
-			state->body.addr = str;
-			if (str) {
-				if (has_precision) {
-					const char *q = memchr(str, '\0', precision);
-					state->body.size = q? (q - str): precision;
-				} else {
-					state->body.size = strlen(str);
-				}
-			}
-		} break;
+		case 'c': cvt_c(state, &spec, arg); break;
+		case 's': cvt_s(state, &spec, arg); break;
 		case 'i':
-		case 'd': {
-			int64_t num = iarg(length, arg);
-			if (num < 0) {
-				num = -num;
-				state->prefix = PREFIX_MINUS;
-			} else if (plus_for_positive) {
-				state->prefix = PREFIX_PLUS;
-			} else if (space_for_positive) {
-				state->prefix = PREFIX_SPACE;
-			}
-			state->body.size = utoa(state->buffer, num, 10, digits_lower);
-			if (has_precision && precision > state->body.size) {
-				state->leading_zeros = precision - state->body.size;
-			}
-		} break;
-		case 'x': {
-			state->prefix = alternate_form? PREFIX_LOWHEX: PREFIX_NONE;
-			uint64_t num = uarg(length, arg);
-			state->body.size = utoa(state->buffer, num, 16, digits_lower);
-			if (has_precision && precision > state->body.size) {
-				state->leading_zeros = precision - state->body.size;
-			}
-		} break;
-		case 'X': {
-			state->prefix = alternate_form? PREFIX_UPHEX: PREFIX_NONE;
-			uint64_t num = uarg(length, arg);
-			state->body.size = utoa(state->buffer, num, 16, digits_upper);
-			if (has_precision && precision > state->body.size) {
-				state->leading_zeros = precision - state->body.size;
-			}
-		} break;
-		case 'o': {
-			state->prefix = alternate_form? PREFIX_OCTAL: PREFIX_NONE;
-			uint64_t num = uarg(length, arg);
-			state->body.size = utoa(state->buffer, num, 8, digits_lower);
-			if (has_precision && precision > state->body.size) {
-				state->leading_zeros = precision - state->body.size;
-			}
-		} break;
+		case 'd': cvt_d(state, &spec, arg); break;
+		case 'x': cvt_x(state, &spec, arg); break;
+		case 'X': cvt_X(state, &spec, arg); break;
+		case 'o': cvt_o(state, &spec, arg); break;
 		case '%':
 		default: {
 			state->buffer[0] = specifier;
