@@ -188,7 +188,8 @@ static void utoa(
 	// that gives us most-to-least significant digit order, and leaves the
 	// beginning of the buffer free for padding and/or prefixes if necessary.
 	char *buf = state->buffer + FORMAT_BUFFER_SIZE;
-	if (i > 0 || !(spec->flags & FLAG_HAS_PRECISION) || spec->precision > 0) {
+	bool has_precision = spec->flags & FLAG_HAS_PRECISION;
+	if (i > 0 || !has_precision || spec->precision > 0) {
 		do {
 			*--buf = digits[i % radix];
 			i /= radix;
@@ -196,9 +197,23 @@ static void utoa(
 	}
 	state->body.addr = buf;
 	state->body.size = FORMAT_BUFFER_SIZE - (buf - state->buffer);
-	bool has_precision = spec->flags & FLAG_HAS_PRECISION;
+	// If the spec requested a certain precision, make sure we have written
+	// enough digits.
 	if (has_precision && spec->precision > state->body.size) {
 		state->leading_zeros = spec->precision - state->body.size;
+	}
+	// If the format includes a prefix, and there is room for it in the buffer,
+	// copy it in so we don't have to return two separate chunks.
+	if (state->prefix && 0 == spec->flags & FLAG_PAD_WITH_ZERO) {
+		const struct format_chunk *prefix = &prefix_chunk[state->prefix];
+		size_t combined_size = state->body.size + prefix->size;
+		if (combined_size <= FORMAT_BUFFER_SIZE) {
+			char *dest = state->buffer + FORMAT_BUFFER_SIZE - combined_size;
+			memcpy(dest, prefix->addr, prefix->size);
+			state->body.addr = dest;
+			state->body.size = combined_size;
+			state->prefix = PREFIX_NONE;
+		}
 	}
 }
 
