@@ -13,7 +13,7 @@ int vfprintf(FILE *stream, const char *format, va_list arg)
 	struct format_state state;
 	_format_start(&state, format);
 	while (!_format_done(&state) && !ferror(stream)) {
-		struct format_chunk blob = _format_next(&state, arg);
+		struct format_chunk blob = _format_next(&state, &arg);
 		written += fwrite(blob.addr, sizeof(char), blob.size, stream);
 	}
 	return ferror(stream)? EOF: written;

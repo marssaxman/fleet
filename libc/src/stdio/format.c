@@ -175,10 +175,16 @@ static void cvt_s(struct format_state *state, struct spec *spec, va_list *arg)
 	}
 }
 
-static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
+static void utoa(
+		struct format_state *state,
+		struct spec *spec,
+		uint64_t i,
+		int radix,
+		const char *digits)
 {
 	// Write the string in least-to-most significant order, then reverse it.
 	unsigned len = 0;
+	char *buf = state->buffer;
 	char *l = buf;
 	do {
 		*buf++ = digits[i % radix];
@@ -191,7 +197,12 @@ static unsigned utoa(char *buf, uint64_t i, int radix, const char *digits)
 		*h-- = *l;
 		*l++ = temp;
 	}
-	return len;
+	state->body.addr = state->buffer;
+	state->body.size = len;
+	bool has_precision = spec->flags & FLAG_HAS_PRECISION;
+	if (has_precision && spec->precision > state->body.size) {
+		state->leading_zeros = spec->precision - state->body.size;
+	}
 }
 
 static int64_t iarg(size_t s, va_list *arg)
@@ -216,14 +227,6 @@ static uint64_t uarg(size_t s, va_list *arg)
 	}
 }
 
-static void int_precision(struct format_state *state, struct spec *spec)
-{
-	bool has_precision = spec->flags & FLAG_HAS_PRECISION;
-	if (has_precision && spec->precision > state->body.size) {
-		state->leading_zeros = spec->precision - state->body.size;
-	}
-}
-
 static void cvt_d(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	int64_t num = iarg(spec->data_size, arg);
@@ -235,8 +238,7 @@ static void cvt_d(struct format_state *state, struct spec *spec, va_list *arg)
 	} else if (spec->flags & FLAG_SPACE_POSITIVE) {
 		state->prefix = PREFIX_SPACE;
 	}
-	state->body.size = utoa(state->buffer, num, 10, digits_lower);
-	int_precision(state, spec);
+	utoa(state, spec, num, 10, digits_lower);
 }
 
 static void cvt_x(struct format_state *state, struct spec *spec, va_list *arg)
@@ -244,8 +246,7 @@ static void cvt_x(struct format_state *state, struct spec *spec, va_list *arg)
 	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
 	state->prefix = alternate_form? PREFIX_LOWHEX: PREFIX_NONE;
 	uint64_t num = uarg(spec->data_size, arg);
-	state->body.size = utoa(state->buffer, num, 16, digits_lower);
-	int_precision(state, spec);
+	utoa(state, spec, num, 16, digits_lower);
 }
 
 static void cvt_X(struct format_state *state, struct spec *spec, va_list *arg)
@@ -253,8 +254,7 @@ static void cvt_X(struct format_state *state, struct spec *spec, va_list *arg)
 	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
 	state->prefix = alternate_form? PREFIX_UPHEX: PREFIX_NONE;
 	uint64_t num = uarg(spec->data_size, arg);
-	state->body.size = utoa(state->buffer, num, 16, digits_upper);
-	int_precision(state, spec);
+	utoa(state, spec, num, 16, digits_upper);
 }
 
 static void cvt_o(struct format_state *state, struct spec *spec, va_list *arg)
@@ -262,16 +262,14 @@ static void cvt_o(struct format_state *state, struct spec *spec, va_list *arg)
 	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
 	state->prefix = alternate_form? PREFIX_OCTAL: PREFIX_NONE;
 	uint64_t num = uarg(spec->data_size, arg);
-	state->body.size = utoa(state->buffer, num, 8, digits_lower);
-	int_precision(state, spec);
+	utoa(state, spec, num, 8, digits_lower);
 }
 
 static void cvt_p(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	state->prefix = PREFIX_LOWHEX;
 	uintptr_t num = va_arg(*arg, void*);
-	state->body.size = utoa(state->buffer, num, 16, digits_lower);
-	int_precision(state, spec);
+	utoa(state, spec, num, 16, digits_lower);
 }
 
 static void convert(struct format_state *state, va_list *arg)
@@ -495,6 +493,12 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%6.4d", 5), "  0005", size);
 	CHECK_STR(enfmt("%6.4d", -5), " -0005", size);
 	CHECK_STR(enfmt("%p %p", (void*)99, (void*)365), "0x63 0x16d", size);
+	CHECK_STR(enfmt("%40d", 99), "                                      99", size);
+	CHECK_STR(enfmt("%040d", 99), "0000000000000000000000000000000000000099", size);
+	CHECK_STR(enfmt("%40d", -99), "                                      -99", size);
+	CHECK_STR(enfmt("%040d", -99), "-0000000000000000000000000000000000000099", size);
+	CHECK_STR(enfmt("%.40d", 99), "0000000000000000000000000000000000000099", size);
+	CHECK_STR(enfmt("%.40d", -99), "-0000000000000000000000000000000000000099", size);
 }
 #endif
 
