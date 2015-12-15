@@ -12,7 +12,6 @@
 // ERRATA:
 // %s and %c ignore 'l' specifier; all strings are char*
 // floating-point conversions are not yet implemented
-// %p is not yet implemented
 // %n is not and will likely never be supported
 // integer conversions with precision=0 and value=0 produce "0", not ""
 
@@ -267,6 +266,14 @@ static void cvt_o(struct format_state *state, struct spec *spec, va_list *arg)
 	int_precision(state, spec);
 }
 
+static void cvt_p(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	state->prefix = PREFIX_LOWHEX;
+	uintptr_t num = va_arg(*arg, void*);
+	state->body.size = utoa(state->buffer, num, 16, digits_lower);
+	int_precision(state, spec);
+}
+
 static void convert(struct format_state *state, va_list *arg)
 {
 	// Skip the leading % character and parse the specifier body.
@@ -305,6 +312,7 @@ static void convert(struct format_state *state, va_list *arg)
 		case 'x': cvt_x(state, &spec, arg); break;
 		case 'X': cvt_X(state, &spec, arg); break;
 		case 'o': cvt_o(state, &spec, arg); break;
+		case 'p': cvt_p(state, &spec, arg); break;
 		case '%':
 		default: {
 			state->buffer[0] = specifier;
@@ -486,6 +494,7 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%06.5d", -5), "-00005", size);
 	CHECK_STR(enfmt("%6.4d", 5), "  0005", size);
 	CHECK_STR(enfmt("%6.4d", -5), " -0005", size);
+	CHECK_STR(enfmt("%p %p", (void*)99, (void*)365), "0x63 0x16d", size);
 }
 #endif
 
