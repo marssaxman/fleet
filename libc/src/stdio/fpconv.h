@@ -53,6 +53,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int _fpconv_dtoa(double fp, char dest[24]);
 
+int _fpconv_dtoa_exp(double fp, int precision, bool upper, char dest[24]);
+
+
 #endif
 
 /* [1] http://florian.loitsch.com/publications/dtoa-pldi2010.pdf */

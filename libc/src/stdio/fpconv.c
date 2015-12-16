@@ -3,6 +3,8 @@ The MIT License
 
 Copyright (c) 2013 Andreas Samoljuk
 
+The function _fpconv_dtoa_exp is copyright (c) 2015 Mars Saxman
+
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
 "Software"), to deal in the Software without restriction, including
@@ -22,6 +24,7 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
 
 #include <stdbool.h>
 #include <string.h>
@@ -354,4 +357,69 @@ int _fpconv_dtoa(double d, char dest[24])
     str_len += emit_digits(digits, ndigits, dest + str_len, K, neg);
 
     return str_len;
+}
+
+int _fpconv_dtoa_exp(double d, int precision, bool upper, char dest[24])
+{
+    char digits[18];
+
+    int str_len = 0;
+    bool neg = false;
+
+    if(get_dbits(d) & signmask) {
+        dest[0] = '-';
+        str_len++;
+        neg = true;
+    }
+
+    int spec = filter_special(d, dest + str_len);
+
+    if(spec) {
+        return str_len + spec;
+    }
+
+    int K = 0;
+    int ndigits = grisu2(d, digits, &K);
+
+	dest += str_len;
+
+    int exp = absv(K + ndigits - 1);
+
+    ndigits = minv(ndigits, 18 - neg);
+
+    int idx = 0;
+    dest[idx++] = digits[0];
+
+    if (ndigits > precision+1) {
+        ndigits = precision+1;
+    }
+    if(ndigits > 1) {
+	    dest[idx++] = '.';
+        memcpy(dest + idx, digits + 1, ndigits - 1);
+        idx += ndigits - 1;
+    }
+    dest[idx++] = upper? 'E': 'e';
+
+    char sign = K + ndigits - 1 < 0 ? '-' : '+';
+    dest[idx++] = sign;
+
+    int cent = 0;
+
+    if(exp > 99) {
+        cent = exp / 100;
+        dest[idx++] = cent + '0';
+        exp -= cent * 100;
+    }
+    if(exp > 9) {
+        int dec = exp / 10;
+        dest[idx++] = dec + '0';
+        exp -= dec * 10;
+
+    } else if(cent) {
+        dest[idx++] = '0';
+    }
+
+    dest[idx++] = exp % 10 + '0';
+
+    return str_len + idx;
 }

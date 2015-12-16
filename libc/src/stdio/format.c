@@ -12,7 +12,7 @@
 
 // ERRATA:
 // %s and %c ignore 'l' specifier; all strings are char*
-// %e, %E, %f, %F, %a, %A are not yet implemented
+// %f, %F, %a, %A are not yet implemented
 // %n is not and will likely never be supported
 
 #define MAX_PADDING 32
@@ -334,6 +334,18 @@ static void cvt_G(struct format_state *state, struct spec *spec, va_list *arg)
 	}
 }
 
+static void cvt_e(
+		struct format_state *state,
+		struct spec *spec,
+		bool upper,
+		va_list *arg)
+{
+	double num = va_arg(*arg, double);
+	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
+	state->body.size = _fpconv_dtoa_exp(num, precision, upper, state->buffer);
+	state->body.addr = state->buffer;
+}
+
 static void convert(struct format_state *state, va_list *arg)
 {
 	// Skip the leading % character and parse the specifier body.
@@ -362,6 +374,8 @@ static void convert(struct format_state *state, va_list *arg)
 		case 'p': cvt_p(state, &spec, arg); break;
 		case 'g': cvt_g(state, &spec, arg); break;
 		case 'G': cvt_G(state, &spec, arg); break;
+		case 'e': cvt_e(state, &spec, false, arg); break;
+		case 'E': cvt_e(state, &spec, true, arg); break;
 		case '%':
 		default: {
 			state->buffer[0] = spec.conversion;
@@ -576,6 +590,18 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%G", nan.f), "NAN", size);
 	CHECK_STR(enfmt("%g", -nan.f), "-nan", size);
 	CHECK_STR(enfmt("%G", -nan.f), "-NAN", size);
+	CHECK_STR(enfmt("%e", 100.0), "1e+2", size);
+	CHECK_STR(enfmt("%e", 1.5), "1.5e+0", size);
+	CHECK_STR(enfmt("%e", 10000.0), "1e+4", size);
+	CHECK_STR(enfmt("%e", 1010.9932), "1.010993e+3", size);
+	CHECK_STR(enfmt("%e", 1.0 / 3.0), "3.333333e-1", size);
+	CHECK_STR(enfmt("%12.4e", 1.0 / 3.0), "   3.3333e-1", size);
+	CHECK_STR(enfmt("%E", 100.0), "1E+2", size);
+	CHECK_STR(enfmt("%E", 1.5), "1.5E+0", size);
+	CHECK_STR(enfmt("%E", 10000.0), "1E+4", size);
+	CHECK_STR(enfmt("%E", 1010.9932), "1.010993E+3", size);
+	CHECK_STR(enfmt("%E", 1.0 / 3.0), "3.333333E-1", size);
+	CHECK_STR(enfmt("%12.4E", 1.0 / 3.0), "   3.3333E-1", size);
 }
 #endif
 
