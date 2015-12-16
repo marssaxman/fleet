@@ -8,10 +8,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include "fpconv.h"
 
 // ERRATA:
 // %s and %c ignore 'l' specifier; all strings are char*
-// floating-point conversions are not yet implemented
+// %e, %E, %g, %G, %a, %A are not yet implemented
+// %f and %F ignore precision
 // %n is not and will likely never be supported
 
 #define MAX_PADDING 32
@@ -177,7 +179,7 @@ static void cvt_s(struct format_state *state, struct spec *spec, va_list *arg)
 
 static void utoa(
 		struct format_state *state,
-		struct spec *spec,
+		const struct spec *spec,
 		uint64_t i,
 		int radix,
 		const char *digits)
@@ -284,6 +286,26 @@ static void cvt_p(struct format_state *state, struct spec *spec, va_list *arg)
 	utoa(state, spec, num, 16, digits_lower);
 }
 
+static void cvt_f(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	double num = va_arg(*arg, double);
+	state->body.size = _fpconv_dtoa(num, state->buffer);
+	state->body.addr = state->buffer;
+}
+
+static void cvt_F(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	double num = va_arg(*arg, double);
+	state->body.size = _fpconv_dtoa(num, state->buffer);
+	state->body.addr = state->buffer;
+	for (unsigned i = 0; i < state->body.size; ++i) {
+		char c = state->buffer[i];
+		if (c >= 'a' && c <= 'z') {
+			state->buffer[i] = c - 'a' + 'A';
+		}
+	}
+}
+
 static void convert(struct format_state *state, va_list *arg)
 {
 	// Skip the leading % character and parse the specifier body.
@@ -301,20 +323,7 @@ static void convert(struct format_state *state, va_list *arg)
 		spec.flags &= ~FLAG_SPACE_POSITIVE;
 	}
 
-	bool left_justify = spec.flags & FLAG_LEFT_JUSTIFY;
-	bool plus_for_positive = spec.flags & FLAG_PLUS_POSITIVE;
-	bool space_for_positive = spec.flags & FLAG_SPACE_POSITIVE;
-	bool alternate_form = spec.flags & FLAG_ALTERNATE_FORM;
-	bool pad_with_zero = spec.flags & FLAG_PAD_WITH_ZERO;
-	int minimum_width = spec.minimum_width;
-	bool has_precision = spec.flags & FLAG_HAS_PRECISION;
-	int precision = spec.precision;
-	int length = spec.data_size;
-	char specifier = spec.conversion;
-
-	state->body.addr = state->buffer;
-	state->body.size = 0;
-	switch (specifier) {
+	switch (spec.conversion) {
 		case 'c': cvt_c(state, &spec, arg); break;
 		case 's': cvt_s(state, &spec, arg); break;
 		case 'i':
@@ -323,9 +332,12 @@ static void convert(struct format_state *state, va_list *arg)
 		case 'X': cvt_X(state, &spec, arg); break;
 		case 'o': cvt_o(state, &spec, arg); break;
 		case 'p': cvt_p(state, &spec, arg); break;
+		case 'f': cvt_f(state, &spec, arg); break;
+		case 'F': cvt_F(state, &spec, arg); break;
 		case '%':
 		default: {
-			state->buffer[0] = specifier;
+			state->buffer[0] = spec.conversion;
+			state->body.addr = state->buffer;
 			state->body.size = 1;
 		} break;
 	}
@@ -341,8 +353,11 @@ static void convert(struct format_state *state, va_list *arg)
 
 	// If the text we've generated for this specifier is smaller than the
 	// minimum field width, pad it out with spaces.
+	int minimum_width = spec.minimum_width;
 	if (minimum_width > width) {
 		int padding = minimum_width - width;
+		bool left_justify = spec.flags & FLAG_LEFT_JUSTIFY;
+		bool pad_with_zero = spec.flags & FLAG_PAD_WITH_ZERO;
 		if (left_justify) {
 			state->trailing_spaces += padding;
 		} else if (pad_with_zero) {
@@ -514,6 +529,24 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("X%.0dX", 0), "XX", size);
 	CHECK_STR(enfmt("X%.*dX", 0, 0), "XX", size);
 	CHECK_STR(enfmt("X%.*dX", -2, 0), "X0X", size);
+	CHECK_STR(enfmt("%f", 1.5), "1.5", size);
+	CHECK_STR(enfmt("%f", 10000.0), "10000", size);
+	CHECK_STR(enfmt("%f", 1010.9932), "1010.9932", size);
+	CHECK_STR(enfmt("%f", 1.0 / 3.0), "0.3333333333333333", size);
+	union {
+		float f;
+		uint32_t u;
+	} inf;
+	inf.u = 0x7F800000;
+	CHECK_STR(enfmt("%f", inf.f), "inf", size);
+	CHECK_STR(enfmt("%F", inf.f), "INF", size);
+	union {
+		float f;
+		uint32_t u;
+	} nan;
+	nan.u = 0x7FFFFFFF;
+	CHECK_STR(enfmt("%f", nan.f), "nan", size);
+	CHECK_STR(enfmt("%F", nan.f), "NAN", size);
 }
 #endif
 
