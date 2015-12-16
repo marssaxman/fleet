@@ -295,13 +295,13 @@ static void cvt_f(struct format_state *state, struct spec *spec, va_list *arg)
 
 static void cvt_F(struct format_state *state, struct spec *spec, va_list *arg)
 {
-	double num = va_arg(*arg, double);
-	state->body.size = _fpconv_dtoa(num, state->buffer);
-	state->body.addr = state->buffer;
-	for (unsigned i = 0; i < state->body.size; ++i) {
-		char c = state->buffer[i];
+	cvt_f(state, spec, arg);
+	// If the result was "inf", "-inf", "nan", or "-nan", convert to uppercase.
+	char *buf = state->buffer;
+	for (unsigned i = 0; i < 4; ++i) {
+		char c = buf[i];
 		if (c >= 'a' && c <= 'z') {
-			state->buffer[i] = c - 'a' + 'A';
+			buf[i] = c - 'a' + 'A';
 		}
 	}
 }
@@ -533,20 +533,21 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%f", 10000.0), "10000", size);
 	CHECK_STR(enfmt("%f", 1010.9932), "1010.9932", size);
 	CHECK_STR(enfmt("%f", 1.0 / 3.0), "0.3333333333333333", size);
-	union {
+	union hackfloat {
 		float f;
 		uint32_t u;
 	} inf;
 	inf.u = 0x7F800000;
 	CHECK_STR(enfmt("%f", inf.f), "inf", size);
 	CHECK_STR(enfmt("%F", inf.f), "INF", size);
-	union {
-		float f;
-		uint32_t u;
-	} nan;
+	CHECK_STR(enfmt("%f", -inf.f), "-inf", size);
+	CHECK_STR(enfmt("%F", -inf.f), "-INF", size);
+	union hackfloat nan;
 	nan.u = 0x7FFFFFFF;
 	CHECK_STR(enfmt("%f", nan.f), "nan", size);
 	CHECK_STR(enfmt("%F", nan.f), "NAN", size);
+	CHECK_STR(enfmt("%f", -nan.f), "-nan", size);
+	CHECK_STR(enfmt("%F", -nan.f), "-NAN", size);
 }
 #endif
 
