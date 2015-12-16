@@ -12,8 +12,7 @@
 
 // ERRATA:
 // %s and %c ignore 'l' specifier; all strings are char*
-// %e, %E, %g, %G, %a, %A are not yet implemented
-// %f and %F ignore precision
+// %e, %E, %f, %F, %a, %A are not yet implemented
 // %n is not and will likely never be supported
 
 #define MAX_PADDING 32
@@ -286,16 +285,45 @@ static void cvt_p(struct format_state *state, struct spec *spec, va_list *arg)
 	utoa(state, spec, num, 16, digits_lower);
 }
 
-static void cvt_f(struct format_state *state, struct spec *spec, va_list *arg)
+static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	double num = va_arg(*arg, double);
 	state->body.size = _fpconv_dtoa(num, state->buffer);
 	state->body.addr = state->buffer;
+	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
+	// Make sure we don't print more than the specified number of digits after
+	// the decimal point, if there is a decimal point.
+	char *s = state->buffer;
+	char *end = s + state->body.size;
+	// Look for the decimal point.
+	while (s != end && '.' != *s) {
+		++s;
+	}
+	if (s != end && '.' == *s) {
+		++s;
+		// Count off digits following the decimal point until we have used up the
+		// specified precision.
+		while (s != end && '0' <= *s && *s <= '9' && precision > 0) {
+			++s;
+			--precision;
+		}
+		// Trim any further digits from the output.
+		char *d = s;
+		while (s != end && '0' <= *s && *s <= '9') {
+			++s;
+		}
+		// Copy an exponent, if present, back over the characters that we are
+		// trimming from the output, then shorten the chunk size to fit.
+		while (s != end) {
+			*d++ = *s++;
+		}
+		state->body.size = d - state->buffer;
+	}
 }
 
-static void cvt_F(struct format_state *state, struct spec *spec, va_list *arg)
+static void cvt_G(struct format_state *state, struct spec *spec, va_list *arg)
 {
-	cvt_f(state, spec, arg);
+	cvt_g(state, spec, arg);
 	// If the result was "inf", "-inf", "nan", or "-nan", convert to uppercase.
 	char *buf = state->buffer;
 	for (unsigned i = 0; i < 4; ++i) {
@@ -332,8 +360,8 @@ static void convert(struct format_state *state, va_list *arg)
 		case 'X': cvt_X(state, &spec, arg); break;
 		case 'o': cvt_o(state, &spec, arg); break;
 		case 'p': cvt_p(state, &spec, arg); break;
-		case 'f': cvt_f(state, &spec, arg); break;
-		case 'F': cvt_F(state, &spec, arg); break;
+		case 'g': cvt_g(state, &spec, arg); break;
+		case 'G': cvt_G(state, &spec, arg); break;
 		case '%':
 		default: {
 			state->buffer[0] = spec.conversion;
@@ -529,25 +557,25 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("X%.0dX", 0), "XX", size);
 	CHECK_STR(enfmt("X%.*dX", 0, 0), "XX", size);
 	CHECK_STR(enfmt("X%.*dX", -2, 0), "X0X", size);
-	CHECK_STR(enfmt("%f", 1.5), "1.5", size);
-	CHECK_STR(enfmt("%f", 10000.0), "10000", size);
-	CHECK_STR(enfmt("%f", 1010.9932), "1010.9932", size);
-	CHECK_STR(enfmt("%f", 1.0 / 3.0), "0.3333333333333333", size);
+	CHECK_STR(enfmt("%g", 1.5), "1.5", size);
+	CHECK_STR(enfmt("%g", 10000.0), "10000", size);
+	CHECK_STR(enfmt("%g", 1010.9932), "1010.9932", size);
+	CHECK_STR(enfmt("%g", 1.0 / 3.0), "0.333333", size);
 	union hackfloat {
 		float f;
 		uint32_t u;
 	} inf;
 	inf.u = 0x7F800000;
-	CHECK_STR(enfmt("%f", inf.f), "inf", size);
-	CHECK_STR(enfmt("%F", inf.f), "INF", size);
-	CHECK_STR(enfmt("%f", -inf.f), "-inf", size);
-	CHECK_STR(enfmt("%F", -inf.f), "-INF", size);
+	CHECK_STR(enfmt("%g", inf.f), "inf", size);
+	CHECK_STR(enfmt("%G", inf.f), "INF", size);
+	CHECK_STR(enfmt("%g", -inf.f), "-inf", size);
+	CHECK_STR(enfmt("%G", -inf.f), "-INF", size);
 	union hackfloat nan;
 	nan.u = 0x7FFFFFFF;
-	CHECK_STR(enfmt("%f", nan.f), "nan", size);
-	CHECK_STR(enfmt("%F", nan.f), "NAN", size);
-	CHECK_STR(enfmt("%f", -nan.f), "-nan", size);
-	CHECK_STR(enfmt("%F", -nan.f), "-NAN", size);
+	CHECK_STR(enfmt("%g", nan.f), "nan", size);
+	CHECK_STR(enfmt("%G", nan.f), "NAN", size);
+	CHECK_STR(enfmt("%g", -nan.f), "-nan", size);
+	CHECK_STR(enfmt("%G", -nan.f), "-NAN", size);
 }
 #endif
 
