@@ -47,7 +47,8 @@ enum flags {
 	FLAG_SPACE_POSITIVE = 0x04,
 	FLAG_ALTERNATE_FORM = 0x08,
 	FLAG_PAD_WITH_ZERO = 0x10,
-	FLAG_HAS_PRECISION = 0x20
+	FLAG_HAS_PRECISION = 0x20,
+	FLAG_UPPERCASE = 0x40,
 };
 
 struct spec {
@@ -149,6 +150,10 @@ static const char *parse(const char *fmt, va_list *arg, struct spec *spec)
 
 	// The last remaining character is the conversion specifier.
 	spec->conversion = *fmt++;
+
+	if (spec->conversion >= 'A' && spec->conversion <= 'Z') {
+		spec->flags |= FLAG_UPPERCASE;
+	}
 
 	return fmt;
 }
@@ -256,18 +261,14 @@ static void cvt_d(struct format_state *state, struct spec *spec, va_list *arg)
 
 static void cvt_x(struct format_state *state, struct spec *spec, va_list *arg)
 {
-	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
-	state->prefix = alternate_form? PREFIX_LOWHEX: PREFIX_NONE;
+	bool upper = spec->flags & FLAG_UPPERCASE;
+	if (spec->flags & FLAG_ALTERNATE_FORM) {
+		state->prefix = upper? PREFIX_UPHEX: PREFIX_LOWHEX;
+	} else {
+		state->prefix = PREFIX_NONE;
+	}
 	uint64_t num = uarg(spec->data_size, arg);
-	utoa(state, spec, num, 16, digits_lower);
-}
-
-static void cvt_X(struct format_state *state, struct spec *spec, va_list *arg)
-{
-	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
-	state->prefix = alternate_form? PREFIX_UPHEX: PREFIX_NONE;
-	uint64_t num = uarg(spec->data_size, arg);
-	utoa(state, spec, num, 16, digits_upper);
+	utoa(state, spec, num, 16, upper? digits_upper: digits_lower);
 }
 
 static void cvt_o(struct format_state *state, struct spec *spec, va_list *arg)
@@ -301,8 +302,8 @@ static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 	}
 	if (s != end && '.' == *s) {
 		++s;
-		// Count off digits following the decimal point until we have used up the
-		// specified precision.
+		// Count off digits following the decimal point until we have used up
+		// the specified precision.
 		while (s != end && '0' <= *s && *s <= '9' && precision > 0) {
 			++s;
 			--precision;
@@ -319,27 +320,21 @@ static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 		}
 		state->body.size = d - state->buffer;
 	}
-}
-
-static void cvt_G(struct format_state *state, struct spec *spec, va_list *arg)
-{
-	cvt_g(state, spec, arg);
-	// If the result was "inf", "-inf", "nan", or "-nan", convert to uppercase.
-	char *buf = state->buffer;
-	for (unsigned i = 0; i < state->body.size; ++i) {
-		char c = buf[i];
-		if (c >= 'a' && c <= 'z') {
-			buf[i] = c - 'a' + 'A';
+	if (spec->flags & FLAG_UPPERCASE) {
+		// Convert any lowercase alphabet characters in the output to uppercase.
+		char *buf = state->buffer;
+		for (unsigned i = 0; i < state->body.size; ++i) {
+			char c = buf[i];
+			if (c >= 'a' && c <= 'z') {
+				buf[i] = c - 'a' + 'A';
+			}
 		}
 	}
 }
 
-static void cvt_e(
-		struct format_state *state,
-		struct spec *spec,
-		bool upper,
-		va_list *arg)
+static void cvt_e(struct format_state *state, struct spec *spec, va_list *arg)
 {
+	bool upper = spec->flags & FLAG_UPPERCASE;
 	double num = va_arg(*arg, double);
 	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
 	state->body.size = _fpconv_dtoa_exp(num, precision, upper, state->buffer);
@@ -368,14 +363,14 @@ static void convert(struct format_state *state, va_list *arg)
 		case 's': cvt_s(state, &spec, arg); break;
 		case 'i':
 		case 'd': cvt_d(state, &spec, arg); break;
-		case 'x': cvt_x(state, &spec, arg); break;
-		case 'X': cvt_X(state, &spec, arg); break;
+		case 'x':
+		case 'X': cvt_x(state, &spec, arg); break;
 		case 'o': cvt_o(state, &spec, arg); break;
 		case 'p': cvt_p(state, &spec, arg); break;
-		case 'g': cvt_g(state, &spec, arg); break;
-		case 'G': cvt_G(state, &spec, arg); break;
-		case 'e': cvt_e(state, &spec, false, arg); break;
-		case 'E': cvt_e(state, &spec, true, arg); break;
+		case 'g':
+		case 'G': cvt_g(state, &spec, arg); break;
+		case 'e':
+		case 'E': cvt_e(state, &spec, arg); break;
 		case '%':
 		default: {
 			state->buffer[0] = spec.conversion;
