@@ -326,7 +326,7 @@ static void cvt_G(struct format_state *state, struct spec *spec, va_list *arg)
 	cvt_g(state, spec, arg);
 	// If the result was "inf", "-inf", "nan", or "-nan", convert to uppercase.
 	char *buf = state->buffer;
-	for (unsigned i = 0; i < 4; ++i) {
+	for (unsigned i = 0; i < state->body.size; ++i) {
 		char c = buf[i];
 		if (c >= 'a' && c <= 'z') {
 			buf[i] = c - 'a' + 'A';
