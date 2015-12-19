@@ -785,6 +785,18 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%E", 1010.9932), "1.010993E+03", size);
 	CHECK_STR(enfmt("%E", 1.0 / 3.0), "3.333333E-01", size);
 	CHECK_STR(enfmt("%12.4E", 1.0 / 3.0), "  3.3333E-01", size);
+	CHECK_STR(enfmt("%g", 0.99999999999999), "1", size);
+	CHECK_STR(enfmt("%g", 1.9999999999999), "2", size);
+	CHECK_STR(enfmt("%g", 999999999999999.0), "1e+15", size);
+	CHECK_STR(enfmt("%g", 19999999999999.0), "2e+13", size);
+	CHECK_STR(enfmt("%e", 0.99999999999999), "1.000000e+00", size);
+	CHECK_STR(enfmt("%e", 1.9999999999999), "2.000000e+00", size);
+	CHECK_STR(enfmt("%e", 999999999999999.0), "1.000000e+15", size);
+	CHECK_STR(enfmt("%e", 19999999999999.0), "2.000000e+13", size);
+	CHECK_STR(enfmt("%f", 0.99999999999999), "1.000000", size);
+	CHECK_STR(enfmt("%f", 1.9999999999999), "2.000000", size);
+	CHECK_STR(enfmt("%f", 999999999999999.0), "999999999999999.000000", size);
+	CHECK_STR(enfmt("%f", 19999999999999.0), "19999999999999.000000", size);
 	// 3.666482e-13
 	CHECK_STR(enfmt("f %f", 0x3d59ccf240000000), "f 0.000000", size);
 	CHECK_STR(enfmt("e %e", 0x3d59ccf240000000), "e 3.666482e-13", size);
