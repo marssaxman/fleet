@@ -320,11 +320,12 @@ bool dtoa(struct format_state *state, struct spec *spec, double d, int *K)
 	if ((du.u & expmask) != expmask) {
 		state->body.size = _fpconv_grisu2(d, state->buffer, K);
 		done = false;
-	} else if (du.u & fracmask) {
-		memcpy(state->buffer, spec->flags & FLAG_UPPERCASE? "NAN": "nan", 3);
-		state->body.size = 3;
 	} else {
-		memcpy(state->buffer, spec->flags & FLAG_UPPERCASE? "INF": "inf", 3);
+		const char *msg = (du.u & fracmask)? "nanNAN": "infINF";
+		if (spec->flags & FLAG_UPPERCASE) {
+			msg += 3;
+		}
+		memcpy(state->buffer, msg, 3);
 		state->body.size = 3;
 	}
 	return done;
