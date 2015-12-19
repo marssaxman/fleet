@@ -303,7 +303,7 @@ static void cvt_p(struct format_state *state, struct spec *spec, va_list *arg)
 	utoa(state, spec, num, 16, digits_lower);
 }
 
-bool dtoa(struct format_state *state, struct spec *spec, double d, int *K)
+bool dtoa(struct format_state *state, struct spec *spec, double d, int *exp)
 {
 	// Handle special values NAN, INF, and -INF, returning done (true).
 	// Otherwise, use grisu2 to convert d into decimal, using the state
@@ -318,7 +318,9 @@ bool dtoa(struct format_state *state, struct spec *spec, double d, int *K)
 	state->body.addr = state->buffer;
 	bool done = true;
 	if ((du.u & expmask) != expmask) {
-		state->body.size = _fpconv_grisu2(d, state->buffer, K);
+		int K = 0;
+		state->body.size = _fpconv_grisu2(d, state->buffer, &K);
+		*exp = K + state->body.size - 1;
 		done = false;
 	} else {
 		const char *msg = (du.u & fracmask)? "nanNAN": "infINF";
@@ -440,10 +442,9 @@ static void emit_e(struct format_state *state, struct spec *spec, int exp)
 static void cvt_e(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	double num = va_arg(*arg, double);
-	int K = 0;
-	if (dtoa(state, spec, num, &K)) return;
+	int exp = 0;
+	if (dtoa(state, spec, num, &exp)) return;
 	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
-	int exp = K + state->body.size - 1;
 	if (set_sigfigs(state, precision + 1)) {
 		++exp;
 	}
@@ -512,9 +513,8 @@ static void emit_f(
 static void cvt_f(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	double num = va_arg(*arg, double);
-	int K = 0;
-	if (dtoa(state, spec, num, &K)) return;
-    int exp = K + state->body.size - 1;
+	int exp = 0;
+	if (dtoa(state, spec, num, &exp)) return;
 	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
 	emit_f(state, spec, exp, precision);
 }
@@ -522,9 +522,8 @@ static void cvt_f(struct format_state *state, struct spec *spec, va_list *arg)
 static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	double num = va_arg(*arg, double);
-	int K = 0;
-	if (dtoa(state, spec, num, &K)) return;
-    int exp = K + state->body.size - 1;
+	int exp = 0;
+	if (dtoa(state, spec, num, &exp)) return;
 	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
 	if (precision < 1) {
 		precision = 1;
