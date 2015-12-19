@@ -181,6 +181,18 @@ static void cvt_s(struct format_state *state, struct spec *spec, va_list *arg)
 	}
 }
 
+static void sign_prefix(
+		struct format_state *state, const struct spec *spec, bool negative)
+{
+	if (negative) {
+		state->prefix = PREFIX_MINUS;
+	} else if (spec->flags & FLAG_PLUS_POSITIVE) {
+		state->prefix = PREFIX_PLUS;
+	} else if (spec->flags & FLAG_SPACE_POSITIVE) {
+		state->prefix = PREFIX_SPACE;
+	}
+}
+
 static void utoa(
 		struct format_state *state,
 		const struct spec *spec,
@@ -248,13 +260,9 @@ static uint64_t uarg(size_t s, va_list *arg)
 static void cvt_d(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	int64_t num = iarg(spec->data_size, arg);
+	sign_prefix(state, spec, num < 0);
 	if (num < 0) {
 		num = -num;
-		state->prefix = PREFIX_MINUS;
-	} else if (spec->flags & FLAG_PLUS_POSITIVE) {
-		state->prefix = PREFIX_PLUS;
-	} else if (spec->flags & FLAG_SPACE_POSITIVE) {
-		state->prefix = PREFIX_SPACE;
 	}
 	utoa(state, spec, num, 10, digits_lower);
 }
@@ -286,6 +294,33 @@ static void cvt_p(struct format_state *state, struct spec *spec, va_list *arg)
 	utoa(state, spec, num, 16, digits_lower);
 }
 
+bool dtoa(struct format_state *state, struct spec *spec, double d, int *K)
+{
+	// Handle special values NAN, INF, and -INF, returning false.
+	// Otherwise, use grisu2 to convert d into decimal, using the state
+	// buffer. Pass the order value into parameter K and return true.
+	union { double d; uint64_t u; } du;
+	du.d = d;
+	const uint64_t fracmask = 0x000FFFFFFFFFFFFFLLU;
+	const uint64_t expmask = 0x7FF0000000000000LLU;
+	const uint64_t hiddenbit = 0x0010000000000000LLU;
+	const uint64_t signmask = 0x8000000000000000LLU;
+	sign_prefix(state, spec, du.u & signmask);
+	state->body.addr = state->buffer;
+	bool digits = false;
+	if ((du.u & expmask) != expmask) {
+		state->body.size = _fpconv_grisu2(d, state->buffer, K);
+		digits = true;
+	} else if (du.u & fracmask != 0) {
+		memcpy(state->buffer, spec->flags & FLAG_UPPERCASE? "NAN": "nan", 3);
+		state->body.size = 3;
+	} else {
+		memcpy(state->buffer, spec->flags & FLAG_UPPERCASE? "INF": "inf", 3);
+		state->body.size = 3;
+	}
+	return digits;
+}
+
 static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	double num = va_arg(*arg, double);
@@ -304,7 +339,7 @@ static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 		++s;
 		// Count off digits following the decimal point until we have used up
 		// the specified precision.
-		while (s != end && '0' <= *s && *s <= '9' && precision > 0) {
+		while (s != end && '0' <= *s && *s <= '9' && precision > 1) {
 			++s;
 			--precision;
 		}
@@ -334,11 +369,56 @@ static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 
 static void cvt_e(struct format_state *state, struct spec *spec, va_list *arg)
 {
-	bool upper = spec->flags & FLAG_UPPERCASE;
 	double num = va_arg(*arg, double);
-	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
-	state->body.size = _fpconv_dtoa_exp(num, precision, upper, state->buffer);
-	state->body.addr = state->buffer;
+	int K = 0;
+	if (dtoa(state, spec, num, &K)) {
+	    int exp = K + state->body.size - 1;
+		// For %e, precision controls the number of digits following the
+		// decimal point, and alternate representation determines whether we
+		// will print a decimal point if precision is < 2.
+		int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
+		int desired_len = precision + 1;
+		// If the value printed was too short, add some zeros until we build
+		// up to the requested number of digits.
+		while (state->body.size < desired_len) {
+			state->buffer[state->body.size++] = '0';
+		}
+		// If the value is too long, round trailing digits until we have cut
+		// the number down to the requested precision.
+		while (state->body.size > desired_len) {
+			char c = state->buffer[--state->body.size];
+			if (c >= '5') {
+				// round up
+				int val = state->buffer[state->body.size - 1] - '0';
+				val = (val < 9)? val + 1: val;
+				state->buffer[state->body.size - 1] = val + '0';
+			}
+		}
+		// Insert a decimal point after the first digit.
+		if (desired_len > 1 || spec->flags & FLAG_ALTERNATE_FORM) {
+			memmove(state->buffer + 2, state->buffer+1, precision);
+			state->buffer[1] = '.';
+			++state->body.size;
+		}
+		// Suffix with the exponent, which must always be at least 2 digits
+		// and may never be more than 4 digits long. From the standard:
+		// "The exponent always contains at least two digits, and only as many
+		// more digits as necessary to represent the exponent."
+		bool upper = spec->flags & FLAG_UPPERCASE;
+		state->buffer[state->body.size++] = upper? 'E': 'e';
+		state->buffer[state->body.size++] = (exp >= 0)? '+': '-';
+		if (exp < 0) {
+			exp = -exp;
+		}
+		if (exp >= 1000) {
+			state->buffer[state->body.size++] = (exp / 1000) % 10 + '0';
+		}
+		if (exp >= 100) {
+			state->buffer[state->body.size++] = (exp / 100) % 10 + '0';
+		}
+		state->buffer[state->body.size++] = (exp / 10) % 10 + '0';
+		state->buffer[state->body.size++] = (exp / 1) % 10 + '0';
+	}
 }
 
 static void convert(struct format_state *state, va_list *arg)
@@ -585,18 +665,114 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%G", nan.f), "NAN", size);
 	CHECK_STR(enfmt("%g", -nan.f), "-nan", size);
 	CHECK_STR(enfmt("%G", -nan.f), "-NAN", size);
-	CHECK_STR(enfmt("%e", 100.0), "1e+2", size);
-	CHECK_STR(enfmt("%e", 1.5), "1.5e+0", size);
-	CHECK_STR(enfmt("%e", 10000.0), "1e+4", size);
-	CHECK_STR(enfmt("%e", 1010.9932), "1.010993e+3", size);
-	CHECK_STR(enfmt("%e", 1.0 / 3.0), "3.333333e-1", size);
-	CHECK_STR(enfmt("%12.4e", 1.0 / 3.0), "   3.3333e-1", size);
-	CHECK_STR(enfmt("%E", 100.0), "1E+2", size);
-	CHECK_STR(enfmt("%E", 1.5), "1.5E+0", size);
-	CHECK_STR(enfmt("%E", 10000.0), "1E+4", size);
-	CHECK_STR(enfmt("%E", 1010.9932), "1.010993E+3", size);
-	CHECK_STR(enfmt("%E", 1.0 / 3.0), "3.333333E-1", size);
-	CHECK_STR(enfmt("%12.4E", 1.0 / 3.0), "   3.3333E-1", size);
+	CHECK_STR(enfmt("%e", 100.0), "1.000000e+02", size);
+	CHECK_STR(enfmt("%e", 1.5), "1.500000e+00", size);
+	CHECK_STR(enfmt("%e", 10000.0), "1.000000e+04", size);
+	CHECK_STR(enfmt("%e", 1010.9932), "1.010993e+03", size);
+	CHECK_STR(enfmt("%e", 1.0 / 3.0), "3.333333e-01", size);
+	CHECK_STR(enfmt("%12.4e", 1.0 / 3.0), "  3.3333e-01", size);
+	CHECK_STR(enfmt("%E", 100.0), "1.000000E+02", size);
+	CHECK_STR(enfmt("%E", 1.5), "1.500000E+00", size);
+	CHECK_STR(enfmt("%.0E", 10000.0), "1E+04", size);
+	CHECK_STR(enfmt("%E", 1010.9932), "1.010993E+03", size);
+	CHECK_STR(enfmt("%E", 1.0 / 3.0), "3.333333E-01", size);
+	CHECK_STR(enfmt("%12.4E", 1.0 / 3.0), "  3.3333E-01", size);
+	// 3.666482e-13
+	CHECK_STR(enfmt("f %f", 0x3d59ccf240000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3d59ccf240000000), "e 3.666482e-13", size);
+	CHECK_STR(enfmt("g %g", 0x3d59ccf240000000), "g 3.66648e-13", size);
+	// 2.083897e-35
+	CHECK_STR(enfmt("f %f", 0x38bbb32240000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x38bbb32240000000), "e 2.083897e-35", size);
+	CHECK_STR(enfmt("g %g", 0x38bbb32240000000), "g 2.0839e-35", size);
+	// 2.058279e-16
+	CHECK_STR(enfmt("f %f", 0x3cada9b5c0000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3cada9b5c0000000), "e 2.058279e-16", size);
+	CHECK_STR(enfmt("g %g", 0x3cada9b5c0000000), "g 2.05828e-16", size);
+	// 3.190765e+37
+	CHECK_STR(enfmt("f %f", 0x47b8013060000000), "f 31907645357261092426876658391338450944.000000", size);
+	CHECK_STR(enfmt("e %e", 0x47b8013060000000), "e 3.190765e+37", size);
+	CHECK_STR(enfmt("g %g", 0x47b8013060000000), "g 3.19076e+37", size);
+	// 3.269213e+06
+	CHECK_STR(enfmt("f %f", 0x4148f12e60000000), "f 3269212.750000", size);
+	CHECK_STR(enfmt("e %e", 0x4148f12e60000000), "e 3.269213e+06", size);
+	CHECK_STR(enfmt("g %g", 0x4148f12e60000000), "g 3.26921e+06", size);
+	// 7.271168e+01
+	CHECK_STR(enfmt("f %f", 0x40522d8c20000000), "f 72.711678", size);
+	CHECK_STR(enfmt("e %e", 0x40522d8c20000000), "e 7.271168e+01", size);
+	CHECK_STR(enfmt("g %g", 0x40522d8c20000000), "g 72.7117", size);
+	// 1.036129e-35
+	CHECK_STR(enfmt("f %f", 0x38ab8b86c0000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x38ab8b86c0000000), "e 1.036129e-35", size);
+	CHECK_STR(enfmt("g %g", 0x38ab8b86c0000000), "g 1.03613e-35", size);
+	// 7.454966e+14
+	CHECK_STR(enfmt("f %f", 0x43053033a0000000), "f 745496599592960.000000", size);
+	CHECK_STR(enfmt("e %e", 0x43053033a0000000), "e 7.454966e+14", size);
+	CHECK_STR(enfmt("g %g", 0x43053033a0000000), "g 7.45497e+14", size);
+	// 1.131185e+21
+	CHECK_STR(enfmt("f %f", 0x444ea92c40000000), "f 1131185021742831632384.000000", size);
+	CHECK_STR(enfmt("e %e", 0x444ea92c40000000), "e 1.131185e+21", size);
+	CHECK_STR(enfmt("g %g", 0x444ea92c40000000), "g 1.13119e+21", size);
+	// 9.210065e-11
+	CHECK_STR(enfmt("f %f", 0x3dd95101c0000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3dd95101c0000000), "e 9.210065e-11", size);
+	CHECK_STR(enfmt("g %g", 0x3dd95101c0000000), "g 9.21006e-11", size);
+	// 2.112093e-13
+	CHECK_STR(enfmt("f %f", 0x3d4db99e40000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3d4db99e40000000), "e 2.112093e-13", size);
+	CHECK_STR(enfmt("g %g", 0x3d4db99e40000000), "g 2.11209e-13", size);
+	// 5.350548e+00
+	CHECK_STR(enfmt("f %f", 0x401566f600000000), "f 5.350548", size);
+	CHECK_STR(enfmt("e %e", 0x401566f600000000), "e 5.350548e+00", size);
+	CHECK_STR(enfmt("g %g", 0x401566f600000000), "g 5.35055", size);
+	// 2.837902e-27
+	CHECK_STR(enfmt("f %f", 0x3a6c1aefe0000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3a6c1aefe0000000), "e 2.837902e-27", size);
+	CHECK_STR(enfmt("g %g", 0x3a6c1aefe0000000), "g 2.8379e-27", size);
+	// 3.311628e-39
+	CHECK_STR(enfmt("f %f", 0x37f207bc80000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x37f207bc80000000), "e 3.311628e-39", size);
+	CHECK_STR(enfmt("g %g", 0x37f207bc80000000), "g 3.31163e-39", size);
+	// 1.420224e+13
+	CHECK_STR(enfmt("f %f", 0x42a9d56e60000000), "f 14202235256832.000000", size);
+	CHECK_STR(enfmt("e %e", 0x42a9d56e60000000), "e 1.420224e+13", size);
+	CHECK_STR(enfmt("g %g", 0x42a9d56e60000000), "g 1.42022e+13", size);
+	// 8.922247e+00
+	CHECK_STR(enfmt("f %f", 0x4021d830c0000000), "f 8.922247", size);
+	CHECK_STR(enfmt("e %e", 0x4021d830c0000000), "e 8.922247e+00", size);
+	CHECK_STR(enfmt("g %g", 0x4021d830c0000000), "g 8.92225", size);
+	// 5.889534e+20
+	CHECK_STR(enfmt("f %f", 0x443fed5ee0000000), "f 588953421010400444416.000000", size);
+	CHECK_STR(enfmt("e %e", 0x443fed5ee0000000), "e 5.889534e+20", size);
+	CHECK_STR(enfmt("g %g", 0x443fed5ee0000000), "g 5.88953e+20", size);
+	// 1.207875e+29
+	CHECK_STR(enfmt("f %f", 0x45f8649160000000), "f 120787509307219067864612864000.000000", size);
+	CHECK_STR(enfmt("e %e", 0x45f8649160000000), "e 1.207875e+29", size);
+	CHECK_STR(enfmt("g %g", 0x45f8649160000000), "g 1.20788e+29", size);
+	// 7.604723e-38
+	CHECK_STR(enfmt("f %f", 0x3839e0a5e0000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3839e0a5e0000000), "e 7.604723e-38", size);
+	CHECK_STR(enfmt("g %g", 0x3839e0a5e0000000), "g 7.60472e-38", size);
+	// 8.140378e-30
+	CHECK_STR(enfmt("f %f", 0x39e4a36840000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x39e4a36840000000), "e 8.140378e-30", size);
+	CHECK_STR(enfmt("g %g", 0x39e4a36840000000), "g 8.14038e-30", size);
+	// 2.872209e-13
+	CHECK_STR(enfmt("f %f", 0x3d54361c80000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3d54361c80000000), "e 2.872209e-13", size);
+	CHECK_STR(enfmt("g %g", 0x3d54361c80000000), "g 2.87221e-13", size);
+	// 1.760535e-09
+	CHECK_STR(enfmt("f %f", 0x3e1e3eeaa0000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3e1e3eeaa0000000), "e 1.760535e-09", size);
+	CHECK_STR(enfmt("g %g", 0x3e1e3eeaa0000000), "g 1.76054e-09", size);
+	// 5.901336e-18
+	CHECK_STR(enfmt("f %f", 0x3c5b371140000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3c5b371140000000), "e 5.901336e-18", size);
+	CHECK_STR(enfmt("g %g", 0x3c5b371140000000), "g 5.90134e-18", size);
+	// 1.809661e-26
+	CHECK_STR(enfmt("f %f", 0x3a96670b20000000), "f 0.000000", size);
+	CHECK_STR(enfmt("e %e", 0x3a96670b20000000), "e 1.809661e-26", size);
+	CHECK_STR(enfmt("g %g", 0x3a96670b20000000), "g 1.80966e-26", size);
 }
 #endif
 
