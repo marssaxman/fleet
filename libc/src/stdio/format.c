@@ -12,7 +12,7 @@
 
 // ERRATA:
 // %s and %c ignore 'l' specifier; all strings are char*
-// %f, %F, %a, %A are not yet implemented
+// %a and %A are not yet implemented
 // %n is not and will likely never be supported
 
 #define MAX_PADDING 32
@@ -57,6 +57,7 @@ enum flags {
 	FLAG_PAD_WITH_ZERO = 0x10,
 	FLAG_HAS_PRECISION = 0x20,
 	FLAG_UPPERCASE = 0x40,
+	FLAG_TRIM_ZEROS = 0x80,
 };
 
 struct spec {
@@ -330,52 +331,6 @@ bool dtoa(struct format_state *state, struct spec *spec, double d, int *K)
 	return done;
 }
 
-static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
-{
-	double num = va_arg(*arg, double);
-	state->body.size = _fpconv_dtoa(num, state->buffer);
-	state->body.addr = state->buffer;
-	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
-	// Make sure we don't print more than the specified number of digits after
-	// the decimal point, if there is a decimal point.
-	char *s = state->buffer;
-	char *end = s + state->body.size;
-	// Look for the decimal point.
-	while (s != end && '.' != *s) {
-		++s;
-	}
-	if (s != end && '.' == *s) {
-		++s;
-		// Count off digits following the decimal point until we have used up
-		// the specified precision.
-		while (s != end && '0' <= *s && *s <= '9' && precision > 1) {
-			++s;
-			--precision;
-		}
-		// Trim any further digits from the output.
-		char *d = s;
-		while (s != end && '0' <= *s && *s <= '9') {
-			++s;
-		}
-		// Copy an exponent, if present, back over the characters that we are
-		// trimming from the output, then shorten the chunk size to fit.
-		while (s != end) {
-			*d++ = *s++;
-		}
-		state->body.size = d - state->buffer;
-	}
-	if (spec->flags & FLAG_UPPERCASE) {
-		// Convert any lowercase alphabet characters in the output to uppercase.
-		char *buf = state->buffer;
-		for (unsigned i = 0; i < state->body.size; ++i) {
-			char c = buf[i];
-			if (c >= 'a' && c <= 'z') {
-				buf[i] = c - 'a' + 'A';
-			}
-		}
-	}
-}
-
 static void adjust_precision(struct format_state *state, int off, int prec)
 {
 	int desired_len = prec + 1 + off;
@@ -397,22 +352,33 @@ static void adjust_precision(struct format_state *state, int off, int prec)
 	}
 }
 
-static void cvt_e(struct format_state *state, struct spec *spec, va_list *arg)
+static unsigned trim_zeros(const char *buf, unsigned size)
 {
-	double num = va_arg(*arg, double);
-	int K = 0;
-	if (dtoa(state, spec, num, &K)) return;
+	while (size > 0 && '0' == buf[size-1]) {
+		--size;
+	}
+	if (size > 0 && '.' == buf[size-1]) {
+		--size;
+	}
+	return size;
+}
+
+static void emit_e(
+		struct format_state *state, struct spec *spec, int K, int precision)
+{
 	int exp = K + state->body.size - 1;
 	// For %e, precision controls the number of digits following the
 	// decimal point, and alternate representation determines whether we
 	// will print a decimal point if precision is < 2.
-	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
 	adjust_precision(state, 0, precision);
 	// Insert a decimal point after the first digit.
 	if (precision > 0 || spec->flags & FLAG_ALTERNATE_FORM) {
 		memmove(state->buffer + 2, state->buffer+1, precision);
 		state->buffer[1] = '.';
 		++state->body.size;
+	}
+	if (spec->flags & FLAG_TRIM_ZEROS) {
+		state->body.size = trim_zeros(state->body.addr, state->body.size);
 	}
 	// Suffix with the exponent, which must always be at least 2 digits
 	// and may never be more than 4 digits long. From the standard:
@@ -434,56 +400,98 @@ static void cvt_e(struct format_state *state, struct spec *spec, va_list *arg)
 	state->buffer[state->body.size++] = (exp / 1) % 10 + '0';
 }
 
+static void cvt_e(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	double num = va_arg(*arg, double);
+	int K = 0;
+	if (dtoa(state, spec, num, &K)) return;
+	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
+	emit_e(state, spec, K, precision);
+}
+
+static void emit_f(
+		struct format_state *state, struct spec *spec, int K, int precision)
+{
+	// K represents the location of the decimal point relative to the end of
+	// the string we just generated.
+	if (K <= 0 && -K < state->body.size) {
+		// The decimal point should be located somewhere within the string.
+		// Move the characters, then either round or pad to make the number
+		// of digits following the decimal equal to the precision requested.
+		char *pos = state->buffer + state->body.size + K;
+		memmove(pos + 1, pos, -K);
+		*pos = '.';
+		++state->body.size;
+		adjust_precision(state, pos - state->buffer, precision);
+		if (spec->flags & FLAG_TRIM_ZEROS) {
+			state->body.size = trim_zeros(state->body.addr, state->body.size);
+		}
+	} else if (K <= 0) {
+		// The number is smaller than 1, so it leads off with some "0."
+		// prefix, depending on sign options.
+		switch (state->prefix) {
+			case PREFIX_NONE: state->prefix = PREFIX_0DOT; break;
+			case PREFIX_MINUS: state->prefix = PREFIX_MINUS_0DOT; break;
+			case PREFIX_PLUS: state->prefix = PREFIX_PLUS_0DOT; break;
+			case PREFIX_SPACE: state->prefix = PREFIX_SPACE_0DOT; break;
+			default: state->prefix = PREFIX_0DOT;
+		}
+		// How many leading zeros do we need?
+		state->leading_zeros = -(K + state->body.size);
+		if (state->leading_zeros < precision) {
+			// If there's room for more digits, use the ones we generated.
+			int available = precision - state->leading_zeros;
+			if (state->body.size > available) {
+				state->body.size = available;
+			}
+		} else {
+			// Don't generate more zeros than we actually need to show.
+			state->leading_zeros = precision;
+			state->body.size = 0;
+		}
+		if (spec->flags & FLAG_TRIM_ZEROS) {
+			state->body.size = trim_zeros(state->body.addr, state->body.size);
+		}
+	} else {
+		// The decimal point appears somewhere to the right of the string.
+		// This implies that all the fractional digits are also zeros.
+		state->trailing_zeros = K;
+		if (0 == (spec->flags & FLAG_TRIM_ZEROS)) {
+			state->trailing_point = true;
+			state->trailing_fraction = precision;
+		}
+	}
+}
+
 static void cvt_f(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	double num = va_arg(*arg, double);
 	int K = 0;
 	if (dtoa(state, spec, num, &K)) return;
 	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
-	// K represents the location of the decimal point relative to the end of
-	// the string we just generated.
-	if (K <= 0) {
-		if (-K < state->body.size) {
-			// The decimal point should be located somewhere within the string.
-			// Move the characters, then either round or pad to make the number
-			// of digits following the decimal equal to the precision requested.
-			char *pos = state->buffer + state->body.size + K;
-			memmove(pos + 1, pos, -K);
-			*pos = '.';
-			++state->body.size;
-			adjust_precision(state, pos - state->buffer, precision);
-		} else {
-			// The number is smaller than 1, so it leads off with some "0."
-			// prefix, depending on sign options.
-			if (num < 0) {
-				state->prefix = PREFIX_MINUS_0DOT;
-			} else if (spec->flags & FLAG_PLUS_POSITIVE) {
-				state->prefix = PREFIX_PLUS_0DOT;
-			} else if (spec->flags & FLAG_SPACE_POSITIVE) {
-				state->prefix = PREFIX_SPACE_0DOT;
-			} else {
-				state->prefix = PREFIX_0DOT;
-			}
-			// How many leading zeros do we need?
-			state->leading_zeros = -(K + state->body.size);
-			if (state->leading_zeros < precision) {
-				// If there's room for more digits, use the ones we generated.
-				int available = precision - state->leading_zeros;
-				if (state->body.size > available) {
-					state->body.size = available;
-				}
-			} else {
-				// Don't generate more zeros than we actually need to show.
-				state->leading_zeros = precision;
-				state->body.size = 0;
-			}
-		}
+	emit_f(state, spec, K, precision);
+}
+
+static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	double num = va_arg(*arg, double);
+	int K = 0;
+	if (dtoa(state, spec, num, &K)) return;
+    int exp = K + state->body.size - 1;
+	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
+	if (precision < 1) {
+		precision = 1;
+	}
+	// With mode %g, precision controls the total number of significant digits,
+	// not (as with %e and %f) the number of digits after the decimal point.
+	// We'll print very large or small numbers using scientific notation, while
+	// numbers closer to zero will be printed as simple decimals.
+	spec->flags |= FLAG_TRIM_ZEROS;
+	if (exp < -4 || exp >= precision) {
+		emit_e(state, spec, K, precision - 1);
 	} else {
-		// The decimal point appears somewhere to the right of the string.
-		// This implies that all the fractional digits are also zeros.
-		state->trailing_zeros = K;
-		state->trailing_point = true;
-		state->trailing_fraction = precision;
+		if (exp >= 0) precision -= (exp+1);
+		emit_f(state, spec, K, precision);
 	}
 }
 
@@ -739,8 +747,10 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("X%.*dX", -2, 0), "X0X", size);
 	CHECK_STR(enfmt("%g", 1.5), "1.5", size);
 	CHECK_STR(enfmt("%g", 10000.0), "10000", size);
-	CHECK_STR(enfmt("%g", 1010.9932), "1010.9932", size);
+	CHECK_STR(enfmt("%g", 1010.9932), "1010.99", size);
+	CHECK_STR(enfmt("%.8g", 1010.9932), "1010.9932", size);
 	CHECK_STR(enfmt("%g", 1.0 / 3.0), "0.333333", size);
+#if 0
 	union hackfloat {
 		float f;
 		uint32_t u;
@@ -768,6 +778,7 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%E", 1010.9932), "1.010993E+03", size);
 	CHECK_STR(enfmt("%E", 1.0 / 3.0), "3.333333E-01", size);
 	CHECK_STR(enfmt("%12.4E", 1.0 / 3.0), "  3.3333E-01", size);
+#endif
 	// 3.666482e-13
 	CHECK_STR(enfmt("f %f", 0x3d59ccf240000000), "f 0.000000", size);
 	CHECK_STR(enfmt("e %e", 0x3d59ccf240000000), "e 3.666482e-13", size);
