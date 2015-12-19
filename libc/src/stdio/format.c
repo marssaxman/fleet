@@ -492,9 +492,7 @@ static void emit_f(
 		char *pos = buf + leading;
 		memmove(pos + 1, pos, size - leading);
 		*pos = '.';
-		state->body.size = ++size;
-		adjust_precision(state, leading, precision);
-		size = state->body.size;
+		++size;
 		if (spec->flags & FLAG_TRIM_ZEROS) {
 			size = trim_zeros(buf, size);
 		}
@@ -516,6 +514,9 @@ static void cvt_f(struct format_state *state, struct spec *spec, va_list *arg)
 	int exp = 0;
 	if (dtoa(state, spec, num, &exp)) return;
 	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
+	while (set_sigfigs(state, precision + exp + 1)) {
+		++exp;
+	}
 	emit_f(state, spec, exp, precision);
 }
 
@@ -528,18 +529,17 @@ static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 	if (precision < 1) {
 		precision = 1;
 	}
+	if (set_sigfigs(state, precision)) {
+		++exp;
+	}
 	// With mode %g, precision controls the total number of significant digits,
 	// not (as with %e and %f) the number of digits after the decimal point.
 	// We'll print very large or small numbers using scientific notation, while
 	// numbers closer to zero will be printed as simple decimals.
 	spec->flags |= FLAG_TRIM_ZEROS;
 	if (exp < -4 || exp >= precision) {
-		if (set_sigfigs(state, precision)) {
-			++exp;
-		}
 		emit_e(state, spec, exp);
 	} else {
-		if (exp >= 0) precision -= (exp+1);
 		emit_f(state, spec, exp, precision);
 	}
 }
@@ -835,6 +835,11 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%e", 999999999999999.0), "1.000000e+15", size);
 	CHECK_STR(enfmt("%e", 19999999999999.0), "2.000000e+13", size);
 	CHECK_STR(enfmt("%f", 0.99999999999999), "1.000000", size);
+	CHECK_STR(enfmt("%f", 0.099999999999999), "0.100000", size);
+	CHECK_STR(enfmt("%f", 9.99999999999999), "10.000000", size);
+	CHECK_STR(enfmt("%f", 1.000000), "1.000000", size);
+	CHECK_STR(enfmt("%f", 0.100000), "0.100000", size);
+	CHECK_STR(enfmt("%f", 10.000000), "10.000000", size);
 	CHECK_STR(enfmt("%f", 1.9999999999999), "2.000000", size);
 	CHECK_STR(enfmt("%f", 999999999999999.0), "999999999999999.000000", size);
 	CHECK_STR(enfmt("%f", 19999999999999.0), "19999999999999.000000", size);
