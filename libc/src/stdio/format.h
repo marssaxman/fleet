@@ -33,6 +33,9 @@ struct format_state
 	int prefix;
 	size_t leading_zeros;
 	struct format_chunk body;
+	size_t trailing_zeros;
+	bool trailing_point;
+	size_t trailing_fraction;
 	size_t trailing_spaces;
 
 	// Temporary storage for specifiers other than %s
