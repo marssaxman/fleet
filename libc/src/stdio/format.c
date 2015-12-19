@@ -12,7 +12,6 @@
 
 // ERRATA:
 // %s and %c ignore 'l' specifier; all strings are char*
-// %a and %A are not yet implemented
 // %n is not and will likely never be supported
 
 #define MAX_PADDING 32
@@ -513,6 +512,55 @@ static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 	}
 }
 
+static void cvt_a(struct format_state *state, struct spec *spec, va_list *arg)
+{
+	union {
+		double d;
+		uint64_t u;
+	} num;
+	num.d = va_arg(*arg, double);
+	sign_prefix(state, spec, num.d < 0.0);
+	bool upper = spec->flags & FLAG_UPPERCASE;
+	char *buf = state->buffer;
+	*buf++ = '0';
+	*buf++ = upper? 'X': 'x';
+	// The first digit is 1 for normalized, 0 for denormalized. Most numbers
+	// will be normalized.
+	const uint64_t expmask =   0x7FF0000000000000LLU;
+	bool normal = (num.u & expmask);
+	*buf++ = normal? '1': '0';
+	*buf++ = '.';
+	// Print the fractional part of the value out as an ordinary hex literal,
+	// with as many digits as the requested precision, up to the total number
+	// of digits available.
+	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
+	const char *alpha = upper? digits_upper: digits_lower;
+	const uint64_t fracmask =  0x000FFFFFFFFFFFFFLLU;
+	uint64_t frac = num.u & fracmask;
+	for (unsigned i = 0; i < 12 && i < precision; ++i) {
+		int val = (frac >> ((12 - i)*4)) & 0x0F;
+		*buf++ = alpha[val];
+	}
+	// Trim off any trailing zeros.
+	while (buf[-1] == '0') {
+		--buf;
+	}
+	*buf++ = upper? 'P': 'p';
+	// Print the exponent as a one, two, or three-digit decimal.
+	int exp = ((num.u & expmask) >> 52) - 1023;
+	if (exp < 0) {
+		*buf++ = '-';
+		exp = -exp;
+	} else {
+		*buf++ = '+';
+	}
+	if (exp >= 100) *buf++ = alpha[(exp / 100) % 10];
+	if (exp >= 10) *buf++ = alpha[(exp / 10) % 10];
+	*buf++ = alpha[exp % 10];
+	state->body.addr = state->buffer;
+	state->body.size = buf - state->buffer;
+}
+
 static void convert(struct format_state *state, va_list *arg)
 {
 	// Skip the leading % character and parse the specifier body.
@@ -545,6 +593,8 @@ static void convert(struct format_state *state, va_list *arg)
 		case 'E': cvt_e(state, &spec, arg); break;
 		case 'f':
 		case 'F': cvt_f(state, &spec, arg); break;
+		case 'a':
+		case 'A': cvt_a(state, &spec, arg); break;
 		case '%':
 		default: {
 			state->buffer[0] = spec.conversion;
@@ -908,6 +958,30 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("f %f", 0x3a96670b20000000), "f 0.000000", size);
 	CHECK_STR(enfmt("e %e", 0x3a96670b20000000), "e 1.809661e-26", size);
 	CHECK_STR(enfmt("g %g", 0x3a96670b20000000), "g 1.80966e-26", size);
+	CHECK_STR(enfmt("%a", 0x3d0edbafa0000000), "0x1.edbafap-47", size);
+	CHECK_STR(enfmt("%a", 0x3e795f4f60000000), "0x1.95f4f6p-24", size);
+	CHECK_STR(enfmt("%a", 0x3c79f17700000000), "0x1.9f177p-56", size);
+	CHECK_STR(enfmt("%a", 0x388c030dc0000000), "0x1.c030dcp-119", size);
+	CHECK_STR(enfmt("%a", 0x3f4da10e60000000), "0x1.da10e6p-11", size);
+	CHECK_STR(enfmt("%a", 0x3cdf61b3c0000000), "0x1.f61b3cp-50", size);
+	CHECK_STR(enfmt("%a", 0x3ff2f0d740000000), "0x1.2f0d74p+0", size);
+	CHECK_STR(enfmt("%a", 0x455ef14ba0000000), "0x1.ef14bap+86", size);
+	CHECK_STR(enfmt("%a", 0x475009e600000000), "0x1.009e6p+118", size);
+	CHECK_STR(enfmt("%a", 0x3e415d0ba0000000), "0x1.15d0bap-27", size);
+	CHECK_STR(enfmt("%a", 0x3d19b162e0000000), "0x1.9b162ep-46", size);
+	CHECK_STR(enfmt("%a", 0x451ced94a0000000), "0x1.ced94ap+82", size);
+	CHECK_STR(enfmt("%a", 0x4106f18120000000), "0x1.6f1812p+17", size);
+	CHECK_STR(enfmt("%a", 0x390f1a74c0000000), "0x1.f1a74cp-111", size);
+	CHECK_STR(enfmt("%a", 0x3f6259e5c0000000), "0x1.259e5cp-9", size);
+	CHECK_STR(enfmt("%a", 0x38de210d40000000), "0x1.e210d4p-114", size);
+	CHECK_STR(enfmt("%a", 0x4307881720000000), "0x1.788172p+49", size);
+	CHECK_STR(enfmt("%a", 0x388c62d9a0000000), "0x1.c62d9ap-119", size);
+	CHECK_STR(enfmt("%a", 0x38a68efb60000000), "0x1.68efb6p-117", size);
+	CHECK_STR(enfmt("%a", 0x433498e2c0000000), "0x1.498e2cp+52", size);
+	CHECK_STR(enfmt("%a", 0x3fb048d9a0000000), "0x1.048d9ap-4", size);
+	CHECK_STR(enfmt("%a", 0x3d9acd3040000000), "0x1.acd304p-38", size);
+	CHECK_STR(enfmt("%a", 0x453aac2e60000000), "0x1.aac2e6p+84", size);
+	CHECK_STR(enfmt("%a", 0x41b89575e0000000), "0x1.89575ep+28", size);
 }
 #endif
 
