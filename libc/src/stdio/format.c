@@ -340,13 +340,22 @@ static void adjust_precision(struct format_state *state, int off, int prec)
 	}
 	// If the value is too long, round trailing digits until we have cut
 	// the number down to the requested precision.
-	while (state->body.size > desired_len) {
-		char c = state->buffer[--state->body.size];
-		if (c >= '5') {
-			// round up
-			int val = state->buffer[state->body.size - 1] - '0';
-			val = (val < 9)? val + 1: val;
-			state->buffer[state->body.size - 1] = val + '0';
+	if (state->body.size > desired_len) {
+		char c = state->buffer[desired_len];
+		state->body.size = desired_len;
+		bool increment = (c >= '5');
+		int target = desired_len - 1;
+		while (increment && target >= 0) {
+			c = state->buffer[target];
+			if (c < '0' || c > '9') break;
+			if (c < '9') {
+				state->buffer[target]++;
+				increment = false;
+			} else {
+				state->buffer[target] = '0';
+				increment = true;
+				--target;
+			}
 		}
 	}
 }
