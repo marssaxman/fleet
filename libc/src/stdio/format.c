@@ -311,17 +311,16 @@ bool dtoa(struct format_state *state, struct spec *spec, double d, int *K)
 	// the caller has more formatting work to do.
 	union { double d; uint64_t u; } du;
 	du.d = d;
-	const uint64_t fracmask = 0x000FFFFFFFFFFFFFLLU;
-	const uint64_t expmask = 0x7FF0000000000000LLU;
-	const uint64_t hiddenbit = 0x0010000000000000LLU;
-	const uint64_t signmask = 0x8000000000000000LLU;
+	const uint64_t fracmask =  0x000FFFFFFFFFFFFFLLU;
+	const uint64_t expmask =   0x7FF0000000000000LLU;
+	const uint64_t signmask =  0x8000000000000000LLU;
 	sign_prefix(state, spec, du.u & signmask);
 	state->body.addr = state->buffer;
 	bool done = true;
 	if ((du.u & expmask) != expmask) {
 		state->body.size = _fpconv_grisu2(d, state->buffer, K);
 		done = false;
-	} else if (du.u & fracmask != 0) {
+	} else if (du.u & fracmask) {
 		memcpy(state->buffer, spec->flags & FLAG_UPPERCASE? "NAN": "nan", 3);
 		state->body.size = 3;
 	} else {
@@ -750,7 +749,6 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%g", 1010.9932), "1010.99", size);
 	CHECK_STR(enfmt("%.8g", 1010.9932), "1010.9932", size);
 	CHECK_STR(enfmt("%g", 1.0 / 3.0), "0.333333", size);
-#if 0
 	union hackfloat {
 		float f;
 		uint32_t u;
@@ -778,7 +776,6 @@ TESTSUITE(format) {
 	CHECK_STR(enfmt("%E", 1010.9932), "1.010993E+03", size);
 	CHECK_STR(enfmt("%E", 1.0 / 3.0), "3.333333E-01", size);
 	CHECK_STR(enfmt("%12.4E", 1.0 / 3.0), "  3.3333E-01", size);
-#endif
 	// 3.666482e-13
 	CHECK_STR(enfmt("f %f", 0x3d59ccf240000000), "f 0.000000", size);
 	CHECK_STR(enfmt("e %e", 0x3d59ccf240000000), "e 3.666482e-13", size);
