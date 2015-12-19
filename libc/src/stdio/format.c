@@ -372,41 +372,69 @@ static unsigned trim_zeros(const char *buf, unsigned size)
 	return size;
 }
 
-static void emit_e(
-		struct format_state *state, struct spec *spec, int K, int precision)
+static bool set_sigfigs(struct format_state *state, int new_size)
 {
-	int exp = K + state->body.size - 1;
-	// For %e, precision controls the number of digits following the
-	// decimal point, and alternate representation determines whether we
-	// will print a decimal point if precision is < 2.
-	adjust_precision(state, 0, precision);
+	bool shift = false;
+	char *buf = state->buffer;
+	int old_size = state->body.size;
+	int diff = new_size - old_size;
+	if (diff > 0) {
+		memset(buf + old_size, '0', diff);
+	}
+	if (diff < 0) {
+		char c = buf[new_size];
+		bool carry = (c >= '5' && c <= '9');
+		int index = new_size;
+		while (carry) {
+			if (index > 0) {
+				--index;
+			} else {
+				memmove(buf+1, buf, new_size-1);
+				*buf = '0';
+				shift = true;
+			}
+			c = buf[index];
+			carry = (c == '9');
+			buf[index] = carry? '0': c+1;
+		}
+	}
+	state->body.size = new_size;
+	return shift;
+}
+
+
+static void emit_e(struct format_state *state, struct spec *spec, int exp)
+{
+	char *buf = state->buffer;
+	int size = state->body.size;
 	// Insert a decimal point after the first digit.
-	if (precision > 0 || spec->flags & FLAG_ALTERNATE_FORM) {
-		memmove(state->buffer + 2, state->buffer+1, precision);
-		state->buffer[1] = '.';
-		++state->body.size;
+	if (size > 1 || spec->flags & FLAG_ALTERNATE_FORM) {
+		memmove(buf + 2, buf + 1, size - 1);
+		buf[1] = '.';
+		++size;
 	}
 	if (spec->flags & FLAG_TRIM_ZEROS) {
-		state->body.size = trim_zeros(state->body.addr, state->body.size);
+		size = trim_zeros(buf, size);
 	}
 	// Suffix with the exponent, which must always be at least 2 digits
 	// and may never be more than 4 digits long. From the standard:
 	// "The exponent always contains at least two digits, and only as many
 	// more digits as necessary to represent the exponent."
 	bool upper = spec->flags & FLAG_UPPERCASE;
-	state->buffer[state->body.size++] = upper? 'E': 'e';
-	state->buffer[state->body.size++] = (exp >= 0)? '+': '-';
+	buf[size++] = upper? 'E': 'e';
+	buf[size++] = (exp >= 0)? '+': '-';
 	if (exp < 0) {
 		exp = -exp;
 	}
 	if (exp >= 1000) {
-		state->buffer[state->body.size++] = (exp / 1000) % 10 + '0';
+		buf[size++] = (exp / 1000) % 10 + '0';
 	}
 	if (exp >= 100) {
-		state->buffer[state->body.size++] = (exp / 100) % 10 + '0';
+		buf[size++] = (exp / 100) % 10 + '0';
 	}
-	state->buffer[state->body.size++] = (exp / 10) % 10 + '0';
-	state->buffer[state->body.size++] = (exp / 1) % 10 + '0';
+	buf[size++] = (exp / 10) % 10 + '0';
+	buf[size++] = (exp / 1) % 10 + '0';
+	state->body.size = size;
 }
 
 static void cvt_e(struct format_state *state, struct spec *spec, va_list *arg)
@@ -415,7 +443,11 @@ static void cvt_e(struct format_state *state, struct spec *spec, va_list *arg)
 	int K = 0;
 	if (dtoa(state, spec, num, &K)) return;
 	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
-	emit_e(state, spec, K, precision);
+	int exp = K + state->body.size - 1;
+	if (set_sigfigs(state, precision + 1)) {
+		++exp;
+	}
+	emit_e(state, spec, exp);
 }
 
 static void emit_f(
@@ -497,7 +529,10 @@ static void cvt_g(struct format_state *state, struct spec *spec, va_list *arg)
 	// numbers closer to zero will be printed as simple decimals.
 	spec->flags |= FLAG_TRIM_ZEROS;
 	if (exp < -4 || exp >= precision) {
-		emit_e(state, spec, K, precision - 1);
+		if (set_sigfigs(state, precision)) {
+			++exp;
+		}
+		emit_e(state, spec, exp);
 	} else {
 		if (exp >= 0) precision -= (exp+1);
 		emit_f(state, spec, K, precision);
