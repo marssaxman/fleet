@@ -53,7 +53,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int _fpconv_dtoa(double fp, char dest[24]);
 int _fpconv_grisu2(double d, char* digits, int* K);
-int _fpconv_dtoa_exp(double fp, int precision, bool upper, char dest[24]);
 
 
 #endif

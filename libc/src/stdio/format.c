@@ -333,36 +333,6 @@ bool dtoa(struct format_state *state, struct spec *spec, double d, int *exp)
 	return done;
 }
 
-static void adjust_precision(struct format_state *state, int off, int prec)
-{
-	int desired_len = prec + 1 + off;
-	// If the value printed was too short, add some zeros until we build
-	// up to the requested number of digits.
-	while (state->body.size < desired_len) {
-		state->buffer[state->body.size++] = '0';
-	}
-	// If the value is too long, round trailing digits until we have cut
-	// the number down to the requested precision.
-	if (state->body.size > desired_len) {
-		char c = state->buffer[desired_len];
-		state->body.size = desired_len;
-		bool increment = (c >= '5');
-		int target = desired_len - 1;
-		while (increment && target >= 0) {
-			c = state->buffer[target];
-			if (c < '0' || c > '9') break;
-			if (c < '9') {
-				state->buffer[target]++;
-				increment = false;
-			} else {
-				state->buffer[target] = '0';
-				increment = true;
-				--target;
-			}
-		}
-	}
-}
-
 static unsigned trim_zeros(const char *buf, unsigned size)
 {
 	while (size > 0 && '0' == buf[size-1]) {
@@ -403,7 +373,6 @@ static bool set_sigfigs(struct format_state *state, int new_size)
 	state->body.size = new_size;
 	return shift;
 }
-
 
 static void emit_e(struct format_state *state, struct spec *spec, int exp)
 {
