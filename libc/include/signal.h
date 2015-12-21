@@ -7,17 +7,20 @@
 #ifndef _SIGNAL_H
 #define _SIGNAL_H
 
-// raise
-// signal
-// sig_atomic_t
-// SIGABRT
-// SIGFPE
-// SIGILL
-// SIGINT
-// SIGSEGV
-// SIGTERM
-// SIG_DFL
-// SIG_ERR
-// SIG_IGN
+#define SIG_ERR ((void (*)(int))-1)
+#define SIG_DFL ((void (*)(int)) 0)
+#define SIG_IGN ((void (*)(int)) 1)
+
+typedef int sig_atomic_t;
+
+void (*signal(int sig, void (*func)(int)))(int);
+int raise(int sig);
+
+#define SIGABRT 0
+#define SIGFPE 1
+#define SIGILL 2
+#define SIGINT 3
+#define SIGSEGV 4
+#define SIGTERM 5
 
 #endif //_SIGNAL_H
