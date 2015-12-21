@@ -188,8 +188,12 @@ int main()
 	// don't want it calling equivalently-named functions from the host libc!
 	// Furthermore, we use RTLD_LOCAL to prevent other libraries loaded in the
 	// test app process from seeing our test libc's symbols.
-	dlopen("./libc.so", RTLD_NOW|RTLD_LOCAL|RTLD_DEEPBIND);
-	write_test_conclusion();
-	return 0;
+	if (dlopen("./libc.so", RTLD_NOW|RTLD_LOCAL|RTLD_DEEPBIND)) {
+		write_test_conclusion();
+		return 0;
+	} else {
+		fprintf(stderr, "%s\n", dlerror());
+		return 1;
+	}
 }
 
