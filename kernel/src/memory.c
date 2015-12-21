@@ -10,6 +10,8 @@ enum {
 	MAP_RAM = 1,
 };
 
+#define _PAGESIZE 4096
+
 // Keep track of what lives where in our address space and which parts of it
 // might be useful if we needed to store things. For the time being we're going
 // to do this in a very simple 'sbrk' style, so we're only interested in the
@@ -118,15 +120,20 @@ void _memory_init(struct multiboot_info *info)
 			0, memory_break, 0, free_length, free_length / _PAGESIZE);
 }
 
-void *_memory_alloc(unsigned page_count)
+void *_memory_alloc(size_t bytes)
 {
-	// round base up to nearest page
-	static const unsigned pagemask = _PAGESIZE - 1;
-	memory_break = (void*)(((unsigned)memory_break + pagemask) & ~pagemask);
+	if (0 == bytes) return NULL;
 	void *block = memory_break;
-	memory_break += (page_count * _PAGESIZE);
+	memory_break += bytes;
 	if (memory_break > memory_end) {
 		_panic("Allocation failure: memory exhaused\n");
 	}
 	return block;
 }
+
+void *sbrk(intptr_t increment)
+{
+	if (increment < 0) _panic("cannot release allocated memory\n");
+	return _memory_alloc(increment);
+}
+
