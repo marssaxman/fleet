@@ -30,7 +30,7 @@ static int flushread(FILE *stream)
 {
 	// For input streams and update streams where the last operation was
 	// input, the behavior is undefined. We will simply clear the state.
-	stream->state &= ~STREAM_READ;
+	stream->state &= ~(STREAM_READ|STREAM_UNGET);
 	return 0;
 }
 

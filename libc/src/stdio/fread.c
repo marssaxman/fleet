@@ -64,6 +64,14 @@ size_t fread(void *dest, size_t size, size_t count, FILE *stream)
 		return 0;
 	}
 	stream->state |= STREAM_READ;
+	int total = 0;
+	if (stream->state & STREAM_UNGET) {
+		*(unsigned char*)dest = stream->unget;
+		dest++;
+		stream->state &= ~STREAM_UNGET;
+		++total;
+		if (0 == --bytes) return total;
+	}
 	int ret = 0;
 	if (stream->buf_size > 0) {
 		ret = bufread(stream, dest, bytes);
@@ -75,11 +83,13 @@ size_t fread(void *dest, size_t size, size_t count, FILE *stream)
 		errno = -ret;
 		stream->state |= STREAM_ERR;
 		return 0;
+	} else {
+		total += ret;
 	}
 	if (ret < bytes) {
 		stream->state |= STREAM_EOF;
 	}
-	return ret / size;
+	return total / size;
 }
 
 #ifdef TESTSUITE

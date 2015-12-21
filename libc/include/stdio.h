@@ -57,6 +57,13 @@ int fputs(const char *str, FILE *stream);
 int putc(int c, FILE *stream);
 int putchar(int character);
 int puts(const char *str);
+int ungetc(int character, FILE *stream);
+
+#ifdef __GNUC__
+char *gets(char *s) __attribute__((deprecated));
+#else
+char *gets(char *s);
+#endif
 
 size_t fread(void *dest, size_t size, size_t count, FILE *stream);
 size_t fwrite(const void *src, size_t size, size_t count, FILE *stream);
@@ -78,10 +85,8 @@ void perror(const char *s);
 
 #if 0 // implement later
 fscanf
-gets
 scanf
 sscanf
-ungetc
 vfscanf
 vscanf
 vsscanf
