@@ -24,9 +24,12 @@ struct format_chunk
 #define FORMAT_BUFFER_SIZE 32
 struct format_state
 {
+// public
 	// Pointer to the next unread format string character
 	const char *fmt;
-
+	// Current string chunk
+	struct format_chunk current;
+// private
 	// Characters which have been produced by the current format specifier but
 	// not yet returned from _format_next
 	size_t leading_spaces;
@@ -43,7 +46,6 @@ struct format_state
 };
 
 void _format_start(struct format_state*, const char *format_string);
-bool _format_done(struct format_state*);
-struct format_chunk _format_next(struct format_state*, va_list *arg);
+bool _format_next(struct format_state*, va_list *arg);
 
 #endif //_LIBC_INTERNAL_FORMATTER_H

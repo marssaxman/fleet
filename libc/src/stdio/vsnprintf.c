@@ -13,8 +13,8 @@ int vsnprintf(char *s, size_t max, const char *format, va_list arg)
 	int written = 0;
 	struct format_state state;
 	_format_start(&state, format);
-	while (!_format_done(&state)) {
-		struct format_chunk blob = _format_next(&state, &arg);
+	while (_format_next(&state, &arg)) {
+		struct format_chunk blob = state.current;
 		size_t copy = (max >= written + blob.size)? blob.size: (max - written);
 		strncpy(&s[written], blob.addr, copy);
 		written += copy;

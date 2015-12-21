@@ -17,8 +17,6 @@
 #define MAX_PADDING 32
 static const char padding[MAX_PADDING] = "                                ";
 static const char zeros[MAX_PADDING] = "00000000000000000000000000000000";
-static const char *digits_lower = "0123456789abcdef";
-static const char *digits_upper = "0123456789ABCDEF";
 
 enum prefix {
 	PREFIX_NONE = 0,
@@ -66,6 +64,9 @@ struct spec {
 	char flags;
 	char conversion;
 };
+
+static uint64_t ulabs(int64_t n) { return (n < 0)? -n: n; }
+static double dabs(double n) { return (n < 0.0)? -n: n; }
 
 static void scan_literal(struct format_state *state)
 {
@@ -205,14 +206,15 @@ static void utoa(
 		struct format_state *state,
 		const struct spec *spec,
 		uint64_t i,
-		int radix,
-		const char *digits)
+		int radix)
 {
 	// Render the integer 'i' into the format_state buffer, then point the
 	// state's 'body' chunk at the section of buffer we used. We will write
 	// the number from the end of the buffer back toward the beginning, since
 	// that gives us most-to-least significant digit order, and leaves the
 	// beginning of the buffer free for padding and/or prefixes if necessary.
+	bool upper = spec->flags & FLAG_UPPERCASE;
+	const char *digits = upper? "0123456789ABCDEF": "0123456789abcdef";
 	char *buf = state->buffer + FORMAT_BUFFER_SIZE;
 	bool has_precision = spec->flags & FLAG_HAS_PRECISION;
 	if (i > 0 || !has_precision || spec->precision > 0) {
@@ -269,10 +271,7 @@ static void cvt_d(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	int64_t num = iarg(spec->data_size, arg);
 	sign_prefix(state, spec, num < 0);
-	if (num < 0) {
-		num = -num;
-	}
-	utoa(state, spec, num, 10, digits_lower);
+	utoa(state, spec, ulabs(num), 10);
 }
 
 static void cvt_x(struct format_state *state, struct spec *spec, va_list *arg)
@@ -284,7 +283,7 @@ static void cvt_x(struct format_state *state, struct spec *spec, va_list *arg)
 		state->prefix = PREFIX_NONE;
 	}
 	uint64_t num = uarg(spec->data_size, arg);
-	utoa(state, spec, num, 16, upper? digits_upper: digits_lower);
+	utoa(state, spec, num, 16);
 }
 
 static void cvt_o(struct format_state *state, struct spec *spec, va_list *arg)
@@ -292,14 +291,14 @@ static void cvt_o(struct format_state *state, struct spec *spec, va_list *arg)
 	bool alternate_form = spec->flags & FLAG_ALTERNATE_FORM;
 	state->prefix = alternate_form? PREFIX_OCTAL: PREFIX_NONE;
 	uint64_t num = uarg(spec->data_size, arg);
-	utoa(state, spec, num, 8, digits_lower);
+	utoa(state, spec, num, 8);
 }
 
 static void cvt_p(struct format_state *state, struct spec *spec, va_list *arg)
 {
 	state->prefix = PREFIX_LOWHEX;
 	uintptr_t num = va_arg(*arg, void*);
-	utoa(state, spec, num, 16, digits_lower);
+	utoa(state, spec, num, 16);
 }
 
 bool dtoa(struct format_state *state, struct spec *spec, double d, int *exp)
@@ -393,9 +392,7 @@ static void emit_e(struct format_state *state, struct spec *spec, int exp)
 	bool upper = spec->flags & FLAG_UPPERCASE;
 	buf[size++] = upper? 'E': 'e';
 	buf[size++] = (exp >= 0)? '+': '-';
-	if (exp < 0) {
-		exp = -exp;
-	}
+	exp = ulabs(exp);
 	if (exp >= 1000) {
 		buf[size++] = (exp / 1000) % 10 + '0';
 	}
@@ -534,7 +531,7 @@ static void cvt_a(struct format_state *state, struct spec *spec, va_list *arg)
 	// with as many digits as the requested precision, up to the total number
 	// of digits available.
 	int precision = spec->flags & FLAG_HAS_PRECISION? spec->precision: 6;
-	const char *alpha = upper? digits_upper: digits_lower;
+	const char *alpha = upper? "0123456789ABCDEF": "0123456789abcdef";
 	const uint64_t fracmask =  0x000FFFFFFFFFFFFFLLU;
 	uint64_t frac = num.u & fracmask;
 	for (unsigned i = 0; i < 12 && i < precision; ++i) {
@@ -548,12 +545,8 @@ static void cvt_a(struct format_state *state, struct spec *spec, va_list *arg)
 	*buf++ = upper? 'P': 'p';
 	// Print the exponent as a one, two, or three-digit decimal.
 	int exp = ((num.u & expmask) >> 52) - 1023;
-	if (exp < 0) {
-		*buf++ = '-';
-		exp = -exp;
-	} else {
-		*buf++ = '+';
-	}
+	*buf++ = (exp < 0)? '-': '+';
+	exp = ulabs(exp);
 	if (exp >= 100) *buf++ = alpha[(exp / 100) % 10];
 	if (exp >= 10) *buf++ = alpha[(exp / 10) % 10];
 	*buf++ = alpha[exp % 10];
@@ -635,81 +628,51 @@ void _format_start(struct format_state *state, const char *format_string)
 	state->fmt = format_string;
 }
 
-bool _format_done(struct format_state *state)
+static bool outpad(struct format_state *state, const char *src, size_t *len)
 {
-	if (state->leading_spaces) return false;
-	if (state->prefix) return false;
-	if (state->leading_zeros) return false;
-	if (state->body.size) return false;
-	if (state->trailing_zeros) return false;
-	if (state->trailing_point) return false;
-	if (state->trailing_fraction) return false;
-	if (state->trailing_spaces) return false;
-	return '\0' == *state->fmt;
+	if (0 == *len) return false;
+	state->current.addr = src;
+	state->current.size = (*len <= MAX_PADDING)? *len: MAX_PADDING;
+	*len -= state->current.size;
+	return true;
 }
 
-struct format_chunk _format_next(struct format_state *state, va_list *arg)
+static bool outchunk(struct format_state *state, const struct format_chunk *chk)
 {
-	struct format_chunk out = {0, 0};
-	while (!_format_done(state)) {
-		if (state->leading_spaces) {
-			out.addr = padding;
-			out.size = state->leading_spaces;
-			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
-			state->leading_spaces -= out.size;
-			break;
-		}
-		if (state->prefix) {
-			out = prefix_chunk[state->prefix];
+	if (0 == chk->size) return false;
+	state->current = *chk;
+	return true;
+}
+
+bool _format_next(struct format_state *state, va_list *arg)
+{
+	while (1) {
+		if (outpad(state, padding, &state->leading_spaces)) return true;
+		if (outchunk(state, &prefix_chunk[state->prefix])) {
 			state->prefix = PREFIX_NONE;
-			break;
+			return true;
 		}
-		if (state->leading_zeros) {
-			out.addr = zeros;
-			out.size = state->leading_zeros;
-			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
-			state->leading_zeros -= out.size;
-			break;
-		}
-		if (state->body.size) {
-			out = state->body;
+		if (outpad(state, zeros, &state->leading_zeros)) return true;
+		if (outchunk(state, &state->body)) {
 			state->body.size = 0;
-			break;
+			return true;
 		}
-		if (state->trailing_zeros) {
-			out.addr = zeros;
-			out.size = state->trailing_zeros;
-			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
-			state->trailing_zeros -= out.size;
-			break;
-		}
+		if (outpad(state, zeros, &state->trailing_zeros)) return true;
 		if (state->trailing_point) {
-			out.addr = ".";
-			out.size = 1;
+			state->current.addr = ".";
+			state->current.size = 1;
 			state->trailing_point = false;
-			break;
+			return true;
 		}
-		if (state->trailing_fraction) {
-			out.addr = zeros;
-			out.size = state->trailing_fraction;
-			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
-			state->trailing_fraction -= out.size;
-			break;
-		}
-		if (state->trailing_spaces) {
-			out.addr = padding;
-			out.size = state->trailing_spaces;
-			if (out.size > MAX_PADDING) out.size = MAX_PADDING;
-			state->trailing_spaces -= out.size;
-			break;
-		}
-		if ('%' == *state->fmt) {
-			convert(state, arg);
-		} else {
-			scan_literal(state);
+		if (outpad(state, zeros, &state->trailing_fraction)) return true;
+		if (outpad(state, padding, &state->trailing_spaces)) return true;
+		switch (*state->fmt) {
+			case '%': convert(state, arg); break;
+			case '\0': return false;
+			default: scan_literal(state); break;
 		}
 	}
-	return out;
+	return false;
 }
 
 #ifdef TESTSUITE
@@ -717,15 +680,13 @@ static char *enfmt(const char *fmt, ...)
 {
 	static struct format_state st;
 	_format_start(&st, fmt);
-	CHECK(!_format_done(&st));
 	va_list arg;
 	va_start(arg, fmt);
 	static char buf[1024];
 	char *dest = buf;
-	while (!_format_done(&st)) {
-		struct format_chunk chunk = _format_next(&st, &arg);
-		memcpy(dest, chunk.addr, chunk.size);
-		dest += chunk.size;
+	while (_format_next(&st, &arg)) {
+		memcpy(dest, st.current.addr, st.current.size);
+		dest += st.current.size;
 	}
 	va_end(arg);
 	*dest = '\0';
