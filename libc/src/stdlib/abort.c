@@ -4,16 +4,12 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#ifndef _ASSERT_H
-#define _ASSERT_H
+#include <stdlib.h>
+#include <signal.h>
 
-#ifndef NDEBUG
-#define assert(e) ((e) || __assert(#e, __FILE__, __LINE__, __func__))
-#else
-#define assert(e) ((void)0)
-#endif
-
-void __assert(const char*, const char*, int, const char*) __noreturn;
-
-#endif //_ASSERT_H
+void abort(void)
+{
+	raise(SIGABRT);
+	_Exit(EXIT_FAILURE);
+}
 
