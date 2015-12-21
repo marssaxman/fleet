@@ -57,14 +57,13 @@ void *calloc(size_t num, size_t size);
 void *realloc(void *ptr, size_t size);
 void free(void *ptr);
 
-#if 0 // still to implement
-MB_CUR_MAX
-mblen
-mbstowcs
-mbtowc
-wcstombs
-wctomb
-#endif // still to implement
+#define MB_CUR_MAX 4
+
+int mblen(const char *src, size_t max);
+int mbtowc(wchar_t *dest, const char *src, size_t max);
+size_t mbstowcs(wchar_t *dest, const char *src, size_t max);
+int wctomb(char *dest, wchar_t wc);
+size_t wcstombs(char* dest, const wchar_t* src, size_t max);
 
 #endif //_STDLIB_H
 
