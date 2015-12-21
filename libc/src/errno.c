@@ -24,6 +24,15 @@ char *strerror(int num)
 		case EILSEQ:
 			error = "Illegal sequence";
 			break;
+		case ENOENT:
+			error = "No such file or directory";
+			break;
+		case ESPIPE:
+			error = "Invalid seek";
+			break;
+		case EROFS:
+			error = "Read-only file system";
+			break;
 		default:
 			error = "";
 			break;

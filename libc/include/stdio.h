@@ -13,6 +13,10 @@
 
 #define EOF (-1)
 #define BUFSIZ 1024
+#define FILENAME_MAX 4096
+#define FOPEN_MAX 8
+#define TMP_MAX 10000
+#define L_tmpnam 20
 
 // setvbuf modes: no buffer, line buffer, or full buffer
 #define _IONBF 0
@@ -25,10 +29,16 @@ FILE *stdin;
 FILE *stdout;
 FILE *stderr;
 
+FILE *fopen(const char *filename, const char *mode);
+FILE *freopen(const char *filename, const char *mode, FILE *stream);
 int fclose(FILE *stream);
 int fflush(FILE *stream);
 void setbuf(FILE *stream, char *buffer);
 int setvbuf(FILE *stream, char *buffer, int mode, size_t bytes);
+int remove(const char *filename);
+int rename(const char *oldname, const char *newname);
+FILE *tmpfile(void);
+char *tmpnam(char *s);
 
 int printf(const char *format, ...);
 int fprintf(FILE *stream, const char *format, ...);
@@ -51,35 +61,26 @@ int puts(const char *str);
 size_t fread(void *dest, size_t size, size_t count, FILE *stream);
 size_t fwrite(const void *src, size_t size, size_t count, FILE *stream);
 
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+typedef long long int fpos_t;
+int fgetpos(FILE *stream, fpos_t *pos);
+int fseek(FILE *stream, long int offset, int origin);
+int fsetpos(FILE *stream, const fpos_t *pos);
+long int ftell(FILE *stream);
+void rewind(FILE *stream);
+
 void clearerr(FILE *stream);
 int feof(FILE *stream);
 int ferror(FILE *stream);
 void perror(const char *s);
 
 #if 0 // implement later
-FILENAME_MAX
-FOPEN_MAX
-L_tmpnam
-SEEK_CUR
-SEEK_END
-SEEK_SET
-TMP_MAX
-fgetpos
-fopen
-fpos_t
-freopen
 fscanf
-fseek
-fsetpos
-ftell
 gets
-remove
-rename
-rewind
 scanf
 sscanf
-tmpfile
-tmpnam
 ungetc
 vfscanf
 vscanf
