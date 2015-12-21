@@ -38,13 +38,15 @@
 // wcstol
 // wcstoul
 
-// btowc
+typedef struct __mbstate { int reserved; } mbstate_t;
+
+wint_t btowc(int c);
 // mbrlen
 // mbrtowc
-// mbsinit
+int mbsinit(const mbstate_t *s);
 // mbsrtowcs
 // wcrtomb
-// wctob
+int wctob(wint_t);
 // wcsrtombs
 
 wchar_t *wcscat(wchar_t *restrict dest, const wchar_t *restrict src);

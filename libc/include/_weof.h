@@ -7,7 +7,8 @@
 #ifndef _WEOF_H
 #define _WEOF_H
 
-// WEOF
+#undef WEOF
+#define WEOF 0xFFFFFFFFU
 
 #endif //_WEOF_H
 
