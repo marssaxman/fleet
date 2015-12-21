@@ -54,6 +54,7 @@ size_t fwrite(const void *src, size_t size, size_t count, FILE *stream);
 void clearerr(FILE *stream);
 int feof(FILE *stream);
 int ferror(FILE *stream);
+void perror(const char *s);
 
 #if 0 // implement later
 FILENAME_MAX
@@ -66,7 +67,6 @@ TMP_MAX
 fgetpos
 fopen
 fpos_t
-fprintf
 freopen
 fscanf
 fseek
@@ -74,7 +74,6 @@ fsetpos
 ftell
 gets
 perror
-printf
 remove
 rename
 rewind
@@ -84,7 +83,6 @@ tmpfile
 tmpnam
 ungetc
 vfscanf
-vprintf
 vscanf
 vsscanf
 #endif // to implement
