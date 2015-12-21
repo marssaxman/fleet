@@ -49,6 +49,7 @@ void _Exit(int status);
 int atexit(void (*func)(void));
 void exit(int status);
 void abort(void);
+int system(const char *command);
 
 void *malloc(size_t bytes);
 void *calloc(size_t num, size_t size);
@@ -61,7 +62,6 @@ getenv
 mblen
 mbstowcs
 mbtowc
-system
 wcstombs
 wctomb
 #endif // still to implement
