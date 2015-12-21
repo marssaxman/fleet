@@ -73,7 +73,6 @@ fseek
 fsetpos
 ftell
 gets
-perror
 remove
 rename
 rewind

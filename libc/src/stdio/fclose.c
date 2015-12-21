@@ -6,11 +6,15 @@
 
 #include "stream.h"
 #include <sys/socket.h>
+#include <stdlib.h>
 
 int fclose(FILE *stream)
 {
 	int flushret = fflush(stream);
 	int closeret = close(stream->id);
+	if (stream->state & STREAM_ALLOC) {
+		free(stream->buf_addr);
+	}
 	_exit_stream(stream);
 	return (flushret || closeret)? EOF: 0;
 }
