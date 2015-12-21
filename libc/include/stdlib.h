@@ -50,6 +50,7 @@ int atexit(void (*func)(void));
 void exit(int status);
 void abort(void);
 int system(const char *command);
+char *getenv(const char *name);
 
 void *malloc(size_t bytes);
 void *calloc(size_t num, size_t size);
@@ -58,7 +59,6 @@ void free(void *ptr);
 
 #if 0 // still to implement
 MB_CUR_MAX
-getenv
 mblen
 mbstowcs
 mbtowc
