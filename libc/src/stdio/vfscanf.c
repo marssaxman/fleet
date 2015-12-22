@@ -11,12 +11,12 @@
 int vfscanf(FILE *stream, const char *format, va_list arg)
 {
 	struct scanner_state st;
-	_scanner_init(&st, format);
-	while (_scanner_open(&st, &arg)) {
+	_scanner_init(&st, format, &arg);
+	char ch = 0;
+	do {
 		char ch = fgetc(stream);
 		if (ch == EOF) break;
-		_scanner_next(&st, ch);
-	}
+	} while (_scanner_next(&st, ch));
 	return st.result;
 }
 

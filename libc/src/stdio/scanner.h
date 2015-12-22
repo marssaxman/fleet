@@ -12,11 +12,20 @@
 
 struct scanner_state {
 	int result;
+	// internal state
+	char current;
+	const char *format;
+	va_list *arg;
+	int mode;
+	int width;
+	int length;
+	const char *specifier;
+	int spec_size;
+	void *dest;
 };
 
-void _scanner_init(struct scanner_state*, const char *format);
-bool _scanner_open(struct scanner_state*, va_list *arg);
-void _scanner_next(struct scanner_state*, char ch);
+void _scanner_init(struct scanner_state*, const char *format, va_list *arg);
+bool _scanner_next(struct scanner_state*, char ch);
 
 #endif //_LIBC_INTERNAL_SCANNER_H
 

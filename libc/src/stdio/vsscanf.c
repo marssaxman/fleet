@@ -6,15 +6,15 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include "scanner.h"
 
 int vsscanf(const char *buffer, const char *format, va_list arg)
 {
 	struct scanner_state st;
-	_scanner_init(&st, format);
-	while (_scanner_open(&st, &arg)) {
+	_scanner_init(&st, format, &arg);
+	do {
 		if ('\0' == *buffer) break;
-		_scanner_next(&st, *buffer++);
-	}
+	} while (_scanner_next(&st, *buffer++));
 	return st.result;
 }
 
