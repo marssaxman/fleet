@@ -14,12 +14,13 @@ enum mode {
 	MODE_PARSE = 0,
 	MODE_SPACE,
 	MODE_INTEGER,
-	MODE_DEC,
-	MODE_OCT_OR_HEX,
-	MODE_OCT_BEGIN,
-	MODE_OCT_BODY,
-	MODE_HEX_BEGIN,
-	MODE_HEX_BODY,
+	MODE_DEC_PREFIX,
+	MODE_DEC_DIGIT
+	MODE_OCT_OR_HEX_PREFIX,
+	MODE_OCT_PREFIX,
+	MODE_OCT_DIGIT,
+	MODE_HEX_PREFIX,
+	MODE_HEX_DIGIT,
 	MODE_FLOAT,
 	MODE_FIX,
 	MODE_EXP,
@@ -38,7 +39,6 @@ enum mode {
 void _scanner_init(struct scanner_state *state, const char *fmt, va_list *arg)
 {
 	memset(state, 0, sizeof(struct scanner_state));
-	state->mode = MODE_PARSE;
 	state->result = -1;
 	state->format = fmt;
 	state->arg = arg;
@@ -127,9 +127,9 @@ static void parse_specifier(struct scanner_state *state)
 		case '\0': return;
 		case 'i':
 		case 'u': state->mode = MODE_INTEGER; break;
-		case 'd': state->mode = MODE_DEC; break;
-		case 'o': state->mode = MODE_OCT_BEGIN; break;
-		case 'x': state->mode = MODE_HEX_BEGIN; break;
+		case 'd': state->mode = MODE_DEC_PREFIX; break;
+		case 'o': state->mode = MODE_OCT_PREFIX; break;
+		case 'x': state->mode = MODE_HEX_PREFIX; break;
 		case 'f': state->mode = MODE_FIX; break;
 		case 'e': state->mode = MODE_EXP; break;
 		case 'g': state->mode = MODE_FLOAT; break;
@@ -145,7 +145,7 @@ static void parse_specifier(struct scanner_state *state)
 	++state->format;
 }
 
-static void mode_parse(struct scanner_state *state)
+static void parse(struct scanner_state *state)
 {
 	state->width = 0;
 	state->length = 0;
@@ -168,140 +168,103 @@ static void mode_parse(struct scanner_state *state)
 	}
 }
 
-static void mode_space(struct scanner_state *state)
-{
-	if (isspace(state->current)) {
-		state->mode = MODE_SPACE;
-		state->current = 0;
-	} else {
-		state->mode = MODE_PARSE;
-	}
-}
-
-static void mode_integer(struct scanner_state *state)
-{
-	// Potentially any kind of integer: we figure out which kind by looking
-	// at the first digit. If it's a leading zero, it must be hex or octal.
-	if ('0' == state->current) {
-		state->mode = MODE_OCT_OR_HEX;
-		state->current = 0;
-	} else if (isdigit(state->current)) {
-		state->mode = MODE_DEC;
-	}
-}
-
-static void mode_dec(struct scanner_state *state)
-{
-}
-
-static void mode_oct_or_hex(struct scanner_state *state)
-{
-	if ('x' == state->current || 'X' == state->current) {
-		state->mode = MODE_HEX_BODY;
-		++state->format;
-	} else {
-		state->mode = MODE_OCT_BODY;
-	}
-}
-
-static void mode_oct_begin(struct scanner_state *state)
-{
-}
-
-static void mode_oct_body(struct scanner_state *state)
-{
-}
-
-static void mode_hex_begin(struct scanner_state *state)
-{
-}
-
-static void mode_hex_body(struct scanner_state *state)
-{
-}
-
-static void mode_float(struct scanner_state *state)
-{
-}
-
-static void mode_fix(struct scanner_state *state)
-{
-}
-
-static void mode_exp(struct scanner_state *state)
-{
-}
-
-static void mode_hexfloat(struct scanner_state *state)
-{
-}
-
-static void mode_char(struct scanner_state *state)
-{
-}
-
-static void mode_str(struct scanner_state *state)
-{
-}
-
-static void mode_ptr(struct scanner_state *state)
-{
-}
-
-static void mode_scanset(struct scanner_state *state)
-{
-}
-
-static void mode_negset(struct scanner_state *state)
-{
-}
-
-static void mode_num(struct scanner_state *state)
-{
-}
-
-static void mode_literal(struct scanner_state *state)
-{
-}
-
-static void mode_done(struct scanner_state *state)
-{
-	state->current = 0;
-	state->mode = MODE_DONE;
-}
-
 bool _scanner_next(struct scanner_state *state, char ch)
 {
-	typedef void(*proc)(struct scanner_state*);
-	static proc funcs[NUM_MODES] = {
-		mode_parse,
-		mode_integer,
-		mode_dec,
-		mode_oct_or_hex,
-		mode_oct_begin,
-		mode_oct_body,
-		mode_hex_begin,
-		mode_hex_body,
-		mode_float,
-		mode_fix,
-		mode_exp,
-		mode_hexfloat,
-		mode_char,
-		mode_str,
-		mode_ptr,
-		mode_scanset,
-		mode_negset,
-		mode_num,
-		mode_literal,
-		mode_done
-	};
-	state->current = ch;
-	while (state->current) {
-		proc p = funcs[state->mode];
-		state->mode = MODE_DONE;
-		p(state);
-	}
-	return state->mode != MODE_DONE;
+	// Handle the char according to the current mode.
+	// If the char matches the mode, and is consumed, return true.
+	// If the char completed the current match, switch to MODE_PARSE before
+	// returning, so the next character will advance to the next specifier.
+	// If the char causes a transition to some specific mode, assign that mode,
+	// then continue, so the new mode will consume the character instead.
+	// If the char is not legal, break: this will change to MODE_END and
+	// terminate the scan.
+	do switch(state->mode) {
+		case MODE_PARSE:
+			parse(state);
+			continue;
+
+		case MODE_SPACE:
+			if (isspace(ch)) return true;
+			state->mode = MODE_PARSE;
+			continue;
+
+		case MODE_INTEGER:
+			if (0 == ch) {
+				state->mode = MODE_OCT_OR_HEX_PREFIX;
+				continue;
+			} else if (isdigit(ch)) {
+				state->mode = MODE_DEC_DIGIT;
+				continue;
+			}
+			break;
+
+		case MODE_DEC_PREFIX:
+			break;
+
+		case MODE_DEC_DIGIT:
+			break;
+
+		case MODE_OCT_OR_HEX_PREFIX:
+			if ('x' == ch || 'X' == ch) {
+				state->mode = MODE_HEX_DIGIT;
+				return true;
+			}
+			state->mode = MODE_OCT_DIGIT;
+			continue;
+
+		case MODE_OCT_PREFIX:
+			if ('0' == ch) {
+				state->mode = MODE_OCT_DIGIT;
+				return true;
+			}
+			break;
+
+		case MODE_OCT_DIGIT:
+			break;
+
+		case MODE_HEX_PREFIX:
+			break;
+
+		case MODE_HEX_DIGIT:
+			break;
+
+		case MODE_FLOAT:
+			break;
+
+		case MODE_FIX:
+			break;
+
+		case MODE_EXP:
+			break;
+
+		case MODE_HEXFLOAT:
+			break;
+
+		case MODE_CHAR:
+			break;
+
+		case MODE_STR:
+			break;
+
+		case MODE_PTR:
+			break;
+
+		case MODE_SCANSET:
+			break;
+
+		case MODE_NEGSET:
+			break;
+
+		case MODE_NUM:
+			break;
+
+		case MODE_LITERAL:
+			break;
+
+		case MODE_DONE:
+			return false;
+
+	} while (state->mode = MODE_DONE);
 }
 
 

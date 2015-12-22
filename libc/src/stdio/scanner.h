@@ -13,7 +13,6 @@
 struct scanner_state {
 	int result;
 	// internal state
-	char current;
 	const char *format;
 	va_list *arg;
 	int mode;
