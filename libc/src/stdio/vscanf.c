@@ -5,11 +5,10 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include <stdio.h>
-#include <errno.h>
+#include <stdarg.h>
 
-char *tmpnam(char *s)
+int vscanf(const char *format, va_list arg)
 {
-	errno = EROFS;
-	return NULL;
+	return vfscanf(stdin, format, arg);
 }
 

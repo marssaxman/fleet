@@ -5,11 +5,16 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include <stdio.h>
-#include <errno.h>
+#include <stdarg.h>
 
-char *tmpnam(char *s)
+int vsscanf(const char *buffer, const char *format, va_list arg)
 {
-	errno = EROFS;
-	return NULL;
+	struct scanner_state st;
+	_scanner_init(&st, format);
+	while (_scanner_open(&st, &arg)) {
+		if ('\0' == *buffer) break;
+		_scanner_next(&st, *buffer++);
+	}
+	return st.result;
 }
 

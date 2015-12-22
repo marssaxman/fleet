@@ -40,31 +40,6 @@ int rename(const char *oldname, const char *newname);
 FILE *tmpfile(void);
 char *tmpnam(char *s);
 
-int printf(const char *format, ...);
-int fprintf(FILE *stream, const char *format, ...);
-int vfprintf(FILE *stream, const char *format, va_list arg);
-int sprintf(char *str, const char *format, ...);
-int snprintf(char *s, size_t max, const char *format, ...);
-int vsprintf(char *s, const char *format, va_list arg);
-int vsnprintf(char *s, size_t max, const char *format, va_list arg);
-
-int fgetc(FILE *stream);
-char *fgets(char *str, int num, FILE *stream);
-int getc(FILE *stream);
-int getchar();
-int fputc(int character, FILE *stream);
-int fputs(const char *str, FILE *stream);
-int putc(int c, FILE *stream);
-int putchar(int character);
-int puts(const char *str);
-int ungetc(int character, FILE *stream);
-
-#ifdef __GNUC__
-char *gets(char *s) __attribute__((deprecated));
-#else
-char *gets(char *s);
-#endif
-
 size_t fread(void *dest, size_t size, size_t count, FILE *stream);
 size_t fwrite(const void *src, size_t size, size_t count, FILE *stream);
 
@@ -83,14 +58,36 @@ int feof(FILE *stream);
 int ferror(FILE *stream);
 void perror(const char *s);
 
-#if 0 // implement later
-fscanf
-scanf
-sscanf
-vfscanf
-vscanf
-vsscanf
-#endif // to implement
+int printf(const char *format, ...);
+int fprintf(FILE *stream, const char *format, ...);
+int vfprintf(FILE *stream, const char *format, va_list arg);
+int sprintf(char *str, const char *format, ...);
+int snprintf(char *s, size_t max, const char *format, ...);
+int vsprintf(char *s, const char *format, va_list arg);
+int vsnprintf(char *s, size_t max, const char *format, va_list arg);
+int scanf(const char *format, ...);
+int vscanf(const char *format, va_list arg);
+int fscanf(FILE *stream, const char *format, ...);
+int vfscanf(FILE *stream, const char *format, va_list arg);
+int sscanf(const char *buffer, const char *format, ...);
+int vsscanf(const char *buffer, const char *format, va_list arg);
+
+int fgetc(FILE *stream);
+char *fgets(char *str, int num, FILE *stream);
+int getc(FILE *stream);
+int getchar();
+int fputc(int character, FILE *stream);
+int fputs(const char *str, FILE *stream);
+int putc(int c, FILE *stream);
+int putchar(int character);
+int puts(const char *str);
+int ungetc(int character, FILE *stream);
+
+#ifdef __GNUC__
+char *gets(char *s) __attribute__((deprecated));
+#else
+char *gets(char *s);
+#endif
 
 #endif //_STDIO_H
 

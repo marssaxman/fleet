@@ -4,12 +4,20 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include <stdio.h>
-#include <errno.h>
+#include "scanner.h"
 
-char *tmpnam(char *s)
+void _scanner_init(struct scanner_state *state, const char *format)
 {
-	errno = EROFS;
-	return NULL;
+	state->result = EOF;
 }
+
+bool _scanner_open(struct scanner_state *state, va_list *arg)
+{
+	return false;
+}
+
+void _scanner_next(struct scanner_state *state, char ch)
+{
+}
+
 
