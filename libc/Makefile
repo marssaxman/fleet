@@ -10,10 +10,10 @@ include ../kernel/target.mk
 LIBCFLAGS := $(CFLAGS) -MD -MP -Werror
 LIBCFLAGS += -iquote src
 LIBCFLAGS += -isystem include -isystem ../kernel/include
-TESTCFLAGS := $(LIBCFLAGS) -fPIC -DTESTSUITE
+TESTCFLAGS := $(LIBCFLAGS) -fPIC -DTESTSUITE -g
 TESTCFLAGS += -include "test/testsuite.h" -iquote test
 TESTLDFLAGS := -nodefaultlibs -march=$(ARCH) -m$(BITS) -static-libgcc
-HOSTCFLAGS := -march=$(ARCH) -m$(BITS) -MD -MP -std=c99 -Werror
+HOSTCFLAGS := -march=$(ARCH) -m$(BITS) -MD -MP -std=c99 -Werror -g
 HOSTCFLAGS += -iquote src -iquote ../
 SUFFIXES:=c s
 
