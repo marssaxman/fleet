@@ -13,7 +13,9 @@ longjmp:
 	mov 8(%esp), %eax
 	# value must not be equal to 0
 	test %eax, %eax
-	cmovz $1, %eax
+	jnz restore
+	add $1, %eax
+restore:
 	# restore the nonvolatile register state
 	mov (%edx), %ebx
 	mov 4(%edx), %esi
