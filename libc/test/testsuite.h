@@ -15,6 +15,8 @@
 
 #define TESTSUITE(x) __attribute__((constructor)) static void _test_##x()
 
+void testlogf(const char *fmt, ...);
+
 void check(int expect, const char *cond, const char *func, int line);
 #define CHECK(cond) \
 		check((cond), #cond, __FILE__, __LINE__)

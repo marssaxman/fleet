@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <dlfcn.h>
+#include <stdarg.h>
 
 // Symbols linked against by libc.so
 int _stdin_id = 0;
@@ -24,7 +25,13 @@ void check_str(
 		int bytes,
 		const char *func,
 		int line);
-
+void testlogf(const char *fmt, ...)
+{
+	va_list arg;
+	va_start(arg, fmt);
+	vfprintf(stdout, fmt, arg);
+	va_end(arg);
+}
 
 static const char *current_func = 0;
 static unsigned current_fails = 0;
