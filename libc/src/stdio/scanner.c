@@ -199,23 +199,37 @@ static int mode_a(struct scanner_state *s, char c)
 	return MATCH_FAIL;
 }
 
+static void emit_char(struct scanner_state *s, char c)
+{
+	if (s->dest) *(char*)s->dest++ = c;
+	if (s->flags & FLAG_HAS_WIDTH) s->width--;
+}
+
+static void end_string(struct scanner_state *s)
+{
+	if (s->dest) *(char*)s->dest = '\0';
+}
+
+static bool has_room(struct scanner_state *s)
+{
+	return (s->flags & FLAG_HAS_WIDTH)? s->width > 0: true;
+}
+
 static int mode_c(struct scanner_state *s, char c)
 {
-	if (s->flags & FLAG_HAS_WIDTH) {
-		if (0 >= s->width) return MATCH_RETRY;
-		--s->width;
-	}
-	if (s->dest) *(char*)s->dest++ = c;
+	if (!has_room(s)) return MATCH_RETRY;
+	emit_char(s, c);
 	return (s->flags & FLAG_HAS_WIDTH)? MATCH_ACCEPT: MATCH_NEXT;
 }
 
 static int mode_s(struct scanner_state *s, char c)
 {
-	bool done = false;
-	if (isspace(c)) done = true;
-	else if (s->flags & FLAG_HAS_WIDTH) done = !s->width--;
-	if (s->dest) *(char*)s->dest++ = done? '\0': c;
-	return done? MATCH_RETRY: MATCH_ACCEPT;
+	if (isspace(c) || !has_room(s)) {
+		end_string(s);
+		return MATCH_RETRY;
+	}
+	emit_char(s, c);
+	return MATCH_ACCEPT;
 }
 
 static int mode_p(struct scanner_state *s, char c)
@@ -223,14 +237,34 @@ static int mode_p(struct scanner_state *s, char c)
 	return MATCH_FAIL;
 }
 
+static bool scanset_contains(struct scanner_state *s, char c)
+{
+	for (unsigned i = 0; i < s->spec_size; ++i) {
+		if (s->specifier[i] == c) return true;
+	}
+	return false;
+}
+
 static int mode_scanset(struct scanner_state *s, char c)
 {
-	return MATCH_FAIL;
+	// scansets do not consume leading whitespace
+	if (!scanset_contains(s, c) || !has_room(s)) {
+		end_string(s);
+		return MATCH_RETRY;
+	}
+	emit_char(s, c);
+	return MATCH_ACCEPT;
 }
 
 static int mode_negset(struct scanner_state *s, char c)
 {
-	return MATCH_FAIL;
+	// scansets do not consume whitespace
+	if (scanset_contains(s, c) || !has_room(s)) {
+		end_string(s);
+		return MATCH_RETRY;
+	}
+	emit_char(s, c);
+	return MATCH_ACCEPT;
 }
 
 static int mode_n(struct scanner_state *s, char c)
