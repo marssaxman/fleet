@@ -17,7 +17,7 @@ HOSTCFLAGS := -march=$(ARCH) -m$(BITS) -MD -MP -std=c99 -Werror -g
 HOSTCFLAGS += -iquote src -iquote ../
 SUFFIXES:=c s
 
--include $(call findtype, c, obj)
+-include $(call findtype, d, obj)
 
 libc.a: $(call objs, $(SUFFIXES), src, obj/lib)
 	ar rcs $@ $^
