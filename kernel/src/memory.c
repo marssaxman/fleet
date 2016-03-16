@@ -126,7 +126,7 @@ void *_memory_alloc(size_t bytes)
 	void *block = memory_break;
 	memory_break += bytes;
 	if (memory_break > memory_end) {
-		_panic("Allocation failure: memory exhaused\n");
+		_panic("Allocation failure: memory exhausted\n");
 	}
 	return block;
 }
