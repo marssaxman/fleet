@@ -11,7 +11,6 @@
 #include "i386.h"
 #include "entry.h"
 #include "panic.h"
-#include "uart.h"
 #include "memory.h"
 #include "libc/main.h"
 

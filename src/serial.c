@@ -4,7 +4,7 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "uart.h"
+#include "serial.h"
 #include "cpu.h"
 #include "irq.h"
 #include <stdint.h>
@@ -16,6 +16,9 @@
 
 // more information about serial ports than you could ever want:
 // http://retired.beyondlogic.org/serial/serial.htm
+
+// another informative resource:
+// https://en.wikibooks.org/wiki/Serial_Programming/8250_UART_Programming
 
 // The UART has six register addresses. The meaning depends on the state of
 // the DLAB flag and whether you are reading from or writing to the register.
@@ -100,76 +103,76 @@
 #define MCR_LOOPBACK 0x10
 #define MCR_AUTOFLOW 0x20
 
-struct uart {
+struct serial {
 	unsigned port;
 	unsigned irq;
 	int streamid;
 };
 
-struct uart COM1 = { .port = 0x3F8, .irq = 4 };
-struct uart COM2 = { .port = 0x2F8, .irq = 3 };
-struct uart COM3 = { .port = 0x3E8, .irq = 4 };
-struct uart COM4 = { .port = 0x2E8, .irq = 3 };
+struct serial COM1 = { .port = 0x3F8, .irq = 4 };
+struct serial COM2 = { .port = 0x2F8, .irq = 3 };
+struct serial COM3 = { .port = 0x3E8, .irq = 4 };
+struct serial COM4 = { .port = 0x2E8, .irq = 3 };
 
-static int uart_read(void *ref, void *buf, unsigned bytes);
-static int uart_write(void *ref, const void *buf, unsigned bytes);
-static void uart_close(void *ref);
+static int serial_read(void *ref, void *buf, unsigned bytes);
+static int serial_write(void *ref, const void *buf, unsigned bytes);
+static void serial_close(void *ref);
 
-static struct iops uart_ops = {
-	.read = uart_read,
-	.write = uart_write,
-	.close = uart_close,
+static struct iops serial_ops = {
+	.read = serial_read,
+	.write = serial_write,
+	.close = serial_close,
 };
 
-static void uart_irq(void *ref)
+static void serial_irq(void *ref)
 {
-	struct uart *uart = (struct uart*)ref;
+	struct serial *serial = (struct serial*)ref;
 	// See what's up with this port. Why did an interrupt occur?
-	uint8_t iir = _inb(uart->port + IIR);
+	uint8_t iir = _inb(serial->port + IIR);
 	switch (iir & IIR_MASK) {
 		case IIR_NONE: return; // well that was weird
 		case IIR_MODEM_STATUS: {
 			// we don't really care, but we need to clear the condition,
 			// so we'll read from the status register
-        	_inb(uart->port + MSR);
+        	_inb(serial->port + MSR);
 		} break;
 		case IIR_THRE: /* TX ready */ break;
 		case IIR_RX_DATA: /* RX ready */ break;
 		case IIR_RX_STATUS: {
 			// nothing we can usefully do just yet, but we need to clear
 			// the condition, so we'll read from the status register
-        	_inb(uart->port + LSR);
+        	_inb(serial->port + LSR);
 		} break;
 	}
 }
 
-int _uart_open(struct uart *uart)
+int _serial_open(struct serial *serial)
 {
-	if (uart->streamid) return -EISCONN;
+	if (serial->streamid) return -EISCONN;
 	// Switch DLAB on and set the speed to 115200.
-	_outb(uart->port + LCR, LCR_DLAB);
-	_outb(uart->port + DLL, 0x01);
-	_outb(uart->port + DLH, 0x00);
+	_outb(serial->port + LCR, LCR_DLAB);
+	_outb(serial->port + DLL, 0x01);
+	_outb(serial->port + DLH, 0x00);
 	// Switch DLAB off and configure 8N1 mode.
-	_outb(uart->port + LCR, LCR_WORD_8);
+	_outb(serial->port + LCR, LCR_WORD_8);
 	// Enable FIFO mode and clear buffers.
-	_outb(uart->port + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
+	_outb(serial->port + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
 	// Add ourselves to the notify queue for the port's IRQ.
-	_irq_listen(uart->irq, uart, &uart_irq);
+	_irq_listen(serial->irq, serial, &serial_irq);
 	// Enable interrupts so we don't have to waste time polling.
 	// We want to know when data is ready to send or to receive.
-	_outb(uart->port + IER, IER_RX_DATA|IER_THRE);
+	_outb(serial->port + IER, IER_RX_DATA|IER_THRE);
 	// Create and return a stream ID so system calls can refer to this.
-	uart->streamid = open(uart, &uart_ops);
+	serial->streamid = open(serial, &serial_ops);
 }
 
-static int uart_write(void *ref, const void *buf, unsigned bytes)
+static int serial_write(void *ref, const void *buf, unsigned bytes)
 {
-	struct uart *uart = (struct uart*)ref;
+	struct serial *serial = (struct serial*)ref;
 	const char *p = buf;
 	const char *end = buf + bytes;
-	unsigned lsr_addr = uart->port + LSR;
-	unsigned thr_addr = uart->port + THR;
+	unsigned lsr_addr = serial->port + LSR;
+	unsigned thr_addr = serial->port + THR;
 	// Write into the port until our buffer is empty or its buffer is full.
 	while (p < end) {
 		if (_inb(lsr_addr) & LSR_TX_READY) {
@@ -183,13 +186,13 @@ static int uart_write(void *ref, const void *buf, unsigned bytes)
 	return p - (char*)buf;
 }
 
-static int uart_read(void *ref, void *buf, unsigned capacity)
+static int serial_read(void *ref, void *buf, unsigned capacity)
 {
-	struct uart *uart = (struct uart*)ref;
+	struct serial *serial = (struct serial*)ref;
 	char *p = buf;
 	char *end = buf + capacity;
-	unsigned lsr_addr = uart->port + LSR;
-	unsigned rbr_addr = uart->port + RBR;
+	unsigned lsr_addr = serial->port + LSR;
+	unsigned rbr_addr = serial->port + RBR;
 	// Read bytes from this port until we empty it or run out of buffer.
 	while (p < end) {
 		if (_inb(lsr_addr) & LSR_RX_READY) {
@@ -202,15 +205,15 @@ static int uart_read(void *ref, void *buf, unsigned capacity)
 	return p - (char*)buf;
 }
 
-static void uart_close(void *ref)
+static void serial_close(void *ref)
 {
-	struct uart *uart = (struct uart*)ref;
-	assert(uart->streamid != 0);
-	uart->streamid = 0;
+	struct serial *serial = (struct serial*)ref;
+	assert(serial->streamid != 0);
+	serial->streamid = 0;
 	// Disable interrupts.
-	_outb(uart->port + IER, 0);
+	_outb(serial->port + IER, 0);
 	// Detach from the ISR.
-	_irq_ignore(uart->irq);
+	_irq_ignore(serial->irq);
 }
 
 

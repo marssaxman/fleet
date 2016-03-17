@@ -8,7 +8,7 @@
 #include <setjmp.h>
 #include "stdio/stream.h"
 #include "libc/main.h"
-#include "uart.h"
+#include "serial.h"
 #include "log.h"
 
 extern int main(int argc, char *argv[]);
@@ -28,8 +28,8 @@ int _main(const char *cmdline)
 	_init_stream(&_stdin);
 	_init_stream(&_stdout);
 	_init_stream(&_stderr);
-	_stdin.id = _uart_open(&COM1);
-	_stdout.id = _uart_open(&COM2);
+	_stdin.id = _serial_open(&COM1);
+	_stdout.id = _serial_open(&COM2);
 	_stderr.id = _log_open();
 	if (0 == setjmp(exitjmp)) {
 		ret_status = main(0, 0);

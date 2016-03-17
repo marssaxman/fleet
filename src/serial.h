@@ -4,21 +4,20 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#ifndef UART_H
-#define UART_H
+#ifndef SERIAL_H
+#define SERIAL_H
 
 #include <stddef.h>
 
 // Primitive, low-speed legacy serial interfaces, aka COM ports.
 
-struct uart;
+struct serial;
 
-extern struct uart COM1;
-extern struct uart COM2;
-extern struct uart COM3;
-extern struct uart COM4;
+extern struct serial COM1;
+extern struct serial COM2;
+extern struct serial COM3;
+extern struct serial COM4;
 
-int _uart_open(struct uart*);
+int _serial_open(struct serial*);
 
-
-#endif // UART_H
+#endif // SERIAL_H
