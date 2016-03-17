@@ -7,12 +7,8 @@
 #ifndef _STRING_H
 #define _STRING_H
 
-#include <_size_t.h>
-#include <_null.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <c/size_t.h>
+#include <c/null.h>
 
 // Fill
 void *memset(void *buf, int ch, size_t n);
@@ -49,10 +45,6 @@ char *strtok(char *str, const char *delims);
 char *strerror(int num);
 size_t strlen(const char *str);
 size_t strxfrm(char *dest, const char *src, size_t n);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif //_STRING_H
 

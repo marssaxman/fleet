@@ -31,8 +31,8 @@
 // SUCH DAMAGE.
 // 
 
-#include <_size_t.h>
-#include <_null.h>
+#include <c/size_t.h>
+#include <c/null.h>
 
 void *bsearch(
 		const void *key, const void *base,

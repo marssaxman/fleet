@@ -7,11 +7,7 @@
 #ifndef _LOCALE_H
 #define _LOCALE_H
 
-#include <_null.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <c/null.h>
 
 struct lconv {
     char* decimal_point;
@@ -49,9 +45,5 @@ struct lconv {
 
 struct lconv *localeconv(void);
 char *setlocale(int category, const char *locale);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif //_LOCALE_H

@@ -7,9 +7,9 @@
 #ifndef _STDLIB_H
 #define _STDLIB_H
 
-#include <_null.h>
-#include <_size_t.h>
-#include <_wchar_t.h>
+#include <c/null.h>
+#include <c/size_t.h>
+#include <c/wchar_t.h>
 
 double atof(const char *str);
 int atoi(const char *str);

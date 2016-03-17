@@ -1,9 +1,11 @@
+// Copyright (C) 2015 Mars Saxman. All rights reserved.
+// Permission is granted to use at your own risk and distribute this software
+// in source and binary forms provided all source code distributions retain
+// this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
+// IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
+
 #ifndef _FENV_H
 #define _FENV_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define FE_INVALID    1
 #define __FE_DENORM   2
@@ -30,23 +32,19 @@ typedef struct {
   char __other[16];
 } fenv_t;
 
-#define FE_DFL_ENV      ((const fenv_t *) -1)
+#define FE_DFL_ENV ((const fenv_t*)-1)
 int feclearexcept(int);
-int fegetexceptflag(fexcept_t *, int);
+int fegetexceptflag(fexcept_t*, int);
 int feraiseexcept(int);
-int fesetexceptflag(const fexcept_t *, int);
+int fesetexceptflag(const fexcept_t*, int);
 int fetestexcept(int);
-
 int fegetround(void);
 int fesetround(int);
+int fegetenv(fenv_t*);
+int feholdexcept(fenv_t*);
+int fesetenv(const fenv_t*);
+int feupdateenv(const fenv_t*);
 
-int fegetenv(fenv_t *);
-int feholdexcept(fenv_t *);
-int fesetenv(const fenv_t *);
-int feupdateenv(const fenv_t *);
+#endif //_FENV_H
 
-#ifdef __cplusplus
-}
-#endif
-#endif
 

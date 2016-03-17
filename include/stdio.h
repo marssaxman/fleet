@@ -7,9 +7,9 @@
 #ifndef _STDIO_H
 #define _STDIO_H
 
-#include <_va_list.h>
-#include <_null.h>
-#include <_size_t.h>
+#include <c/va_list.h>
+#include <c/null.h>
+#include <c/size_t.h>
 
 #define EOF (-1)
 #define BUFSIZ 1024

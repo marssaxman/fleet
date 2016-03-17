@@ -7,7 +7,7 @@
 #ifndef _STDINT_H
 #define _STDINT_H
 
-#include <_wchar_min_max.h>
+#include <c/wchar_min_max.h>
 
 // signed integer types with exact widths
 typedef signed char int8_t;

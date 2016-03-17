@@ -7,10 +7,6 @@
 #ifndef _FLOAT_H
 #define _FLOAT_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 int __flt_rounds(void);
 #define FLT_ROUNDS (__flt_rounds())
 
@@ -69,10 +65,6 @@ int __flt_rounds(void);
 #define LDBL_MAX_10_EXP 4932
 
 #define DECIMAL_DIG 21
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif //_FLOAT_H
 

@@ -7,10 +7,6 @@
 #ifndef _ERRNO_H
 #define _ERRNO_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern int errno;
 
 // Error codes specified by the C99 standard
@@ -28,8 +24,5 @@ extern int errno;
 #define EMFILE 10
 #define EISCONN 11
 
-#ifdef __cplusplus
-}
-#endif
-
 #endif //_ERRNO_H
+

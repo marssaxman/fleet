@@ -1,5 +1,5 @@
 #include <wctype.h>
-#include <_wchar_t.h>
+#include <c/wchar_t.h>
 
 #define CASEMAP(u1,u2,l) { (u1), (l)-(u1), (u2)-(u1)+1 }
 #define CASELACE(u1,u2) CASEMAP((u1),(u2),(u1)+1)

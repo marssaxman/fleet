@@ -7,8 +7,8 @@
 #ifndef _WCTYPE_H
 #define _WCTYPE_H
 
-#include <_wint_t.h>
-#include <_weof.h>
+#include <c/wint_t.h>
+#include <c/weof.h>
 
 typedef const int *wctrans_t;
 typedef unsigned long wctype_t;
@@ -36,3 +36,4 @@ wint_t towlower(wint_t wc);
 wint_t towupper(wint_t wc);
 
 #endif //_WCTYPE_H
+

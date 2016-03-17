@@ -7,9 +7,9 @@
 #ifndef _STDDEF_H
 #define _STDDEF_H
 
-#include <_null.h>
-#include <_size_t.h>
-#include <_wchar_t.h>
+#include <c/null.h>
+#include <c/size_t.h>
+#include <c/wchar_t.h>
 
 typedef int ptrdiff_t;
 

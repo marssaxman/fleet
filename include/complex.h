@@ -1,9 +1,11 @@
+// Copyright (C) 2015-2016 Mars Saxman. All rights reserved.
+// Permission is granted to use at your own risk and distribute this software
+// in source and binary forms provided all source code distributions retain
+// this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
+// IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
+
 #ifndef _COMPLEX_H
 #define _COMPLEX_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define complex _Complex
 #ifdef __GNUC__
@@ -101,7 +103,6 @@ double creal(double complex);
 float crealf(float complex);
 long double creall(long double complex);
 
-#ifndef __cplusplus
 #define __CIMAG(x, t) \
 	(+(union { _Complex t __z; t __xy[2]; }){(_Complex t)(x)}.__xy[1])
 
@@ -112,22 +113,6 @@ long double creall(long double complex);
 #define cimag(x) __CIMAG(x, double)
 #define cimagf(x) __CIMAG(x, float)
 #define cimagl(x) __CIMAG(x, long double)
-#endif
 
-#if __STDC_VERSION__ >= 201112L
-#if defined(_Imaginary_I)
-#define __CMPLX(x, y, t) ((t)(x) + _Imaginary_I*(t)(y)))
-#elif defined(__clang__)
-#define __CMPLX(x, y, t) (+(_Complex t){ (t)(x), (t)(y) })
-#else
-#define __CMPLX(x, y, t) (__builtin_complex((t)(x), (t)(y)))
-#endif
-#define CMPLX(x, y) __CMPLX(x, y, double)
-#define CMPLXF(x, y) __CMPLX(x, y, float)
-#define CMPLXL(x, y) __CMPLX(x, y, long double)
-#endif
+#endif //_COMPLEX_H
 
-#ifdef __cplusplus
-}
-#endif
-#endif

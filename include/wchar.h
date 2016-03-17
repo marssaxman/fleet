@@ -7,13 +7,13 @@
 #ifndef _WCHAR_H
 #define _WCHAR_H
 
-#include <_null.h>
-#include <_wchar_t.h>
-#include <_size_t.h>
-#include <_struct_tm.h>
-#include <_wint_t.h>
-#include <_weof.h>
-#include <_wchar_min_max.h>
+#include <c/null.h>
+#include <c/wchar_t.h>
+#include <c/size_t.h>
+#include <c/struct_tm.h>
+#include <c/wint_t.h>
+#include <c/weof.h>
+#include <c/wchar_min_max.h>
 
 // fgetwc
 // fgetws
