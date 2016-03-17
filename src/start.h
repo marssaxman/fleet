@@ -4,11 +4,15 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#ifndef _STARTC_ENTRY_H
-#define _STARTC_ENTRY_H
+#ifndef START_H
+#define START_H
 
-// The application must define this main entrypoint function.
-extern void _startc();
+// The start module will save a multiboot header here, if one was provided.
+extern struct multiboot_info *_multiboot;
+
+// After configuring the CPU state, it's time to launch the kernel.
+extern void _kernel();
+
 
 // The application may define these interrupt handler functions if it wants to
 // handle CPU exceptions or external device interrupts.
@@ -17,7 +21,6 @@ extern void _isr_cpu(unsigned code, struct _cpu_state*);
 extern void _isr_irq(unsigned irq, struct _cpu_state*);
 
 // The startup stub will store the multiboot header address here.
-extern struct multiboot_info *_multiboot;
 
 #endif //_STARTC_ENTRY_H
 

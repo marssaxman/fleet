@@ -9,20 +9,17 @@
 #include "irq.h"
 #include "multiboot.h"
 #include "i386.h"
-#include "entry.h"
+#include "start.h"
 #include "panic.h"
 #include "memory.h"
 #include "libc/main.h"
 
-void _isr_cpu(unsigned code, struct _cpu_state *regs)
-{
+void _isr_cpu(unsigned code, struct _cpu_state *regs) {
 	// Processor signalled that something fatal happened
 	_panic("Processor exception %hhd at %d\n", code, regs->eip);
 }
 
-// Libstartc runtime calls this entrypoint function.
-void _startc()
-{
+void _kernel() {
 	assert(_multiboot);
 	_memory_init(_multiboot);
 	// Configure the IRQ table and enable interrupts.
@@ -36,8 +33,5 @@ void _startc()
 	// Do something useful, someday.
 	_log(INFO, "hello, world!\n");
 	_main(cmdline);
-
-	// Never return from _startc.
-	while (1) _hlt();
 }
 
