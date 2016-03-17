@@ -7,27 +7,23 @@
 # Hello, world! It's time to set up the machine so we can launch the kernel.
 .section .text
 .global _start
-.type _start, @function
 _start:
 	# Initialize esp to point at our temporary call stack.
 	movl $stack_top, %esp
 	# Save the bootloader info; the kernel will pick them up as parameters.
 	pushl %ebx
 	pushl %eax
-	# Configure segments, interrupts, and the interrupt controllers.
-	call _gdt_init
-	call _idt_init
-	call _pic_init
-	# Setup is done - start up the kernel.
-	call _kernel
+	call _gdt_init	# Configure memory segmentation (flat)
+	call _idt_init	# Set up an interrupt descriptor table
+	call _pic_init	# Make the interrupt controllers usable
+	call _kernel	# Go to the land of C and never come back.
 
-	# The kernel is never supposed to return, so if we end up back here
-	# something must have gone wrong. We'll hang until the user reboots.
+	# There is nothing more we can do. Instead of wandering into the weeds,
+	# we'll sleep in a loop until the user reboots the machine.
 	cli
 .Lhang:
 	hlt
 	jmp .Lhang
-.size _start, . - _start
 
 # Create a multiboot header so grub knows it can load this executable.
 # It goes in a section all its own so the linker can place it near the start.
