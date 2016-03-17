@@ -1,13 +1,20 @@
+// Copyright (C) 2015-2016 Mars Saxman. All rights reserved.
+// Permission is granted to use at your own risk and distribute this software
+// in source and binary forms provided all source code distributions retain
+// this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
+// IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
+
 #include "cpu.h"
 #include "log.h"
 #include "irq.h"
 #include "multiboot.h"
-#include <startc/i386.h>
-#include <startc/entry.h>
-#include <sys/entry.h>
+#include "i386.h"
+#include "entry.h"
 #include "panic.h"
 #include "uart.h"
 #include "memory.h"
+
+extern int main(int argc, char *argv[]);
 
 void _isr_cpu(unsigned code, struct _cpu_state *regs)
 {
@@ -32,12 +39,16 @@ void _startc()
 	_irq_init();
 	_sti();
 	// Get the command line, if the bootloader gave us one.
-	const char *cmdline = "";
+	char *cmdline = "";
 	if (_multiboot->flags & 1<<2) {
-		cmdline = (const char*)_multiboot->cmdline;
+		cmdline = (char*)_multiboot->cmdline;
 	}
-	// Jump into the application entrypoint and let it do its thing.
-	_main(cmdline);
+	// Do something useful, someday.
+	_log(INFO, "hello, world!\n");
+
+	char *argv[1] = {cmdline};
+	main(1, argv);
+
 	// Never return from _startc.
 	while (1) _hlt();
 }

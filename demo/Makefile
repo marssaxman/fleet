@@ -3,21 +3,15 @@ BIN := hello.bin
 SRCS := $(wildcard *.c)
 OBJS := $(addsuffix .o, $(basename $(SRCS)))
 
-include ../libc/target.mk
-CFLAGS += -isystem ../libc/include
-LDFLAGS += -L../ -T ../startc/linker.ld
-LDLIBS += -lfleet
+include ../build/link.mk
 
 all: $(BIN)
 
-$(BIN): $(OBJS) ../libfleet.a
+$(BIN): $(OBJS)
 	ld -o $@ $(LDFLAGS) --start-group $^ $(LDLIBS) --end-group
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
-
-../libfleet.a:
-	@cd .. && $(MAKE) -s
 
 clean:
 	-@rm -f $(BIN) $(OBJS)

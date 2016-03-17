@@ -4,12 +4,19 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include <stdio.h>
+#include <stdint.h>
 
-int main(int argc, char *argv[])
+static void debug_write(const char *msg)
 {
-//	puts("Hello, world!");
-	fputs("Hello, world!\n", stderr);
-	return 0;
+	// Use the port E9 hack to write data to the emulator's debug console.
+	while (*msg) {
+		__asm__("outb %%al,%%dx;": :"d"(0xE9), "a"(*msg++));
+	}
+}
+
+void _startc()
+{
+	debug_write("Hello, world!\n");
+	while (1);
 }
 

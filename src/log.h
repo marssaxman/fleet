@@ -1,3 +1,9 @@
+// Copyright (C) 2015-2016 Mars Saxman. All rights reserved.
+// Permission is granted to use at your own risk and distribute this software
+// in source and binary forms provided all source code distributions retain
+// this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
+// IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
+
 #ifndef LOG_H
 #define LOG_H
 
@@ -17,6 +23,7 @@ void _log_printf(const char *format,...);
 
 enum _log_categories
 {
+	_LOG_INFO = 1,
 	_LOG_PCIPROBE = 0,
 	_LOG_MULTIBOOT = 0,
 	_LOG_ISR = 0,

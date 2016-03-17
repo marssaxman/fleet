@@ -1,3 +1,9 @@
+// Copyright (C) 2015-2016 Mars Saxman. All rights reserved.
+// Permission is granted to use at your own risk and distribute this software
+// in source and binary forms provided all source code distributions retain
+// this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
+// IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
+
 #include "memory.h"
 #include "multiboot.h"
 #include "log.h"
@@ -92,8 +98,8 @@ void _memory_init(struct multiboot_info *info)
 	_log(MEMORY, "    Base                Size                Type\n");
 	if (info->flags & 1<<6) {
 		// We have a BIOS memory map.
-		struct memory_map *mmap = (struct memory_map*)info->mmap_addr;
-		map_check(mmap, info->mmap_length);
+		struct memory_map *mmap = (struct memory_map*)info->memory_map_addr;
+		map_check(mmap, info->memory_map_length);
 	} else if (info->flags & 1<<0) {
 		// We know how large the upper and lower memory banks are.
 		simple_check(info->mem_lower * 1024, info->mem_upper * 1024);

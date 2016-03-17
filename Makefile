@@ -1,25 +1,29 @@
-default: lib
+default: all
+all: lib
+lib: lib/libfleet.a
 
-lib: libfleet.a
+include build/srctree.mk
+include build/target.mk
+-include $(call findtype, d, obj)
 
-libfleet.a: startc/libstartc.a kernel/libkernel.a libc/libc.a
-	cat mergelibs | ar -M
+CFLAGS+=-MD -MP -Werror -g -fvisibility=hidden -Wswitch
+CFLAGS+=-Isrc -isystem include
 
-startc/libstartc.a:
-	@cd startc && $(MAKE) -s
+lib/libfleet.a: $(call listobjs, c s, src, obj)
+	@mkdir -p $(@D)
+	ar rcs $@ $^
 
-kernel/libkernel.a:
-	@cd kernel && $(MAKE) -s
+obj/%.o: src/%.c
+	@mkdir -p $(@D)
+	@echo "$(CC) \$$(CFLAGS) -c $< -o $@"
+	@$(CC) $(CFLAGS) -c $< -o $@
 
-libc/libc.a:
-	@cd libc && $(MAKE) -s
+obj/%.o: src/%.s
+	@mkdir -p $(@D)
+	as $(ASFLAGS) -o $@ $<
 
 clean:
-	@cd startc && $(MAKE) -s clean
-	@cd kernel && $(MAKE) -s clean
-	@cd libc && $(MAKE) -s clean
-	-@rm -f libfleet.a
+	-@rm -rf lib obj
 
-.PHONY: clean
-
+.PHONY: clean all
 
