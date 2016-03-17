@@ -6,7 +6,7 @@
 
 #include "stream.h"
 #include "socket.h"
-#include <sys/errno.h>
+#include <errno.h>
 #include <string.h>
 
 static int bufwrite(FILE *stream, const char *src, size_t bytes)

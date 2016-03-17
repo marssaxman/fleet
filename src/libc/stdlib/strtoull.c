@@ -29,7 +29,7 @@
  */
 
 #include <ctype.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 

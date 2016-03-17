@@ -5,7 +5,7 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include <stdio.h>
-#include <sys/errno.h>
+#include <errno.h>
 
 int fsetpos(FILE *stream, const fpos_t *pos)
 {

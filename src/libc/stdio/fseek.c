@@ -5,7 +5,7 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include <stdio.h>
-#include <sys/errno.h>
+#include <errno.h>
 
 int fseek(FILE *stream, long int offset, int origin)
 {

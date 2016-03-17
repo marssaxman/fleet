@@ -8,7 +8,7 @@
 #include "cpu.h"
 #include "irq.h"
 #include <stdint.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include "socket.h"
 #include "panic.h"
 

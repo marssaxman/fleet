@@ -9,7 +9,7 @@
 #include "log.h"
 #include "cpu.h"
 #include "socket.h"
-#include <sys/errno.h>
+#include <errno.h>
 
 // Write log messages to the hypervisor's debug console.
 

@@ -5,7 +5,7 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include "socket.h"
-#include <sys/errno.h>
+#include <errno.h>
 
 struct socket {
 	void *ref;

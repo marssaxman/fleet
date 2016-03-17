@@ -5,7 +5,7 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include <signal.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include <stdlib.h>
 
 typedef void (*handler_t)(int);

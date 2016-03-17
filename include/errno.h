@@ -13,9 +13,20 @@ extern "C" {
 
 extern int errno;
 
+// Error codes specified by the C99 standard
 #define EDOM 1
 #define ERANGE 2
 #define EILSEQ 3
+
+// Additional implementation-specific error codes allowed by the standard
+#define EINVAL 4
+#define ENOENT 5
+#define ESPIPE 6
+#define EROFS 7
+#define EBADF 8
+#define EPERM 9
+#define EMFILE 10
+#define EISCONN 11
 
 #ifdef __cplusplus
 }
