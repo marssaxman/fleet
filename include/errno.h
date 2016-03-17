@@ -16,10 +16,6 @@ extern int errno;
 #define EDOM 1
 #define ERANGE 2
 #define EILSEQ 3
-#define EINVAL 4
-#define ENOENT 5
-#define ESPIPE 6
-#define EROFS 7
 
 #ifdef __cplusplus
 }

@@ -13,8 +13,7 @@
 #include "panic.h"
 #include "uart.h"
 #include "memory.h"
-
-extern int main(int argc, char *argv[]);
+#include "libc/main.h"
 
 void _isr_cpu(unsigned code, struct _cpu_state *regs)
 {
@@ -22,19 +21,11 @@ void _isr_cpu(unsigned code, struct _cpu_state *regs)
 	_panic("Processor exception %hhd at %d\n", code, regs->eip);
 }
 
-// These are defined in sys/errno.h as const, but we'll initialize them here.
-int _stdin_id;
-int _stdout_id;
-int _stderr_id;
-
 // Libstartc runtime calls this entrypoint function.
 void _startc()
 {
 	assert(_multiboot);
 	_memory_init(_multiboot);
-	_stdin_id = _uart_open(&COM1);
-	_stdout_id = _uart_open(&COM2);
-	_stderr_id = _log_open();
 	// Configure the IRQ table and enable interrupts.
 	_irq_init();
 	_sti();
@@ -45,9 +36,7 @@ void _startc()
 	}
 	// Do something useful, someday.
 	_log(INFO, "hello, world!\n");
-
-	char *argv[1] = {cmdline};
-	main(1, argv);
+	_main(cmdline);
 
 	// Never return from _startc.
 	while (1) _hlt();

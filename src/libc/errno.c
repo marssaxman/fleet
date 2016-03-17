@@ -4,7 +4,7 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include <errno.h>
+#include <sys/errno.h>
 
 int errno;
 
@@ -33,6 +33,11 @@ char *strerror(int num)
 		case EROFS:
 			error = "Read-only file system";
 			break;
+		case EINVAL:
+		case EBADF:
+		case EPERM:
+		case EMFILE:
+		case EISCONN:
 		default:
 			error = "";
 			break;

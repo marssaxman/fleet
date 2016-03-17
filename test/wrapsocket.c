@@ -4,8 +4,8 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "kernel/include/sys/socket.h"
-#include "kernel/include/sys/errno.h"
+#include "socket.h"
+#include "errno.h"
 
 // Replacement implementations of kernel IO functions, since we don't want
 // our libc linking against the similarly-named system call wrappers provided

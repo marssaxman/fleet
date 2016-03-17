@@ -8,9 +8,11 @@
 #define MEMORY_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 struct multiboot_info;
 void _memory_init(struct multiboot_info *info);
 void *_memory_alloc(size_t bytes);
+void *sbrk(intptr_t increment);
 
 #endif // MEMORY_H

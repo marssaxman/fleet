@@ -5,7 +5,7 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include "memsocket.h"
-#include "kernel/include/sys/socket.h"
+#include "socket.h"
 #include <string.h>
 
 // compiled inside the host environment, not the test environment

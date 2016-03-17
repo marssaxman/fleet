@@ -4,7 +4,7 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include <sys/memory.h>
+#include "memory.h"
 #include <stddef.h>
 #include <string.h>
 

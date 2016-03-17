@@ -5,8 +5,8 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include "stream.h"
-#include <sys/socket.h>
-#include <errno.h>
+#include "socket.h"
+#include <sys/errno.h>
 #include <string.h>
 
 static int bufwrite(FILE *stream, const char *src, size_t bytes)

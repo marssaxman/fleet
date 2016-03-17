@@ -5,7 +5,7 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include <stdio.h>
-#include <errno.h>
+#include <sys/errno.h>
 
 FILE *freopen(const char *filename, const char *mode, FILE *stream)
 {

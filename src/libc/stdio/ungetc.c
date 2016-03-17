@@ -24,7 +24,7 @@ int ungetc(int character, FILE *stream)
 #ifdef TESTSUITE
 #include "memsocket.h"
 #include <string.h>
-#include <sys/socket.h>
+#include "socket.h"
 char *message = "Hello world, this is a test.";
 static struct memsocket ms;
 static struct _stream stream;

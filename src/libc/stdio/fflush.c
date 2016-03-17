@@ -5,7 +5,7 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include "stream.h"
-#include <sys/socket.h>
+#include "socket.h"
 #include <errno.h>
 
 static int flushwrite(FILE *stream)

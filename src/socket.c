@@ -4,7 +4,7 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include <sys/socket.h>
+#include "socket.h"
 #include <sys/errno.h>
 
 struct socket {

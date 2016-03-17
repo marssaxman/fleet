@@ -9,7 +9,7 @@
 #include "irq.h"
 #include <stdint.h>
 #include <sys/errno.h>
-#include <sys/socket.h>
+#include "socket.h"
 #include "panic.h"
 
 // Implementation of the primitive PC serial transport.

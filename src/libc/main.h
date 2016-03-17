@@ -4,18 +4,10 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "stream.h"
-#include "socket.h"
-#include <stdlib.h>
+#ifndef LIBC_MAIN_H
+#define LIBC_MAIN_HH
 
-int fclose(FILE *stream)
-{
-	int flushret = fflush(stream);
-	int closeret = close(stream->id);
-	if (stream->state & STREAM_ALLOC) {
-		free(stream->buf_addr);
-	}
-	_exit_stream(stream);
-	return (flushret || closeret)? EOF: 0;
-}
+extern int _main(const char *cmdline);
+
+#endif //LIBC_MAIN_H
 
