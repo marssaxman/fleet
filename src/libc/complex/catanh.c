@@ -1,4 +1,4 @@
-#include "libm.h"
+#include "libc/libm.h"
 
 /* atanh = -i atan(i z) */
 

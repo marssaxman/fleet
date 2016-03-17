@@ -13,7 +13,7 @@
  * ====================================================
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const float tiny = 1.0e-30;
 

@@ -76,7 +76,7 @@
  *      sqrt(NaN) = NaN         ... with invalid signal for signaling NaN
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const double tiny = 1.0e-300;
 

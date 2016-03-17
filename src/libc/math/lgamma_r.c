@@ -78,7 +78,7 @@
  *
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const double
 pi  =  3.14159265358979311600e+00, /* 0x400921FB, 0x54442D18 */

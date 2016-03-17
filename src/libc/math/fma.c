@@ -1,5 +1,5 @@
 #include <fenv.h>
-#include "libm.h"
+#include "libc/libm.h"
 
 #if LDBL_MANT_DIG==64 && LDBL_MAX_EXP==16384
 /* exact add, assumes exponent_x >= exponent_y */

@@ -12,7 +12,7 @@
  *
  * Optimized by Bruce D. Evans.
  */
-#include "libm.h"
+#include "libc/libm.h"
 #if (LDBL_MANT_DIG == 64 || LDBL_MANT_DIG == 113) && LDBL_MAX_EXP == 16384
 /* ld80 and ld128 version of __rem_pio2(x,y)
  *

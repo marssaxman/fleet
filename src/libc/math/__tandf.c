@@ -13,7 +13,7 @@
  * ====================================================
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 /* |tan(x)/x - t(x)| < 2**-25.5 (~[-2e-08, 2e-08]). */
 static const double T[] = {

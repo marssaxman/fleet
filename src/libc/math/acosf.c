@@ -13,7 +13,7 @@
  * ====================================================
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const float
 pio2_hi = 1.5707962513e+00, /* 0x3fc90fda */

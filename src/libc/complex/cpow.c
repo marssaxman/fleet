@@ -1,4 +1,4 @@
-#include "libm.h"
+#include "libc/libm.h"
 
 /* pow(z, c) = exp(c log(z)), See C99 G.6.4.1 */
 

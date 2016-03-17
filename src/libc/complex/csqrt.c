@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 /*
  * gcc doesn't implement complex multiplication or division correctly,

@@ -28,7 +28,7 @@
  * Hyperbolic cosine of a complex argument.  See s_ccosh.c for details.
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const float huge = 0x1p127;
 

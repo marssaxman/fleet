@@ -103,7 +103,7 @@
  *              erfc/erf(NaN) is NaN
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const double
 erx  = 8.45062911510467529297e-01, /* 0x3FEB0AC1, 0x60000000 */

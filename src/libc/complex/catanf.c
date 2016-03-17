@@ -53,7 +53,7 @@
  *    IEEE      -10,+10     30000        2.3e-6      5.2e-8
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 #define MAXNUMF 1.0e38F
 

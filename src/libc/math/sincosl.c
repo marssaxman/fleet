@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include "libm.h"
+#include "libc/libm.h"
 
 #if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
 void sincosl(long double x, long double *sin, long double *cos)

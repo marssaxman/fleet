@@ -11,7 +11,8 @@ CFLAGS+=-Isrc -isystem include
 
 lib/libfleet.a: $(call listobjs, c s, src, obj)
 	@mkdir -p $(@D)
-	ar rcs $@ $^
+	@echo "ar rcs $@ \$$^"
+	@ar rcs $@ $^
 
 obj/%.o: src/%.c
 	@mkdir -p $(@D)

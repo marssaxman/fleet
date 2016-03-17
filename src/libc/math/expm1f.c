@@ -13,7 +13,7 @@
  * ====================================================
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const float
 o_threshold = 8.8721679688e+01, /* 0x42b17180 */

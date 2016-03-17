@@ -54,7 +54,7 @@
  *         by method mentioned above.
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static double pone(double), qone(double);
 

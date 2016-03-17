@@ -65,7 +65,7 @@
  *
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 #if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
 long double expl(long double x)

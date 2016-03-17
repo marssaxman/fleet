@@ -13,7 +13,7 @@
  * ====================================================
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const float
 erx  =  8.4506291151e-01, /* 0x3f58560b */

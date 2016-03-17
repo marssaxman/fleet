@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 static const uint32_t k = 1799; /* constant for reduction */
 static const double kln2 = 1246.97177782734161156; /* k * ln2 */

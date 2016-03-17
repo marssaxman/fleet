@@ -11,7 +11,7 @@
  */
 
 #define _GNU_SOURCE
-#include "libm.h"
+#include "libc/libm.h"
 
 void sincos(double x, double *sin, double *cos)
 {

@@ -58,7 +58,7 @@
  * 2.9e-17.  See also clog().
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 #define MAXNUM 1.0e308
 

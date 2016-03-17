@@ -22,7 +22,7 @@ Gamma(x)*Gamma(-x) = -pi/(x sin(pi x))
 
 most ideas and constants are from boost and python
 */
-#include "libm.h"
+#include "libc/libm.h"
 
 static const double pi = 3.141592653589793238462643383279502884;
 

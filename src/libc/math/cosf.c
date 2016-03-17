@@ -14,7 +14,7 @@
  * ====================================================
  */
 
-#include "libm.h"
+#include "libc/libm.h"
 
 /* Small multiples of pi/2 rounded to double precision. */
 static const double
