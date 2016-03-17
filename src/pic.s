@@ -14,63 +14,48 @@
 
 .section .text
 .global _pic_init
-.type _pic_init, @function
 _pic_init:
 	# Start initialization and enable ICW4
-	movl $0x11, %eax
-	movl $PIC1_CMD, %edx
-	outb %al, %dx
-	movl $PIC2_CMD, %edx
-	outb %al, %dx
+	movb $0x11, %al
+	outb %al, $PIC1_CMD
+	outb %al, $PIC2_CMD
 
 	# Set up the vector table offsets
-	movl $0x20, %eax
-	movl $PIC1_DATA, %edx
-	outb %al, %dx
-	movl $0x28, %eax
-	movl $PIC2_DATA, %edx
-	outb %al, %dx
+	movb $0x20, %al
+	outb %al, $PIC1_DATA
+	movb $0x28, %al
+	outb %al, $PIC2_DATA
 
 	# Configure the master/slave wiring
-	movl $0x04, %eax
-	movl $PIC1_DATA, %edx
-	outb %al, %dx
-	movl $0x02, %eax
-	movl $PIC2_DATA, %edx
-	outb %al, %dx
+	movb $0x04, %al
+	outb %al, $PIC1_DATA
+	movb $0x02, %al
+	outb %al, $PIC2_DATA
 
 	# Use 8086 mode and other typical settings
 	movl $0x01, %eax
-	movl $PIC1_DATA, %edx
-	outb %al, %dx
-	movl $PIC2_DATA, %edx
-	outb %al, %dx
+	outb %al, $PIC1_DATA
+	outb %al, $PIC2_DATA
 
 	# Disable all IRQs to start with
 	movl $0xFF, %eax
-	movl $PIC1_DATA, %edx
-	outb %al, %dx
-	movl $PIC2_DATA, %edx
-	outb %al, %dx
+	outb %al, $PIC1_DATA
+	outb %al, $PIC2_DATA
 	ret
-
 
 
 # utility function to configure the interrupt controller's IRQ suppression bits
 .section .text
 .global _pic_set_irqs
-.type _pic_set_irqs, @function
 _pic_set_irqs:
 	# The stack parameter is a bitmask for both PICs, with bits set for
 	# the IRQs we want to receive. The PICs are more interested in knowing
 	# which IRQs we want to suppress, so we'll invert the bits.
 	movb 4(%esp), %al
 	xor $0xFF, %al
-	movl $PIC1_DATA, %edx
-	outb %al, %dx
-	movl $PIC2_DATA, %edx
+	outb %al, $PIC1_DATA
 	movb 5(%esp), %al
 	xor $0xFF, %al
-	outb %al, %dx
+	outb %al, $PIC2_DATA
 	ret
 
