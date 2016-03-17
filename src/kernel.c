@@ -19,19 +19,17 @@ void _isr_cpu(unsigned code, struct _cpu_state *regs) {
 	_panic("Processor exception %hhd at %d\n", code, regs->eip);
 }
 
-void _kernel() {
-	assert(_multiboot);
-	_memory_init(_multiboot);
+void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
+	assert(magic == 0x2BADB002);
+	_memory_init(multiboot);
 	// Configure the IRQ table and enable interrupts.
 	_irq_init();
 	_sti();
 	// Get the command line, if the bootloader gave us one.
 	char *cmdline = "";
-	if (_multiboot->flags & 1<<2) {
-		cmdline = (char*)_multiboot->cmdline;
+	if (multiboot->flags & 1<<2) {
+		cmdline = (char*)multiboot->cmdline;
 	}
-	// Do something useful, someday.
-	_log(INFO, "hello, world!\n");
 	_main(cmdline);
 }
 

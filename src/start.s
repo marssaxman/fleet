@@ -11,15 +11,18 @@
 _start:
 	# Initialize esp to point at our temporary call stack.
 	movl $stack_top, %esp
-	# Did we get the multiboot header we were looking for?
-	cmp $0x2BADB002, %eax
-	jne init
-	movl %ebx, _multiboot
-init:
+	# Save the bootloader info; the kernel will pick them up as parameters.
+	pushl %ebx
+	pushl %eax
+	# Configure segments, interrupts, and the interrupt controllers.
 	call _gdt_init
 	call _idt_init
 	call _pic_init
+	# Setup is done - start up the kernel.
 	call _kernel
+
+	# The kernel is never supposed to return, so if we end up back here
+	# something must have gone wrong. We'll hang until the user reboots.
 	cli
 .Lhang:
 	hlt
@@ -40,13 +43,7 @@ init:
 # Reserve space for the bootstrap stack inside our executable image, since we
 # will need to use it before we've had a chance to examine the memory map.
 .section .bootstrap_stack, "aw", @nobits
-stack_bottom: .skip 16384 # 16 KiB
+stack_bottom:
+.skip 16384 # 16 KiB
 stack_top:
-
-# Create storage for the multiboot info so the kernel can use it later.
-.section .data
-.align 4
-.global _multiboot
-_multiboot:
-.long 0
 

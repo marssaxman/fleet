@@ -7,20 +7,14 @@
 #ifndef START_H
 #define START_H
 
-// The start module will save a multiboot header here, if one was provided.
-extern struct multiboot_info *_multiboot;
-
 // After configuring the CPU state, it's time to launch the kernel.
-extern void _kernel();
-
+extern void _kernel(uint32_t magic, struct multiboot_info*);
 
 // The application may define these interrupt handler functions if it wants to
 // handle CPU exceptions or external device interrupts.
 struct _cpu_state;
 extern void _isr_cpu(unsigned code, struct _cpu_state*);
 extern void _isr_irq(unsigned irq, struct _cpu_state*);
-
-// The startup stub will store the multiboot header address here.
 
 #endif //_STARTC_ENTRY_H
 
