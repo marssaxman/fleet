@@ -5,7 +5,6 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include "serial.h"
-#include "cpu.h"
 #include "irq.h"
 #include <stdint.h>
 #include <errno.h>
@@ -103,6 +102,16 @@
 #define MCR_LOOPBACK 0x10
 #define MCR_AUTOFLOW 0x20
 
+static inline void outb(uint16_t port, uint8_t val) {
+	__asm__ volatile("outb %0, %1": :"a"(val), "Nd"(port));
+}
+
+static inline uint8_t inb(uint16_t port) {
+	uint8_t ret;
+	__asm__ volatile("inb %1, %0": "=a"(ret): "Nd"(port));
+	return ret;
+}
+
 struct serial {
 	unsigned port;
 	unsigned irq;
@@ -128,20 +137,20 @@ static void serial_irq(void *ref)
 {
 	struct serial *serial = (struct serial*)ref;
 	// See what's up with this port. Why did an interrupt occur?
-	uint8_t iir = _inb(serial->port + IIR);
+	uint8_t iir = inb(serial->port + IIR);
 	switch (iir & IIR_MASK) {
 		case IIR_NONE: return; // well that was weird
 		case IIR_MODEM_STATUS: {
 			// we don't really care, but we need to clear the condition,
 			// so we'll read from the status register
-        	_inb(serial->port + MSR);
+        	inb(serial->port + MSR);
 		} break;
 		case IIR_THRE: /* TX ready */ break;
 		case IIR_RX_DATA: /* RX ready */ break;
 		case IIR_RX_STATUS: {
 			// nothing we can usefully do just yet, but we need to clear
 			// the condition, so we'll read from the status register
-        	_inb(serial->port + LSR);
+        	inb(serial->port + LSR);
 		} break;
 	}
 }
@@ -150,18 +159,18 @@ int _serial_open(struct serial *serial)
 {
 	if (serial->streamid) return -EISCONN;
 	// Switch DLAB on and set the speed to 115200.
-	_outb(serial->port + LCR, LCR_DLAB);
-	_outb(serial->port + DLL, 0x01);
-	_outb(serial->port + DLH, 0x00);
+	outb(serial->port + LCR, LCR_DLAB);
+	outb(serial->port + DLL, 0x01);
+	outb(serial->port + DLH, 0x00);
 	// Switch DLAB off and configure 8N1 mode.
-	_outb(serial->port + LCR, LCR_WORD_8);
+	outb(serial->port + LCR, LCR_WORD_8);
 	// Enable FIFO mode and clear buffers.
-	_outb(serial->port + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
+	outb(serial->port + FCR, FIFO_ENABLE|FIFO_CLEAR_ALL|FIFO_TRIGGER_14);
 	// Add ourselves to the notify queue for the port's IRQ.
 	_irq_listen(serial->irq, serial, &serial_irq);
 	// Enable interrupts so we don't have to waste time polling.
 	// We want to know when data is ready to send or to receive.
-	_outb(serial->port + IER, IER_RX_DATA|IER_THRE);
+	outb(serial->port + IER, IER_RX_DATA|IER_THRE);
 	// Create and return a stream ID so system calls can refer to this.
 	serial->streamid = open(serial, &serial_ops);
 }
@@ -175,9 +184,9 @@ static int serial_write(void *ref, const void *buf, unsigned bytes)
 	unsigned thr_addr = serial->port + THR;
 	// Write into the port until our buffer is empty or its buffer is full.
 	while (p < end) {
-		if (_inb(lsr_addr) & LSR_TX_READY) {
+		if (inb(lsr_addr) & LSR_TX_READY) {
 			// Add this byte to the FIFO.
-			_outb(thr_addr, *p++);
+			outb(thr_addr, *p++);
 		} else {
 			// Wastefully burn CPU cycles on blocking IO.
 		}
@@ -195,9 +204,9 @@ static int serial_read(void *ref, void *buf, unsigned capacity)
 	unsigned rbr_addr = serial->port + RBR;
 	// Read bytes from this port until we empty it or run out of buffer.
 	while (p < end) {
-		if (_inb(lsr_addr) & LSR_RX_READY) {
+		if (inb(lsr_addr) & LSR_RX_READY) {
 			// Copy in the next byte from the FIFO.
-			*p++ = _inb(rbr_addr);
+			*p++ = inb(rbr_addr);
 		} else {
 			// Burn CPU cycles for no good reason blocking on IO.
 		}
@@ -211,7 +220,7 @@ static void serial_close(void *ref)
 	assert(serial->streamid != 0);
 	serial->streamid = 0;
 	// Disable interrupts.
-	_outb(serial->port + IER, 0);
+	outb(serial->port + IER, 0);
 	// Detach from the ISR.
 	_irq_ignore(serial->irq);
 }
