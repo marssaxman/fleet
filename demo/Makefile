@@ -7,7 +7,7 @@ include ../build/link.mk
 
 all: $(BIN)
 
-$(BIN): $(OBJS) ../lib/libfleet.a
+$(BIN): $(OBJS)
 	ld -o $@ $(LDFLAGS) --start-group $^ $(LDLIBS) --end-group
 
 %.o: %.c

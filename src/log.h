@@ -13,9 +13,6 @@
 
 int _log_open();
 
-void _log_putch(char ch);
-void _log_print(const char *str);
-void _log_puts(const char *str);
 void _log_vprintf(const char *format, va_list args);
 void _log_printf(const char *format,...);
 

@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include "log.h"
-#include "cpu.h"
 #include "socket.h"
+#include "console.h"
 #include <errno.h>
 
 // Write log messages to the hypervisor's debug console.
@@ -25,38 +25,16 @@ int _log_open()
 	return log_stream_id = open(0, &log_ops);
 }
 
-static int log_write(void *ref, const void *buf, unsigned size)
-{
-	const char *src = buf;
-	for (unsigned i = 0; i < size; ++i) {
-		_outb(0xE9, *src++);
-	}
+static int log_write(void *ref, const void *buf, unsigned size) {
+	_console_write(buf, size);
 	return size;
-}
-
-void _log_putchar(char ch)
-{
-	_outb(0xE9, ch);
-}
-
-void _log_print(const char *str)
-{
-	while (*str) {
-		_log_putchar(*str++);
-	}
-}
-
-void _log_puts(const char *str)
-{
-	_log_print(str);
-	_log_putchar('\n');
 }
 
 static void puthex(char ch)
 {
 	static const char digits[] = "0123456789ABCDEF";
-	_log_putchar(digits[(ch >> 4) & 0x0F]);
-	_log_putchar(digits[ch & 0x0F]);
+	_console_putc(digits[(ch >> 4) & 0x0F]);
+	_console_putc(digits[ch & 0x0F]);
 }
 
 static const char *handle_sizemod(const char *fmt, int *sizemod)
@@ -78,7 +56,7 @@ void _log_vprintf(const char *fmt, va_list args)
 		// handle the simple case first: the character stands for itself,
 		// and a doubled % escapes itself.
 		if (*fmt != '%' || *++fmt == '%') {
-			_log_putchar(*fmt++);
+			_console_putc(*fmt++);
 			continue;
 		}
 
@@ -89,12 +67,11 @@ void _log_vprintf(const char *fmt, va_list args)
 		switch (*fmt) {
 			case 's': {
 				char *str = va_arg(args, char*);
-				_log_print(str);
+				while (*str) _console_putc(*str++);
 				fmt++;
 			} break;
 			case 'c': {
-				char str[2] = {va_arg(args, int), '\0'};
-				_log_print(str);
+				_console_putc(va_arg(args, int));
 				fmt++;
 			} break;
 			case 'x':
