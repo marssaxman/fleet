@@ -6,8 +6,7 @@
 
 #include "irq.h"
 #include "log.h"
-#include "pic.h"
-#include "i386.h"
+#include "interrupt.h"
 
 /*
 	0 = timer

@@ -4,11 +4,10 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "cpu.h"
 #include "log.h"
 #include "irq.h"
+#include "interrupt.h"
 #include "multiboot.h"
-#include "i386.h"
 #include "start.h"
 #include "panic.h"
 #include "memory.h"
@@ -24,12 +23,6 @@ void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
 	_memory_init(multiboot);
 	// Configure the IRQ table and enable interrupts.
 	_irq_init();
-	_sti();
-	// Get the command line, if the bootloader gave us one.
-	char *cmdline = "";
-	if (multiboot->flags & 1<<2) {
-		cmdline = (char*)multiboot->cmdline;
-	}
-	_main(cmdline);
+	_main((multiboot->flags & 1<<2)? (char*)multiboot->cmdline: "");
 }
 

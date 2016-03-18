@@ -4,10 +4,12 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#ifndef _STARTC_I386_H
-#define _STARTC_I386_H
+#ifndef INTERRUPT_H
+#define INTERRUPT_H
 
 #include <stdint.h>
+
+void _pic_set_irqs(unsigned bitmask);
 
 struct _cpu_state
 {
@@ -34,5 +36,11 @@ struct _idt_register
 extern struct _idt_register _idtr;
 extern struct _idt_entry _idt[256];
 
-#endif //_STARTC_I386_H
+// The application may define these interrupt handler functions if it wants to
+// handle CPU exceptions or external device interrupts.
+struct _cpu_state;
+extern void _isr_cpu(unsigned code, struct _cpu_state*);
+extern void _isr_irq(unsigned irq, struct _cpu_state*);
+
+#endif //INTERRUPT_H
 

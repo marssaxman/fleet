@@ -10,6 +10,58 @@
 # be left blank. We will use segment 0x08 as defined in the GDT and gates will
 # be configured as interrupts, not traps.
 
+.set PIC1_CMD, 0x0020
+.set PIC1_DATA, 0x0021
+.set PIC2_CMD, 0x00a0
+.set PIC2_DATA, 0x00a1
+.set PIC_EOI, 0x0020
+
+# Reconfigure the PICs to raise IRQs on interrupts 0x20-0x2F instead of
+# overlapping onto the CPU exception interrupts.
+.section .text
+_pic_init: .global _pic_init
+	# Start initialization and enable ICW4
+	movb $0x11, %al
+	outb %al, $PIC1_CMD
+	outb %al, $PIC2_CMD
+
+	# Set up the vector table offsets
+	movb $0x20, %al
+	outb %al, $PIC1_DATA
+	movb $0x28, %al
+	outb %al, $PIC2_DATA
+
+	# Configure the master/slave wiring
+	movb $0x04, %al
+	outb %al, $PIC1_DATA
+	movb $0x02, %al
+	outb %al, $PIC2_DATA
+
+	# Use 8086 mode and other typical settings
+	movl $0x01, %eax
+	outb %al, $PIC1_DATA
+	outb %al, $PIC2_DATA
+
+	# Disable all IRQs to start with
+	movl $0xFF, %eax
+	outb %al, $PIC1_DATA
+	outb %al, $PIC2_DATA
+	ret
+
+# Utility function to configure the interrupt controller's IRQ suppression.
+# The parameter is a bitmask for both PICs, with bits set for the IRQs we want
+# to receive. The PICs are more interested in knowing which IRQs we want to
+# suppress, so we have to invert the bits.
+_pic_set_irqs: .global _pic_set_irqs
+	cli
+	movl 4(%esp), %eax
+	notl %eax
+	outb %al, $PIC1_DATA
+	movb %ah, %al
+	outb %al, $PIC2_DATA
+	sti
+	ret
+
 .macro idt_entry selector, flags
 	.hword 0x0000	# offset_low
 	.hword \selector
@@ -182,10 +234,6 @@ common_exception:
 	popal				# restore register state
 	addl $0x04, %esp	# remove error code
 	iret				# return from interrupt state
-
-.set PIC1_CMD, 0x0020
-.set PIC2_CMD, 0x00a0
-.set PIC_EOI, 0x0020
 
 common_irq_pic1:
 	cld
