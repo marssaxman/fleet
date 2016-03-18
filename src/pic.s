@@ -13,8 +13,7 @@
 .set PIC2_DATA, 0x00a1
 
 .section .text
-.global _pic_init
-_pic_init:
+_pic_init: .global _pic_init
 	# Start initialization and enable ICW4
 	movb $0x11, %al
 	outb %al, $PIC1_CMD
@@ -43,14 +42,11 @@ _pic_init:
 	outb %al, $PIC2_DATA
 	ret
 
-
-# utility function to configure the interrupt controller's IRQ suppression bits
-.section .text
-.global _pic_set_irqs
-_pic_set_irqs:
-	# The stack parameter is a bitmask for both PICs, with bits set for
-	# the IRQs we want to receive. The PICs are more interested in knowing
-	# which IRQs we want to suppress, so we'll invert the bits.
+# Utility function to configure the interrupt controller's IRQ suppression.
+# The parameter is a bitmask for both PICs, with bits set for the IRQs we want
+# to receive. The PICs are more interested in knowing which IRQs we want to
+# suppress, so we have to invert the bits.
+_pic_set_irqs: .global _pic_set_irqs
 	movb 4(%esp), %al
 	xor $0xFF, %al
 	outb %al, $PIC1_DATA
