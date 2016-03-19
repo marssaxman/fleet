@@ -13,12 +13,17 @@
 #include "memory.h"
 #include "libc/main.h"
 
+extern void _idt_init();
+extern void _pic_init();
+
 void _isr_cpu(unsigned code, struct _cpu_state *regs) {
 	// Processor signalled that something fatal happened
 	_panic("Processor exception %hhd at %d\n", code, regs->eip);
 }
 
 void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
+	_idt_init();
+	_pic_init();
 	assert(magic == 0x2BADB002);
 	_memory_init(multiboot);
 	// Configure the IRQ table and enable interrupts.

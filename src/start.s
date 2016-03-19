@@ -4,43 +4,21 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
+.global _start, _kernel
 
 # Hello, world! Let's configure this machine then go start up the kernel.
 .section .text
-_start: .global _start
-	# Initialize esp to point at our temporary call stack.
+_start:
+	# We'll reserve 16K in the data section we can use as a call stack.
 	movl $stack_top, %esp
-	# Save the bootloader info; the kernel will pick them up as parameters.
+
+	# Save the bootloader info; the kernel will pick these up as parameters.
 	pushl %ebx
 	pushl %eax
-	call gdt_init
-	call _idt_init	# Set up an interrupt descriptor table
-	call _pic_init	# Make the interrupt controllers usable
-	call _kernel	# Go to the land of C and never come back.
 
-	# There is nothing more we can do. Instead of wandering into the weeds,
-	# we'll sleep in a loop until the user reboots the machine.
-	cli
-.Lhang:
-	hlt
-	jmp .Lhang
-
-
-# Reserve space for the bootstrap stack in our executable image, as a zerofill
-# section. We won't know anything about the memory map at startup, but we can
-# be sure that this section will exist and won't be in use, because otherwise
-# the bootloader would have failed.
-.section .bootstrap_stack, "aw", @nobits
-.skip 16384 # 16 KiB
-stack_top:
-
-
-# The x86 still has a segmented memory architecture, after all these years, so
-# if we want a flat address space we must get one by configuring the GDT.
-# Since a flat address space is always the same, we can just bake the bytes in
-# below, point the CPU at them, and reload the segment registers.
-.section .text
-gdt_init:
+	# The bootloader should have given us a flat 32-bit address space, but we
+	# can't make any assumptions about a GDT, so let's install one and reload
+	# the segment registers accordingly.
 	lgdtl (gdtr)
 	mov $0x10, %ax
 	mov %ax, %ds
@@ -48,9 +26,29 @@ gdt_init:
 	mov %ax, %fs
 	mov %ax, %gs
 	mov %ax, %ss
-	ljmp $0x8, $reload_cs
-reload_cs:
-	ret
+	ljmp $0x8, $0f; 0:
+
+	# We're now safe to use ordinary calling conventions while we continue
+	# configuring hardware and the rest of the system.
+	call _kernel
+
+	# There's nothing more for us to do should that call ever return, so halt
+	# the machine - and loop forever in case some NMI wakes us back up.
+	cli
+.Lhang:
+	hlt
+	jmp .Lhang
+
+.section .multiboot
+.align 4
+.set FLAGS, 0x00000003 # use page alignment and provide memory map
+.set MAGIC, 0x1BADB002 # bootloader looks for this magic number
+.set CHECKSUM, -(MAGIC + FLAGS) # no, the magic number was not accidental
+.long MAGIC, FLAGS, CHECKSUM
+
+.section .bootstrap_stack, "aw", @nobits
+.skip 16384 # 16 KiB
+stack_top:
 
 .section .data
 .align 8
@@ -63,16 +61,4 @@ gdt:
 gdtr:
 	.hword 39	# limit: size of table in bytes, minus one
 	.long gdt	# base: address of table
-
-
-# A multiboot header is the signal to grub or some other bootlooader that this
-# ordinary-looking ELF file is actually a bootable kernel image.
-.section .multiboot
-.align 4
-.set FLAGS, 0x00000003 # use page alignment and provide memory map
-.set MAGIC, 0x1BADB002 # bootloader looks for this magic number
-.set CHECKSUM, -(MAGIC + FLAGS) # no, the magic number was not accidental
-.long MAGIC
-.long FLAGS
-.long CHECKSUM
 
