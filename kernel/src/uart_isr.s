@@ -86,6 +86,13 @@ _uart_has_fifo:
 	andb $0xC0, %al
 	cmpb $0xC0, %al
 	sete %al
+	# Save the return value; we need to clear the FCR for the time being.
+	push %eax
+	xorl %eax, %eax
+	lea FCR(%ebx), %edx
+	outb %al, %dx
+	# We're done: return what we discovered.
+	popl %eax
 	popl %ebx
 	ret
 
