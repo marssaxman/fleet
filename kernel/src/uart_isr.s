@@ -5,8 +5,14 @@
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 .global _uart_isr3_init, _uart_isr4_init
-.global _uart_detect
-.global _uart_has_fifo
+.global _uart_real_init, _uart_detect, _uart_setup, _uart_has_fifo
+
+.global _uart_has_com1, _uart_has_com2, _uart_has_com3, _uart_has_com4
+.section .data
+_uart_has_com1: .byte 0
+_uart_has_com2: .byte 0
+_uart_has_com3: .byte 0
+_uart_has_com4: .byte 0
 
 .set PIC1_CMD, 0x0020
 .set PIC1_DATA, 0x0021
@@ -32,6 +38,30 @@
 .set MSR, 6	# Modem status
 
 .section .text
+_uart_real_init:
+	pushl $COM1
+	call _uart_detect
+	movb %al, _uart_has_com1
+	jz 1f
+	call _uart_setup
+1:	movl $COM2, (%esp)
+	call _uart_detect
+	movb %al, _uart_has_com2
+	jz 2f
+	call _uart_setup
+2:	movl $COM3, (%esp)
+	call _uart_detect
+	movb %al, _uart_has_com3
+	jz 3f
+	call _uart_setup
+3:	movl $COM4, (%esp)
+	call _uart_detect
+	movb %al, _uart_has_com4
+	jz 4f
+	call _uart_setup
+4:	popl %eax
+	ret
+
 _uart_detect:
 	pushl %ebx # will use this for port base address
 	# stack: saved-ebx, retaddr, port
@@ -93,6 +123,36 @@ _uart_has_fifo:
 	outb %al, %dx
 	# We're done: return what we discovered.
 	popl %eax
+	popl %ebx
+	ret
+
+_uart_setup:
+	pushl %ebx
+	movl 8(%esp), %ebx
+	# Set DLAB so we can configure port speed.
+	lea LCR(%ebx), %edx
+	mov $0x80, %al
+	outb %al, %dx
+	# Set DLL = 1 and DLH = 0 for divisor 1, which is 115.2K = fast = good.
+	lea DLL(%ebx), %edx
+	mov $1, %al
+	outb %al, %dx
+	lea DLH(%ebx), %edx
+	xor %al, %al
+	outb %al, %dx
+	# Clear DLAB because setting the speed is all it does.
+	# We can configure 8N1 mode at the same time since it's all on LCR.
+	lea LCR(%ebx), %edx
+	mov $0x03, %al
+	outb %al, %dx
+	# Clear the MCR so it's clear we are not ready to send or receive.
+	lea MCR(%ebx), %edx
+	xor %al, %al
+	outb %al, %dx
+	# We're not ready to receive any interrupts yet, either.
+	lea IER(%ebx), %edx
+	outb %al, %dx
+	# Some day we might want to configure the FIFO here.
 	popl %ebx
 	ret
 

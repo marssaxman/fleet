@@ -12,8 +12,11 @@
 // Functions implemented in uart_isr.s
 extern void _uart_isr3_init();
 extern void _uart_isr4_init();
-extern bool _uart_detect(int port);
-extern bool _uart_has_fifo(int port);
+extern void _uart_real_init();
+extern bool _uart_has_com1;
+extern bool _uart_has_com2;
+extern bool _uart_has_com3;
+extern bool _uart_has_com4;
 
 // Port base addresses
 #define COM1 0x03F8
@@ -44,36 +47,14 @@ static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile("outb %0, %1": : "a"(val), "Nd"(port));
 }
 
-static bool setup_one(uint16_t port) {
-	if (!_uart_detect(port)) return false;
-	_kprintf("serial port detected at %x\n", port);
-	// Switch DLAB on so we can set port speed.
-	outb(port + LCR, 0x80);
-	// Use divisor 1 = 115200 bps = fastest = best.
-	outb(port + DLL, 1);
-	outb(port + DLH, 0);
-	// Switch DLAB back off and configure 8N1 mode, which we can do at once
-	// since DLAB is switched by the high bit in the LCR.
-	outb(port + LCR, 0x03);
-	// Clear the MCR; we're not ready to send or to receive.
-	outb(port + MCR, 0);
-	// We aren't listening for interrupts yet, either; we'll enable those when
-	// we have some actual work to do. 
-	outb(port + IER, 0);
-	return true;
-}
-
 void _uart_init() {
 	_kprintf("detecting serial ports\n");
-	bool com1 = setup_one(COM1);
-	bool com2 = setup_one(COM2);
-	bool com3 = setup_one(COM3);
-	bool com4 = setup_one(COM4);
-	if (com2 || com4) {
+	_uart_real_init();
+	if (_uart_has_com2 || _uart_has_com4) {
 		_kprintf("installing IRQ 3 handler (COM2/COM4)\n");
 		_uart_isr3_init();
 	}
-	if (com1 || com3) {
+	if (_uart_has_com1 || _uart_has_com3) {
 		_kprintf("installing IRQ 4 handler (COM1/COM3)\n");
 		_uart_isr4_init();
 	}
