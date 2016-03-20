@@ -4,16 +4,11 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#ifndef UART_H
-#define UART_H
+#ifndef UART_ISR_H
+#define UART_ISR_H
 
-void _uart_init();
+void _uart_isr_init();
 
-extern bool _com1_present;
-extern bool _com2_present;
-extern bool _com3_present;
-extern bool _com4_present;
-
-#endif //UART_H
+#endif //UART_ISR_H
 
 

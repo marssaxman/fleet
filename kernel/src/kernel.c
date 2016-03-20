@@ -14,10 +14,6 @@ void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
 	_kprintf("HELLO, KERNEL WORLD\n");
 	_interrupt_init();
 	_kprintf("WE HAVE INTERRUPTS\n");
-	_uart_init();
-	_kprintf("com1 present: %s\n", _com1_present? "yes": "no");
-	_kprintf("com2 present: %s\n", _com2_present? "yes": "no");
-	_kprintf("com3 present: %s\n", _com3_present? "yes": "no");
-	_kprintf("com4 present: %s\n", _com4_present? "yes": "no");
+	_uart_isr_init();
 }
 
