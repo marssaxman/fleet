@@ -1,11 +1,17 @@
-// Copyright (C) 2015-2016 Mars Saxman. All rights reserved.
+// Copyright (C) 2015 Mars Saxman. All rights reserved.
 // Permission is granted to use at your own risk and distribute this software
 // in source and binary forms provided all source code distributions retain
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "multiboot.h"
+#ifndef _STDBOOL_H
+#define _STDBOOL_H
 
-void _startc(uint32_t magic, struct multiboot_info *multiboot) {
-}
+#define true 1
+#define false 0
+#define bool _Bool
+
+#define __bool_true_false_are_defined 1
+
+#endif //_STDBOOL_H
 

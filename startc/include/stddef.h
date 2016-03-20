@@ -4,11 +4,16 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#ifndef START_H
-#define START_H
+#ifndef _STDDEF_H
+#define _STDDEF_H
 
-// After configuring the CPU state, it's time to launch the kernel.
-extern void _kernel(uint32_t magic, struct multiboot_info*);
+#include <c/null.h>
+#include <c/size_t.h>
+#include <c/wchar_t.h>
 
-#endif //_STARTC_ENTRY_H
+typedef int ptrdiff_t;
+
+#define offsetof(type, member) __builtin_offsetof(type, member)
+
+#endif //_STDDEF_H
 

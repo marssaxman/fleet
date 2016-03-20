@@ -4,21 +4,19 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _start, _kernel
+.global _start, _startc
 
-# Hello, world! Let's configure this machine then go start up the kernel.
 .section .text
 _start:
-	# We'll reserve 16K in the data section we can use as a call stack.
+	# We'll reserve space in the .data section to use as a call stack.
 	movl $stack_top, %esp
 
-	# Save the bootloader info; the kernel will pick these up as parameters.
+	# Save the bootloader info so we can pass it on to _startc.
 	pushl %ebx
 	pushl %eax
 
 	# The bootloader should have given us a flat 32-bit address space, but we
-	# can't make any assumptions about a GDT, so let's install one and reload
-	# the segment registers accordingly.
+	# aren't supposed to assume that so we'll install our own GDT anyway.
 	lgdtl (gdtr)
 	mov $0x10, %ax
 	mov %ax, %ds
@@ -28,14 +26,13 @@ _start:
 	mov %ax, %ss
 	ljmp $0x8, $0f; 0:
 
-	# We're now safe to use ordinary calling conventions while we continue
-	# configuring hardware and the rest of the system.
-	call _kernel
+	# Call the C runtime entrypoint and let the program do its thing.
+	call _startc
 
-	# There's nothing more for us to do should that call ever return, so halt
-	# the machine - and loop forever in case some NMI wakes us back up.
-	cli
+	# There's no more work to do should that call ever return, so we'll halt,
+	# and we'll do so in a loop in case an NMI wakes it back up again.
 .Lhang:
+	cli
 	hlt
 	jmp .Lhang
 

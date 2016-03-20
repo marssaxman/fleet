@@ -1,6 +1,6 @@
 default: all
 
-DIRS:=libc kernel
+DIRS:=startc libc kernel
 
 all: $(DIRS)
 .PHONY: all $(DIRS)
@@ -11,5 +11,5 @@ CLEANDIRS:=$(DIRS:%=clean-%)
 clean: $(CLEANDIRS)
 .PHONY: clean $(CLEANDIRS)
 $(CLEANDIRS):
-	$(MAKE) -C ($@:clean-%=%) clean
+	$(MAKE) -C $(@:clean-%=%) clean
 

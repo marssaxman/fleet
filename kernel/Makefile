@@ -5,7 +5,7 @@ include ../build/target.mk
 -include $(call findtype, d, obj)
 
 CFLAGS+=-MD -MP -Werror -g -fvisibility=hidden -Wswitch
-CFLAGS+=-Isrc -isystem include
+CFLAGS+=-Isrc -isystem ../startc/include
 
 libfleet.a: $(call listobjs, c s, src, obj)
 	@mkdir -p $(@D)
