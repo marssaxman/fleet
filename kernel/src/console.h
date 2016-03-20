@@ -7,7 +7,7 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
-#include <c/size_t.h>
+#include <stddef.h>
 
 // Write-only access to the hypervisor/emulator debugging console
 void _console_write(const char *str, size_t len);

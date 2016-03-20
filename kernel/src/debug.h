@@ -4,11 +4,16 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#ifndef PANIC_H
-#define PANIC_H
+#ifndef DEBUG_H
+#define DEBUG_H
 
+#include <stdarg.h>
+
+void _kvprintf(const char *format, va_list args);
+void _kprintf(const char *format,...);
 void _panic(const char *msg, ...);
 void _kassertfail(const char *file, int line, const char *cond);
-#define assert(c) ((c)? ((void)0): _kassertfail(__FILE__, __LINE__, #c))
+#define kassert(c) ((c)? ((void)0): _kassertfail(__FILE__, __LINE__, #c))
 
-#endif // PANIC_H
+#endif // DEBUG_H
+

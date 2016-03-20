@@ -7,12 +7,10 @@
 #ifndef _STDDEF_H
 #define _STDDEF_H
 
-#include <c/null.h>
-#include <c/size_t.h>
-#include <c/wchar_t.h>
-
+#define NULL ((void*)0)
+typedef unsigned size_t;
+typedef __WCHAR_TYPE__ wchar_t;
 typedef int ptrdiff_t;
-
 #define offsetof(type, member) __builtin_offsetof(type, member)
 
 #endif //_STDDEF_H

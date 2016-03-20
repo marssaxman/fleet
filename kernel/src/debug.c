@@ -6,39 +6,18 @@
 
 #include <stdint.h>
 #include <stdarg.h>
-#include "log.h"
-#include "socket.h"
+#include "debug.h"
 #include "console.h"
-#include <errno.h>
 
 // Write log messages to the hypervisor's debug console.
 
-static int log_write(void*, const void *buf, unsigned size);
-static int log_stream_id;
-static struct iops log_ops = {
-	.write = log_write,
-};
-
-int _log_open()
-{
-	if (log_stream_id) return -EISCONN;
-	return log_stream_id = open(0, &log_ops);
-}
-
-static int log_write(void *ref, const void *buf, unsigned size) {
-	_console_write(buf, size);
-	return size;
-}
-
-static void puthex(char ch)
-{
+static void puthex(char ch) {
 	static const char digits[] = "0123456789ABCDEF";
 	_console_putc(digits[(ch >> 4) & 0x0F]);
 	_console_putc(digits[ch & 0x0F]);
 }
 
-static const char *handle_sizemod(const char *fmt, int *sizemod)
-{
+static const char *handle_sizemod(const char *fmt, int *sizemod) {
 	while (*fmt) {
 		switch (*fmt) {
 			case 'l': (*sizemod)++; break;
@@ -50,8 +29,7 @@ static const char *handle_sizemod(const char *fmt, int *sizemod)
 	return fmt;
 }
 
-void _log_vprintf(const char *fmt, va_list args)
-{
+void _kvprintf(const char *fmt, va_list args) {
 	while (*fmt) {
 		// handle the simple case first: the character stands for itself,
 		// and a doubled % escapes itself.
@@ -92,10 +70,22 @@ void _log_vprintf(const char *fmt, va_list args)
 	}
 }
 
-void _log_printf(const char *fmt, ...)
-{
+void _kprintf(const char *fmt, ...) {
 	va_list args;
 	va_start(args,fmt);
-	_log_vprintf(fmt, args);
+	_kvprintf(fmt, args);
 	va_end(args);
 }
+
+void _panic(const char *msg, ...) {
+	va_list args;
+	va_start(args, msg);
+	_kprintf("panic: ");
+	_kvprintf(msg, args);
+	while (1) {}
+}
+
+void _kassertfail(const char *file, int line, const char *cond) {
+	_panic("assertion failed at %s:%d: %s\n", file, line, cond);
+}
+
