@@ -23,6 +23,14 @@ obj/%.o: src/%.s
 	as $(ASFLAGS) -o $@ $<
 
 clean:
-	-@rm -rf libkernel.a obj
+	-@rm -f *.a *.bin
+	-@rm -rf obj
 .PHONY: clean
+
+test.bin: libkernel.a
+	ld -o $@ $(LDFLAGS) -T ../build/linker.ld --start-group $^ --end-group
+
+test: test.bin
+	qemu-system-i386 -kernel $^ -monitor stdio -nographic -debugcon stdio
+.PHONY: test
 
