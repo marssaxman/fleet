@@ -4,7 +4,9 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _uart_isr_init
+.global _uart_isr3_init, _uart_isr4_init
+.global _uart_detect
+.global _uart_has_fifo
 
 .set PIC1_CMD, 0x0020
 .set PIC1_DATA, 0x0021
@@ -30,20 +32,84 @@
 .set MSR, 6	# Modem status
 
 .section .text
-_uart_isr_init:
-	# Install our ISR for IRQ 3.
+_uart_detect:
+	pushl %ebx # will use this for port base address
+	# stack: saved-ebx, retaddr, port
+	movl 8(%esp), %ebx
+	# Save the old MCR value so we can restore it after tinkering.
+	lea MCR(%ebx), %edx
+	inb %dx, %al
+	pushl %eax
+	# stack: saved-MCR, saved-ebx, retaddr, param
+	# Try to put the device in loopback mode.
+	movb $0x10, %al
+	lea MCR(%ebx), %edx
+	outb %al, %dx
+	# Check the MSR: none of CTS, DTR, ring, or carrier detect should be set.
+	lea MSR(%ebx), %edx
+	inb %dx, %al
+	andb $0xF0, %al
+	setz %al
+	jnz 0f
+	# Still using loopback mode, try to set those four status flags.
+	movb $0x1F, %al
+	lea MCR(%ebx), %edx
+	outb %al, %dx
+	# Does the MSR show that all four flags are set as we expect?
+	lea MSR(%ebx), %edx
+	inb %dx, %al
+	andb $0xF0, %al
+	cmpb $0xF0, %al
+	sete %al
+	jne 0f
+	# The port appears to have a working UART, so restore its old MCR value.
+	movb (%esp), %al
+	lea MCR(%ebx), %edx
+	outb %al, %dx
+	# Return 1 to indicate UART present.
+	mov $1, %al
+0:	add $4, %esp # lose the saved MCR
+	popl %ebx # definitely need to restore this
+	ret
+
+_uart_has_fifo:
+	pushl %ebx # will use this for port base address
+	# stack: saved-ebx, retaddr, port
+	movl 8(%esp), %ebx
+	# try to put the device into loopback mode
+	mov $0xE7, %al
+	lea FCR(%ebx), %edx
+	outb %al, %dx
+	# check the IIR: are *both* high bits set?
+	lea IIR(%ebx), %edx
+	inb %dx, %al
+	andb $0xC0, %al
+	cmpb $0xC0, %al
+	sete %al
+	popl %ebx
+	ret
+
+_uart_isr3_init:
+	# Poke the halves of the ISR address into the IDT gate.
 	movl $isr_irq3, %eax
 	movw %ax, _idt_signals + (3 * 8) + 0
 	shrl $16, %eax
 	movw %ax, _idt_signals + (3 * 8) + 6
-	# Install our other ISR for IRQ 4.
+	# Clear the PIC disable flag for IRQ 3.
+	inb $PIC1_DATA, %al
+	andb (1 << 3), %al
+	outb %al, $PIC1_DATA
+	ret
+
+_uart_isr4_init:
+	# Poke the ISR address into the gate record.
 	movl $isr_irq4, %eax
 	movw %ax, _idt_signals + (4 * 8) + 0
 	shrl $16, %eax
 	movw %ax, _idt_signals + (4 * 8) + 6
-	# Clear the PIC inhibit flags on IRQs 3 and 4.
+	# Clear the PIC disable flag on IRQ 4.
 	inb $PIC1_DATA, %al
-	andb (1 << 3) | (1 << 4), %al
+	andb (1 << 4), %al
 	outb %al, $PIC1_DATA
 	ret
 
