@@ -4,8 +4,7 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _uart_isr3_init, _uart_isr4_init
-.global _uart_real_init, _uart_detect, _uart_setup, _uart_has_fifo
+.global _uart_real_init
 
 .global _uart_has_com1, _uart_has_com2, _uart_has_com3, _uart_has_com4
 .section .data
@@ -39,30 +38,35 @@ _uart_has_com4: .byte 0
 
 .section .text
 _uart_real_init:
+	# Check each possible COM port in turn and configure it if present.
 	pushl $COM1
-	call _uart_detect
+	call _uart_config_port
 	movb %al, _uart_has_com1
-	jz 1f
-	call _uart_setup
-1:	movl $COM2, (%esp)
-	call _uart_detect
+	movl $COM2, (%esp)
+	call _uart_config_port
 	movb %al, _uart_has_com2
-	jz 2f
-	call _uart_setup
-2:	movl $COM3, (%esp)
-	call _uart_detect
+	movl $COM3, (%esp)
+	call _uart_config_port
 	movb %al, _uart_has_com3
-	jz 3f
-	call _uart_setup
-3:	movl $COM4, (%esp)
-	call _uart_detect
+	movl $COM4, (%esp)
+	call _uart_config_port
 	movb %al, _uart_has_com4
-	jz 4f
-	call _uart_setup
-4:	popl %eax
+	popl %eax
+	# If either COM2 or COM4 are present, we'll need to handle IRQ 3.
+	movb _uart_has_com2, %al
+	orb _uart_has_com4, %al
+	jz LnoIRQ3
+	call _uart_isr3_init
+LnoIRQ3:
+	# If either COM1 or COM3 are present, we'll need to handle IRQ 4.
+	movb _uart_has_com1, %al
+	orb _uart_has_com3, %al
+	jz LnoIRQ4
+	call _uart_isr4_init
+LnoIRQ4:
 	ret
 
-_uart_detect:
+_uart_config_port:
 	pushl %ebx # will use this for port base address
 	# stack: saved-ebx, retaddr, port
 	movl 8(%esp), %ebx
@@ -96,7 +100,34 @@ _uart_detect:
 	movb (%esp), %al
 	lea MCR(%ebx), %edx
 	outb %al, %dx
-	# Return 1 to indicate UART present.
+
+	# While we're here, we might as well set it up the way we want it.
+	# Set DLAB so we can configure port speed.
+	lea LCR(%ebx), %edx
+	mov $0x80, %al
+	outb %al, %dx
+	# Set DLL = 1 and DLH = 0 for divisor 1, which is 115.2K = fast = good.
+	lea DLL(%ebx), %edx
+	mov $1, %al
+	outb %al, %dx
+	lea DLH(%ebx), %edx
+	xor %al, %al
+	outb %al, %dx
+	# Clear DLAB because setting the speed is all it does.
+	# We can configure 8N1 mode at the same time since it's all on LCR.
+	lea LCR(%ebx), %edx
+	mov $0x03, %al
+	outb %al, %dx
+	# Clear the MCR so it's clear we are not ready to send or receive.
+	lea MCR(%ebx), %edx
+	xor %al, %al
+	outb %al, %dx
+	# We're not ready to receive any interrupts yet, either.
+	lea IER(%ebx), %edx
+	outb %al, %dx
+	# Some day we might want to configure the FIFO here.
+
+	# Return 1 to indicate that the UART is present and has been configured.
 	mov $1, %al
 0:	add $4, %esp # lose the saved MCR
 	popl %ebx # definitely need to restore this
@@ -126,36 +157,6 @@ _uart_has_fifo:
 	popl %ebx
 	ret
 
-_uart_setup:
-	pushl %ebx
-	movl 8(%esp), %ebx
-	# Set DLAB so we can configure port speed.
-	lea LCR(%ebx), %edx
-	mov $0x80, %al
-	outb %al, %dx
-	# Set DLL = 1 and DLH = 0 for divisor 1, which is 115.2K = fast = good.
-	lea DLL(%ebx), %edx
-	mov $1, %al
-	outb %al, %dx
-	lea DLH(%ebx), %edx
-	xor %al, %al
-	outb %al, %dx
-	# Clear DLAB because setting the speed is all it does.
-	# We can configure 8N1 mode at the same time since it's all on LCR.
-	lea LCR(%ebx), %edx
-	mov $0x03, %al
-	outb %al, %dx
-	# Clear the MCR so it's clear we are not ready to send or receive.
-	lea MCR(%ebx), %edx
-	xor %al, %al
-	outb %al, %dx
-	# We're not ready to receive any interrupts yet, either.
-	lea IER(%ebx), %edx
-	outb %al, %dx
-	# Some day we might want to configure the FIFO here.
-	popl %ebx
-	ret
-
 _uart_isr3_init:
 	# Poke the halves of the ISR address into the IDT gate.
 	movl $isr_irq3, %eax
@@ -180,25 +181,29 @@ _uart_isr4_init:
 	outb %al, $PIC1_DATA
 	ret
 
+.global _isr_com1, _isr_com2, _isr_com3, _isr_com4
+.weak _isr_com1, _isr_com2, _isr_com3, _isr_com4
 .local isr_irq3, isr_irq4, isr_eoi
 
-# COM2 and COM4 share IRQ3.
 isr_irq3:
 	pushal
-	cld
-	push $8
-	push $FLOO
-	call _console_write
-	jmp isr_eoi
+	cmpb $0, _uart_has_com2
+	je 0f
+	call _isr_com2
+0:	cmpb $0, _uart_has_com4
+	je 1f
+	call _isr_com4
+1:	jmp isr_eoi
 
-# COM1 and COM3 share IRQ4.
 isr_irq4:
 	pushal
-	cld
-	push $8
-	push $DLEB
-	call _console_write
-	jmp isr_eoi
+	cmpb $0, _uart_has_com1
+	je 0f
+	call _isr_com1
+0:	cmpb $0, _uart_has_com3
+	je 1f
+	call _isr_com3
+1:	jmp isr_eoi
 
 isr_eoi:
 	# Reset the PIC; send the end of exception signal
@@ -207,8 +212,12 @@ isr_eoi:
 	popal
 	iret
 
-.section .data
-FLOO: .ascii "YO MOMMA";
-DLEB: .ascii "SPRIBBLE";
-
+_isr_com1:
+	ret
+_isr_com2:
+	ret
+_isr_com3:
+	ret
+_isr_com4:
+	ret
 

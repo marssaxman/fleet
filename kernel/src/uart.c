@@ -10,8 +10,6 @@
 #include <stdbool.h>
 
 // Functions implemented in uart_isr.s
-extern void _uart_isr3_init();
-extern void _uart_isr4_init();
 extern void _uart_real_init();
 extern bool _uart_has_com1;
 extern bool _uart_has_com2;
@@ -50,14 +48,6 @@ static inline void outb(uint16_t port, uint8_t val) {
 void _uart_init() {
 	_kprintf("detecting serial ports\n");
 	_uart_real_init();
-	if (_uart_has_com2 || _uart_has_com4) {
-		_kprintf("installing IRQ 3 handler (COM2/COM4)\n");
-		_uart_isr3_init();
-	}
-	if (_uart_has_com1 || _uart_has_com3) {
-		_kprintf("installing IRQ 4 handler (COM1/COM3)\n");
-		_uart_isr4_init();
-	}
 	_kprintf("done initializing serial ports\n");
 }
 
