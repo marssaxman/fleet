@@ -1,15 +1,14 @@
-// Copyright (C) 2015-2016 Mars Saxman. All rights reserved.
+// Copyright (C) 2016 Mars Saxman. All rights reserved.
 // Permission is granted to use at your own risk and distribute this software
 // in source and binary forms provided all source code distributions retain
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "multiboot.h"
-#include "interrupt.h"
-#include "uart.h"
+#ifndef UART_H
+#define UART_H
 
-void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
-	_interrupt_init();
-	_uart_init();
-}
+void _uart_init();
+
+#endif //UART_H
+
 

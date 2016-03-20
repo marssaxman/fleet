@@ -4,7 +4,7 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _isr_cpu03, _isr_cpu04
+.global _uart_init
 
 # Port base addresses
 .set COM1, 0x03F8
@@ -25,36 +25,53 @@
 .set LSR, 5	# Line status
 .set MSR, 6	# Modem status
 
+.section .text
+_uart_init:
+	# Install our ISR for IRQ 3.
+	movl $isr_irq3, %eax
+	movw %ax, _idt_signals + (3 * 8) + 0
+	shrl $16, %eax
+	movw %ax, _idt_signals + (3 * 8) + 6
+	# Install our other ISR for IRQ 4.
+	movl $isr_irq4, %eax
+	movw %ax, _idt_signals + (4 * 8) + 0
+	shrl $16, %eax
+	movw %ax, _idt_signals + (4 * 8) + 6
+	# Clear the PIC inhibit flags on IRQs 3 and 4.
+	inb $PIC1_DATA, %al
+	andb (1 << 3) | (1 << 4), %al
+	outb %al, $PIC1_DATA
+	ret
+
+.local isr_irq3, isr_irq4, isr_eoi
+
 # COM2 and COM4 share IRQ3.
-_isr_cpu03:
+isr_irq3:
 	pushal
 	cld
-
 	push $8
 	push $FLOO
 	call _console_write
-
-	movb $PIC_EOI, %al
-	outb %al, $PIC1_CMD
-	popal
-	iret
+	jmp isr_eoi
 
 # COM1 and COM3 share IRQ4.
-_isr_cpu04:
+isr_irq4:
 	pushal
 	cld
-
 	push $8
 	push $DLEB
 	call _console_write
+	jmp isr_eoi
 
+isr_eoi:
+	# Reset the PIC; send the end of exception signal
 	movb $PIC_EOI, %al
 	outb %al, $PIC1_CMD
 	popal
 	iret
-
-
 
 .section .data
 FLOO: .ascii "YO MOMMA";
 DLEB: .ascii "SPRIBBLE";
+
+

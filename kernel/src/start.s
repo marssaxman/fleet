@@ -4,7 +4,7 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _start, _startc
+.global _start, _kernel
 
 .section .text
 _start:
@@ -26,8 +26,8 @@ _start:
 	mov %ax, %ss
 	ljmp $0x8, $0f; 0:
 
-	# Call the C runtime entrypoint and let the program do its thing.
-	call _startc
+	# Hand the machine over to the rest of the kernel.
+	call _kernel
 
 	# There's no more work to do should that call ever return, so we'll halt,
 	# and we'll do so in a loop in case an NMI wakes it back up again.
