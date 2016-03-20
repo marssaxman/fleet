@@ -9,6 +9,11 @@
 
 void _uart_init();
 
+extern bool _com1_present;
+extern bool _com2_present;
+extern bool _com3_present;
+extern bool _com4_present;
+
 #endif //UART_H
 
 

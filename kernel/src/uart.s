@@ -5,6 +5,17 @@
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 .global _uart_init
+.global _com1_present, _com2_present, _com3_present, _com4_present
+
+.section .data
+_com1_present: .skip 1
+_com2_present: .skip 1
+_com3_present: .skip 1
+_com4_present: .skip 1
+
+.set PIC1_CMD, 0x0020
+.set PIC1_DATA, 0x0021
+.set PIC_EOI, 0x0020
 
 # Port base addresses
 .set COM1, 0x03F8

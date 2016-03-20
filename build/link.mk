@@ -2,8 +2,8 @@
 # image for i386 using libfleet's C runtime and standard library.
 FLEETDIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 include $(FLEETDIR)/build/target.mk
-CFLAGS += -isystem $(FLEETDIR)/include
-LDLIBS += -lfleet
-LDFLAGS += -L$(FLEETDIR)/lib
+CFLAGS += -isystem $(FLEETDIR)/libc/include
+LDLIBS += -lc -lkernel
+LDFLAGS += -L$(FLEETDIR)/libc -L$(FLEETDIR)/kernel
 LDFLAGS += -T $(FLEETDIR)/build/linker.ld
 

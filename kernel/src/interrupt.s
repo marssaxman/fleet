@@ -13,12 +13,12 @@
 .set PIC2_DATA, 0x00a1
 .set PIC_EOI, 0x0020
 
-.section text
+.section .text
 _interrupt_init:
 	# Interrupts should already be disabled, but make sure of it before we
 	# start tinkering; then load the pointer to our IDT.
 	cli
-	lidt (idtr)
+	lidt idtr
 	# By default the IRQs use gates 0x00-0x0F, which overlap with the gates
 	# used for CPU exceptions, which is inconvenient. Reconfigure the PICs
 	# to raise IRQ signals on gates 0x20-0x2F instead.
