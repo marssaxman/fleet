@@ -1,30 +1,15 @@
 default: all
-all: lib
-lib: lib/libfleet.a
 
-include build/srctree.mk
-include build/target.mk
--include $(call findtype, d, obj)
+DIRS:=libc kernel
 
-CFLAGS+=-MD -MP -Werror -g -fvisibility=hidden -Wswitch
-CFLAGS+=-Isrc -isystem include
+all: $(DIRS)
+.PHONY: all $(DIRS)
+$(DIRS):
+	$(MAKE) -C $@
 
-lib/libfleet.a: $(call listobjs, c s, src, obj)
-	@mkdir -p $(@D)
-	@echo "ar rcs $@ \$$^"
-	@ar rcs $@ $^
-
-obj/%.o: src/%.c
-	@mkdir -p $(@D)
-	@echo "$(CC) \$$(CFLAGS) -c $< -o $@"
-	@$(CC) $(CFLAGS) -c $< -o $@
-
-obj/%.o: src/%.s
-	@mkdir -p $(@D)
-	as $(ASFLAGS) -o $@ $<
-
-clean:
-	-@rm -rf lib obj
-
-.PHONY: clean all
+CLEANDIRS:=$(DIRS:%=clean-%)
+clean: $(CLEANDIRS)
+.PHONY: clean $(CLEANDIRS)
+$(CLEANDIRS):
+	$(MAKE) -C ($@:clean-%=%) clean
 

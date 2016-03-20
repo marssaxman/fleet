@@ -4,30 +4,8 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "log.h"
-#include "irq.h"
-#include "interrupt.h"
-#include "multiboot.h"
-#include "start.h"
-#include "panic.h"
-#include "memory.h"
-#include "libc/main.h"
+struct multiboot_info;
 
-extern void _idt_init();
-extern void _pic_init();
-
-void _isr_cpu(unsigned code, struct _cpu_state *regs) {
-	// Processor signalled that something fatal happened
-	_panic("Processor exception %hhd at %d\n", code, regs->eip);
-}
-
-void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
-	_idt_init();
-	_pic_init();
-	assert(magic == 0x2BADB002);
-	_memory_init(multiboot);
-	// Configure the IRQ table and enable interrupts.
-	_irq_init();
-	_main((multiboot->flags & 1<<2)? (char*)multiboot->cmdline: "");
+void _kernel(unsigned int magic, struct multiboot_info *multiboot) {
 }
 
