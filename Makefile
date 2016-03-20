@@ -1,6 +1,6 @@
 default: all
 
-DIRS:=startc libc kernel
+DIRS:=kernel libc
 
 all: $(DIRS)
 .PHONY: all $(DIRS)

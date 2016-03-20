@@ -1,13 +1,14 @@
-default: libfleet.a
+default: libkernel.a
 
 include ../build/srctree.mk
 include ../build/target.mk
 -include $(call findtype, d, obj)
 
 CFLAGS+=-MD -MP -Werror -g -fvisibility=hidden -Wswitch
-CFLAGS+=-Isrc -isystem ../startc/include
+CFLAGS+=-Isrc -isystem include
+CFLAGS+=-isystem headers
 
-libfleet.a: $(call listobjs, c s, src, obj)
+libkernel.a: $(call listobjs, c s, src, obj)
 	@mkdir -p $(@D)
 	@echo "ar rcs $@ \$$^"
 	@ar rcs $@ $^
@@ -22,6 +23,6 @@ obj/%.o: src/%.s
 	as $(ASFLAGS) -o $@ $<
 
 clean:
-	-@rm -rf libfleet.a obj
+	-@rm -rf libkernel.a obj
 .PHONY: clean
 
