@@ -11,21 +11,6 @@
 
 // Functions implemented in uart_isr.s
 extern void _uart_real_init();
-extern bool _uart_has_com1;
-extern bool _uart_has_com2;
-extern bool _uart_has_com3;
-extern bool _uart_has_com4;
-
-struct state __attribute__((packed)) {
-	uint16_t port;
-	uint8_t present;
-	uint8_t _unused;
-	void *txhead;
-	void *txtail;
-	void *rxhead;
-	void *rxtail;
-};
-extern struct state _uart_state[4];
 
 // Port base addresses
 #define COM1 0x03F8
@@ -60,27 +45,5 @@ void _uart_init() {
 	_kprintf("detecting serial ports\n");
 	_uart_real_init();
 	_kprintf("done initializing serial ports\n");
-}
-
-void _uart_isr(struct uart_state *uart) {
-	uint8_t iir = inb(uart->port + IIR);
-	// Did an interrupt happen on this port at all?
-	// One IRQ can serve multiple ports so this might not be the one.
-	if (iir & 1) return;
-	// What kind of interrupt happened? Looking at bits 1 and 2 gives us four
-	// options. The 16550 also uses bit 3 to indicate "character timeout" but
-	// it works the same way as "received data".
-	switch (iir & 6) {
-		case 0: { // modem status change
-			uint8_t msr = inb(uart->port + MSR);
-		} break;
-		case 1: { // transmit buffer clear
-		} break;
-		case 2: { // receive buffer ready
-		} break;
-		case 3: { // line status change
-			uint8_t lsr = inb(uart->port + LSR);
-		} break;
-	}
 }
 
