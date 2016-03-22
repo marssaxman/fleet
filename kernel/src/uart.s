@@ -4,7 +4,16 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _uart_init
+# entrypoints we export
+.global _uart_init, _uart_transmit, _uart_receive
+
+# external symbols we invoke:
+.global _uart_open # bit mask: which ports do we have?
+.global _uart_transmit_clear # index: port which has cleared its outgoing data
+.global _uart_receive_ready # index: port which has filled its input buffer
+.global _uart_error # code: protocol violation
+
+.local config_port, isr_irq3, isr_irq4, service
 
 .set PIC1_CMD, 0x0020
 .set PIC1_DATA, 0x0021
@@ -29,8 +38,6 @@
 .set LSR, 5	# Line status
 .set MSR, 6	# Modem status
 
-# Flag array
-
 # Field offsets for the port state struct
 .set TXHEAD, 0x0 # ptr
 .set TXTAIL, 0x4 # ptr
@@ -41,8 +48,6 @@
 .section .data
 port_present: .skip 4
 port_state: .skip 4 * PORT_STATE_SIZE
-
-.local config_port, isr_irq3, isr_irq4, service_port
 
 .section .text
 _uart_init:
@@ -81,6 +86,11 @@ _uart_init:
 	inb $PIC1_DATA, %al
 	andb 0xE7, %al
 	outb %al, $PIC1_DATA
+# Notify our client regarding our discoveries.
+	xorl %eax, %eax
+	cmpb $0, port_present+3
+	setnz %al
+	
 	ret
 
 config_port:
@@ -135,7 +145,7 @@ config_port:
 # Does this UART have a working FIFO? We find out by attempting to configure it
 # and seeing what the IIR state looks like afterward. We'll return 2 if it has
 # a FIFO but fall back to 1 if the chip is older than the 16550A.
-	movb $2, %cl
+	orb $2, %cl
 	lea FCR(%ebx), %edx
 	mov $0xE7, %al
 	outb %al, %dx
@@ -150,14 +160,9 @@ config_port:
 	outb %al, %dx
 0:	ret
 
-# To avoid losing interrupts without having to rig up a complex, fragile state
-# machine covering all the possible timing behaviors of all the different UART
-# models, we'll handle IRQs by disabling the interrupt, immediately signalling
-# EOI and re-enabling other interrupts so we don't block, then polling the
-# UARTs associated with this interrupt until they report no more conditions we
-# need to handle. Then we'll re-enable the IRQ and return. This way we don't
-# have to worry about missing THRE because of a simultaneous RBR condition or
-# anything like that.
+# Handling the cause of this interrupt may take a while, so we'll keep the data
+# flowing as we work. Disable recurrence of this interrupt while we clear the
+# port, then enable other interrupts; we'll re-enable this one when we're done.
 isr_irq3:
 	pushal
 	inb $PIC1_DATA, %al
@@ -172,12 +177,12 @@ isr_irq3:
 	je 0f
 	mov $COM2, %ebx
 	mov $port_state + 1*PORT_STATE_SIZE, %ebp
-	call service_port
+	call service
 0:	cmpb $0, port_present+3
 	je 1f
 	mov $COM4, %ebx
-	mov $PORT_STATE + 3*PORT_STATE_SIZE, %ebp
-	call service_port
+	mov $port_state + 3*PORT_STATE_SIZE, %ebp
+	call service
 # Disable interrupts again, then clear the PIC disable flag for IRQ3. We'll
 # implicitly re-enable interrupts through iret.
 1:	cli
@@ -201,12 +206,12 @@ isr_irq4:
 	je 0f
 	mov $COM1, %ebx
 	mov $port_state + 0*PORT_STATE_SIZE, %ebp
-	call service_port
+	call service
 0:	cmpb $0, port_present+2
 	je 1f
 	mov $COM3, %ebx
 	mov $port_state + 2*PORT_STATE_SIZE, %ebp
-	call service_port
+	call service
 # Disable interrupts so we can turn IRQ4 back on, then return to whatever it
 # was that was happening before this interrupt began.
 1:	cli
@@ -215,72 +220,6 @@ isr_irq4:
 	outb %al, $PIC1_DATA
 	popal
 	iret
-
-.global _uart_modem_status, _uart_error, _uart_rx, _uart_tx
-.weak _uart_modem_status, _uart_error, _uart_rx, _uart_tx
-
-service_port:
-# EBX contains the port address, EBP the base of the port state struct.
-# The IIR contains the reason the interrupt was raised, if any. If the UART
-# did raise a signal, bit 0 will be 0; if it did not signal, it will be 1.
-	lea IIR(%ebx), %edx
-	inb %dx, %al
-	test $1, %al
-	jnz 0f
-# If this was a modem status change, read the MSR; it's a flow control change
-# or a carrier detect/loss.
-	andb $6, %al
-	jnz 1f
-	lea MSR(%ebx), %edx
-	xorl %eax, %eax
-	inb %dx, %al
-	pushl %eax
-	pushl %ebx
-	call _uart_modem_status
-	add $8, %esp
-	jmp 0f
-# For all other interrupts, we'll read LSR and handle all conditions indicated
-# regardless of the reason for the interrupt; not only that, we'll loop back
-# and continue checking LSR until we've done all the work we can do.
-1:	lea LSR(%ebx), %edx
-	xorl %eax, %eax
-	inb %dx, %al
-# check for transmission errors
-	test $0x9E, %al
-	jz 2f
-	pushl %eax
-	pushl %ebx
-	call _uart_error
-	add $8, %esp
-	jmp 4f
-# check for incoming data
-2:	test $1, %al
-	jz 3f
-	lea RBR(%ebx), %edx
-	xorl %eax, %eax
-	inb %dx, %al
-	pushl %eax
-	pushl %ebx
-	call _uart_rx
-	add $8, %esp
-# check for clear transmit line
-3:	test $0x40, %al
-	jz 4f
-4:	ret
-0:	ret
-
-_uart_modem_status:
-	ret
-
-_uart_error:
-	ret
-
-_uart_rx:
-	ret
-
-
-
-
 
 service:
 # does this port need attention? If so, what sort? IIR has the answer: bit zero
@@ -300,7 +239,6 @@ service:
 	ret
 
 modem_status:
-	# 
 	lea MSR(%ebx), %edx
 	inb %dx, %al
 	# ...
@@ -310,12 +248,11 @@ transmit_clear:
 	mov TXHEAD(%ebp), %esi
 	mov TXTAIL(%ebp), %edi
 # if no CTS, abort
-# if 
 # if no bytes in buffer, call event handler
 # if still no bytes in buffer, abort
 # if port has fifo, send up to 16 bytes, as many as we have
 # otherwise, send one byte
-	lea THRE(%ebx), %edx
+	lea THR(%ebx), %edx
 	# ...
 	jmp service
 
