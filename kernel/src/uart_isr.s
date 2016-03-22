@@ -228,3 +228,61 @@ _isr_com3:
 _isr_com4:
 	ret
 
+
+
+
+
+service:
+# does this port need attention? If so, what sort? IIR has the answer: bit zero
+# is high when the port is happy and low when a condition needs to be resolved.
+# Bits 2 and 3 indicate the four categories of condition needing service. The
+# device will return them in priority order until we've resolved them all.
+	lea IIR(%ebx), %edx
+	inb %dx, %al
+	and $7, %al
+	je modem_status
+	cmp $2, %al
+	je transmit_clear
+	cmp $4, %al
+	je receive_ready
+	cmp $6, %al
+	je line_status
+	ret
+
+modem_status:
+	# 
+	lea MSR(%ebx), %edx
+	inb %dx, %al
+	# ...
+	jmp service
+
+transmit_clear:
+	mov TXHEAD(%ebp), %esi
+	mov TXTAIL(%ebp), %edi
+# if no CTS, abort
+# if 
+# if no bytes in buffer, call event handler
+# if still no bytes in buffer, abort
+# if port has fifo, send up to 16 bytes, as many as we have
+# otherwise, send one byte
+	lea THRE(%ebx), %edx
+	# ...
+	jmp service
+
+receive_ready:
+	mov RXHEAD(%ebp), %esi
+	mov RXTAIL(%ebp), %edi
+# if receive buffer still has room, read RBR into buffer
+# repeat until receive buffer is out of room or LSR stops indicating RBR
+# if port has FIFO and receive buffer has fewer than 16 bytes left, or if
+# port does not have FIFO and receive buffer is full, drop RTS/CTS/etc and
+# call our event handler; if new buffer arrives, continue running
+	jmp service
+
+line_status:
+# OE, PE, FE, or BI has become set.
+	lea LSR(%ebx), %edx
+	inb %dx, %al
+	# ...
+	jmp service
+
