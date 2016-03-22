@@ -41,9 +41,5 @@ static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile("outb %0, %1": : "a"(val), "Nd"(port));
 }
 
-void _uart_init() {
-	_kprintf("detecting serial ports\n");
-	_uart_real_init();
-	_kprintf("done initializing serial ports\n");
-}
-
+// scratch space for functions the assembly code in uart.s can invoke to help
+// debug the serial port driver.
