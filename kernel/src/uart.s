@@ -4,7 +4,7 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _uart_real_init
+.global _uart_init
 
 .set PIC1_CMD, 0x0020
 .set PIC1_DATA, 0x0021
@@ -29,33 +29,27 @@
 .set LSR, 5	# Line status
 .set MSR, 6	# Modem status
 
-# Field offsets for the port state struct
-.set PORT, 0 # 16 bits, base address
-.set PRESENT, 2 # 8 bits, 0 = no, 1 = yes, 2 = has fifo
-.set TXHEAD, 4 # ptr
-.set TXTAIL, 8 # ptr
-.set RXHEAD, 12 # ptr
-.set RXTAIL, 16 # ptr
-.set UART_STATE_SIZE, 20
+# Flag array
 
-.global _uart_state
+# Field offsets for the port state struct
+.set TXHEAD, 0x0 # ptr
+.set TXTAIL, 0x4 # ptr
+.set RXHEAD, 0x8 # ptr
+.set RXTAIL, 0xC # ptr
+.set PORT_STATE_SIZE, 0x10
+
 .section .data
-_uart_state:
-.hword 0x03F8, 0
-.long 0, 0, 0, 0
-.hword 0x02F8, 0
-.long 0, 0, 0, 0
-.hword 0x03E8, 0
-.long 0, 0, 0, 0
-.hword 0x03F8, 0
-.long 0, 0, 0, 0
+port_present: .skip 4
+port_state: .skip 4 * PORT_STATE_SIZE
+
+.local config_port, isr_irq3, isr_irq4, service_port
 
 .section .text
-_uart_real_init:
+_uart_init:
 # Install ISRs on IRQ3 and IRQ4 which serve the UARTs. We won't necessarily
 # need both but it doesn't hurt to install them. The IDT structure is weird
-# because it was grafted onto ancient 16-bit stuff, so the ISR address must
-# be written in separate noncontiguous halves.
+# because it was grafted onto ancient 16-bit structures, so the ISR address
+# must be written as a pair of noncontiguous half-words.
 	movl $isr_irq3, %eax
 	movw %ax, _idt_signals + (3 * 8) + 0
 	shrl $16, %eax
@@ -71,16 +65,16 @@ _uart_real_init:
 	pushl %ebx
 	movl $COM1, %ebx
 	call config_port
-	movb %cl, _uart_has_com1
+	movb %cl, port_present+0
 	movl $COM2, %ebx
 	call config_port
-	movb %cl, _uart_has_com2
+	movb %cl, port_present+1
 	movl $COM3, %ebx
 	call config_port
-	movb %cl, _uart_has_com3
+	movb %cl, port_present+2
 	movl $COM4, %ebx
 	call config_port
-	movb %cl, _uart_has_com4
+	movb %cl, port_present+3
 	popl %ebx
 # Clear the PIC's interrupt-inhibit flags for IRQ 3 and IRQ 4. Interrupts
 # won't actually start coming in until the kernel enables them with sti.
@@ -89,7 +83,6 @@ _uart_real_init:
 	outb %al, $PIC1_DATA
 	ret
 
-.local config_port
 config_port:
 # Port address parameter is supplied in %ebx and return val is in %ecx, which
 # will be 0 if we don't find a UART, 1 if a UART is present but lacks a FIFO,
@@ -157,17 +150,14 @@ config_port:
 	outb %al, %dx
 0:	ret
 
-.global _isr_com1, _isr_com2, _isr_com3, _isr_com4
-.weak _isr_com1, _isr_com2, _isr_com3, _isr_com4
-.local isr_irq3, isr_irq4, isr_eoi
-
-# To avoid losing interrupts, and to avoid building a complex state machine
-# covering all the possible timing variations in different UART models, we'll
-# handle IRQs by disabling the interrupt and immediately signalling EOI before
-# checking UART state. We'll clear the PIC disable flag before returning.
-# In the meantime, we'll ignore the IIR and poll UART state until there are no
-# more conditions to handle, so we don't have to worry about missing THRE
-# because we got a simultaneous RBR or whatever.
+# To avoid losing interrupts without having to rig up a complex, fragile state
+# machine covering all the possible timing behaviors of all the different UART
+# models, we'll handle IRQs by disabling the interrupt, immediately signalling
+# EOI and re-enabling other interrupts so we don't block, then polling the
+# UARTs associated with this interrupt until they report no more conditions we
+# need to handle. Then we'll re-enable the IRQ and return. This way we don't
+# have to worry about missing THRE because of a simultaneous RBR condition or
+# anything like that.
 isr_irq3:
 	pushal
 	inb $PIC1_DATA, %al
@@ -178,12 +168,16 @@ isr_irq3:
 	sti
 # We've unblocked other interrupts but won't re-trigger IRQ3.
 # Check both ports, if present, and attend to their needs.
-	cmpb $0, _uart_has_com2
+	cmpb $0, port_present+1
 	je 0f
-	call _isr_com2
-0:	cmpb $0, _uart_has_com4
+	mov $COM2, %ebx
+	mov $port_state + 1*PORT_STATE_SIZE, %ebp
+	call service_port
+0:	cmpb $0, port_present+3
 	je 1f
-	call _isr_com4
+	mov $COM4, %ebx
+	mov $PORT_STATE + 3*PORT_STATE_SIZE, %ebp
+	call service_port
 # Disable interrupts again, then clear the PIC disable flag for IRQ3. We'll
 # implicitly re-enable interrupts through iret.
 1:	cli
@@ -202,14 +196,17 @@ isr_irq4:
 	movb $PIC_EOI, %al
 	outb %al, $PIC1_CMD
 	sti
-# Check whichever ports are present and poll them until they have no further
-# conditions needing attentino.
-	cmpb $0, _uart_has_com1
+# Check the ports and handle any conditions which need attention.
+	cmpb $0, port_present+0
 	je 0f
-	call _isr_com1
-0:	cmpb $0, _uart_has_com3
+	mov $COM1, %ebx
+	mov $port_state + 0*PORT_STATE_SIZE, %ebp
+	call service_port
+0:	cmpb $0, port_present+2
 	je 1f
-	call _isr_com3
+	mov $COM3, %ebx
+	mov $port_state + 2*PORT_STATE_SIZE, %ebp
+	call service_port
 # Disable interrupts so we can turn IRQ4 back on, then return to whatever it
 # was that was happening before this interrupt began.
 1:	cli
@@ -219,13 +216,66 @@ isr_irq4:
 	popal
 	iret
 
-_isr_com1:
+.global _uart_modem_status, _uart_error, _uart_rx, _uart_tx
+.weak _uart_modem_status, _uart_error, _uart_rx, _uart_tx
+
+service_port:
+# EBX contains the port address, EBP the base of the port state struct.
+# The IIR contains the reason the interrupt was raised, if any. If the UART
+# did raise a signal, bit 0 will be 0; if it did not signal, it will be 1.
+	lea IIR(%ebx), %edx
+	inb %dx, %al
+	test $1, %al
+	jnz 0f
+# If this was a modem status change, read the MSR; it's a flow control change
+# or a carrier detect/loss.
+	andb $6, %al
+	jnz 1f
+	lea MSR(%ebx), %edx
+	xorl %eax, %eax
+	inb %dx, %al
+	pushl %eax
+	pushl %ebx
+	call _uart_modem_status
+	add $8, %esp
+	jmp 0f
+# For all other interrupts, we'll read LSR and handle all conditions indicated
+# regardless of the reason for the interrupt; not only that, we'll loop back
+# and continue checking LSR until we've done all the work we can do.
+1:	lea LSR(%ebx), %edx
+	xorl %eax, %eax
+	inb %dx, %al
+# check for transmission errors
+	test $0x9E, %al
+	jz 2f
+	pushl %eax
+	pushl %ebx
+	call _uart_error
+	add $8, %esp
+	jmp 4f
+# check for incoming data
+2:	test $1, %al
+	jz 3f
+	lea RBR(%ebx), %edx
+	xorl %eax, %eax
+	inb %dx, %al
+	pushl %eax
+	pushl %ebx
+	call _uart_rx
+	add $8, %esp
+# check for clear transmit line
+3:	test $0x40, %al
+	jz 4f
+4:	ret
+0:	ret
+
+_uart_modem_status:
 	ret
-_isr_com2:
+
+_uart_error:
 	ret
-_isr_com3:
-	ret
-_isr_com4:
+
+_uart_rx:
 	ret
 
 
