@@ -52,9 +52,23 @@ void _kvprintf(const char *fmt, va_list args) {
 				_console_putc(va_arg(args, int));
 				fmt++;
 			} break;
-			case 'x':
 			case 'd':
 			case 'i': {
+				int value = va_arg(args, int);
+				if (value < 0) {
+					_console_putc('-');
+					value *= -1;
+				}
+				char buf[16];
+				char *pos = &buf[16];
+				do {
+					*--pos = (value % 10) + '0';
+					value /= 10;
+				} while (value > 0);
+				_console_write(pos, &buf[16]-pos);
+				fmt++;
+			} break;
+			case 'x': {
 				int value = va_arg(args, int);
 				if (sizemod >= 0) {
 					puthex((value >> 24) & 0x00FF);
