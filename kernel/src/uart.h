@@ -8,7 +8,7 @@
 #define UART_H
 
 void _uart_init();
-void _uart_transmit(unsigned i, const void *buf, unsigned len);
+void _uart_transmit(unsigned port, const void *buf, unsigned len);
 
 enum {
 	UART_OVERFLOW_ERROR = 1,
@@ -16,7 +16,9 @@ enum {
 	UART_FRAMING_ERROR = 4,
 	UART_BREAK_INDICATOR = 8
 };
-extern void _uart_line_status(unsigned mask);
+extern void _uart_line_status(unsigned port, unsigned conditions);
+extern void _uart_modem_status(unsigned port, unsigned conditions);
+extern void _uart_tx_clear(unsigned port);
 
 #endif //UART_H
 

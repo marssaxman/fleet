@@ -28,7 +28,7 @@ void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
 	_uart_init();
 	_interrupt_enable();
 
-	const char *src = ""
+	const char *src =
 "In early days of telecommunication, errand-boys and optical signals (flags,\n"
 "lights, clouds of smoke) were the only methods of transmitting information\n"
 "across long distances. With increasing requirements on speed and growing\n"
@@ -39,7 +39,10 @@ void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
 "except that you typed not only on your own sheet of paper but also on \n"
 "somebody else's. The only thing that has changed on the step from the \n"
 "teletype to your PC regarding serial communications is speed.\n";
-	_uart_transmit(0, src, strlen(src));
+	unsigned len = 0;
+	for (const char *s = src; *s; ++s) { ++len; }
+	_kprintf("transmitting %i chars\n", len);
+	_uart_transmit(0, src, len);
 	while (1) {}
 }
 
