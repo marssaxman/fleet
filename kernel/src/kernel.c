@@ -27,6 +27,19 @@ void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
 	_interrupt_init();
 	_uart_init();
 	_interrupt_enable();
+
+	const char *src = ""
+"In early days of telecommunication, errand-boys and optical signals (flags,\n"
+"lights, clouds of smoke) were the only methods of transmitting information\n"
+"across long distances. With increasing requirements on speed and growing\n"
+"amount of information, more practical methods were developed. One milestone\n"
+"was the first wire-bound transmission on May 24th, 1844 (\"What hath God\n"
+"wrought\", using the famous Morse alphabet). Well, technology improved a \n"
+"bit, and soon there were machines that could be used like typewriters, \n"
+"except that you typed not only on your own sheet of paper but also on \n"
+"somebody else's. The only thing that has changed on the step from the \n"
+"teletype to your PC regarding serial communications is speed.\n";
+	_uart_transmit(0, src, strlen(src));
 	while (1) {}
 }
 

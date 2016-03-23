@@ -37,31 +37,35 @@
 .set MSR, 6	# Modem status
 
 # Field offsets for the port state struct
-.set TXHEAD, 0x0 # ptr
-.set TXTAIL, 0x4 # ptr
-.set RXHEAD, 0x8 # ptr
-.set RXTAIL, 0xC # ptr
-.set PORT_STATE_SIZE, 0x10
+.set ADDR, 0x0 # short
+.set INDEX, 0x2 # byte
+.set FLAGS, 0x3 # byte
+.set NOTIFY, 0x4 # ptr
+.set TXHEAD, 0x8 # ptr
+.set TXTAIL, 0xC # ptr
+.set RXHEAD, 0x10 # ptr
+.set RXTAIL, 0x14 # ptr
+.set PORT_STATE_SIZE, 0x18
 
-# Bit flags for the port_type structure
+# Bit flag values
 .set PORT_PRESENT, 0x01
-.set PORT_HAS_FIFO, 0x10
-.set COM1_PRESENT, (PORT_PRESENT << 0)
-.set COM2_PRESENT, (PORT_PRESENT << 1)
-.set COM3_PRESENT, (PORT_PRESENT << 2)
-.set COM4_PRESENT, (PORT_PRESENT << 3)
-.set COM1_FIFO, (PORT_HAS_FIFO << 0)
-.set COM2_FIFO, (PORT_HAS_FIFO << 1)
-.set COM3_FIFO, (PORT_HAS_FIFO << 2)
-.set COM4_FIFO, (PORT_HAS_FIFO << 3)
+.set PORT_HAS_FIFO, 0x2
+.SET PORT_TX_START, 0x4
 
 .section .data
 port_state:
-com1_state: .skip PORT_STATE_SIZE
-com2_state: .skip PORT_STATE_SIZE
-com3_state: .skip PORT_STATE_SIZE
-com4_state: .skip PORT_STATE_SIZE
-port_type: .byte 0
+com1_state:
+	.hword COM1, 0
+	.long 0, 0, 0, 0, 0
+com2_state:
+	.hword COM2, 1
+	.long 0, 0, 0, 0, 0
+com3_state:
+	.hword COM3, 2
+	.long 0, 0, 0, 0, 0
+com4_state:
+	.hword COM4, 3
+	.long 0, 0, 0, 0, 0
 
 .section .text
 .local config_port, isr_irq3, isr_irq4, service_port
@@ -71,35 +75,19 @@ _uart_init:
 # %ebx as the port address parameter for internal routines because we have
 # to save and restore %ebx inside an interrupt handler anyway, and this way
 # it's easy to load specific register addresses without hitting the stack.
-	pushl %ebx
-	xorl %ecx, %ecx
-	movl $COM1, %ebx
+	mov $com1_state, %eax
 	call config_port
-	movb %cl, port_type
-	movl $COM2, %ebx
+	mov $com2_state, %eax
 	call config_port
-	rol $1, %cl
-	orb %cl, port_type
-	movl $COM3, %ebx
+	mov $com3_state, %eax
 	call config_port
-	rol $2, %cl
-	orb %cl, port_type
-	movl $COM4, %ebx
+	mov $com4_state, %eax
 	call config_port
-	rol $3, %cl
-	orb %cl, port_type
-	popl %ebx
 # Clear the PIC's interrupt-inhibit flags for IRQ 3 and IRQ 4. Interrupts
 # won't actually start coming in until the kernel enables them with sti.
 	inb $PIC1_DATA, %al
 	andb 0xE7, %al
 	outb %al, $PIC1_DATA
-# Notify our client about our discoveries.
-	movb port_type, %cl
-	and $0x0F, %ecx
-	pushl %ecx
-	call _uart_open
-	addl $4, %esp
 	ret
 
 _uart_transmit:
@@ -115,11 +103,12 @@ _uart_transmit:
 	ret
 
 config_port:
-# Port address parameter is supplied in %ebx and return val is in %ecx, which
-# will be 0 if we don't find a UART, 1 if a UART is present but lacks a FIFO,
-# and 2 if it is a 16550A or newer with a working FIFO. We won't change %ebx
-# or any nonvolatile register, but of course we'll trash %EAX and %EDX.
-	xorl %ecx, %ecx
+# Port struct is in EAX
+	pushl %ebp
+	movl %eax, %ebp
+	pushl %ebx
+	xorl %ebx, %ebx
+	movw ADDR(%eax), %bx
 # Try to put the device in loopback mode, then check its modem state.
 	movb $0x10, %al
 	lea MCR(%ebx), %edx
@@ -139,7 +128,9 @@ config_port:
 	andb $0xF0, %al
 	cmpb $0xF0, %al
 	jne 0f
-# We appear to have a working UART. Set its configuration the way we want.
+# We appear to have a working UART.
+	orb $PORT_PRESENT, FLAGS(%ebp)
+# Set its configuration the way we want.
 # Use DLAB mode to configure port speed; we'll use 115.2K = fastest = best.
 	lea LCR(%ebx), %edx
 	mov $0x80, %al
@@ -164,32 +155,28 @@ config_port:
 	mov $0x0F, %al
 	outb %al, %dx
 # Does this UART have a working FIFO? We find out by attempting to configure it
-# and seeing what the IIR state looks like afterward. We'll return 2 if it has
-# a FIFO but fall back to 1 if the chip is older than the 16550A.
-	movb $(PORT_HAS_FIFO | PORT_PRESENT), %cl
+# and seeing what the IIR state looks like afterward.
 	lea FCR(%ebx), %edx
 	mov $0xE7, %al
 	outb %al, %dx
 	lea IIR(%ebx), %edx
 	inb %dx, %al
 	andb $0x40, %al
-	jnz 0f
+	jz 1f
+	orb $PORT_HAS_FIFO, FLAGS(%ebp)
 # The FIFO is either broken or absent, so we'll avoid trouble by disabling it.
-	movb $PORT_PRESENT, %cl
-	lea FCR(%ebx), %edx
+1:	lea FCR(%ebx), %edx
 	xorl %eax, %eax
 	outb %al, %dx
-0:	ret
+0:	popl %ebx
+	popl %ebp
+	ret
 
 # Handling the cause of this interrupt may take a while, so we'll keep the data
 # flowing as we work. Disable recurrence of this interrupt while we clear the
 # port, then enable other interrupts; we'll re-enable this one when we're done.
 _isr_IRQ3:
 	pushal
-	movb $0x51, %al
-	outb %al, $0x00E9
-	popal
-	iret
 # Disable IRQ3 while we handle its COM ports.
 	inb $PIC1_DATA, %al
 	orb 0x08, %al
@@ -199,19 +186,12 @@ _isr_IRQ3:
 	sti
 # We've unblocked other interrupts but won't re-trigger IRQ3.
 # Check both ports, if present, and attend to their needs.
-	testb $0x2, port_type
-	je 0f
-	mov $COM2, %ebx
 	mov $com2_state, %ebp
 	call service_port
-0:	testb $0x8, port_type
-	je 1f
-	mov $COM4, %ebx
 	mov $com4_state, %ebp
 	call service_port
-# Disable interrupts again, then clear the PIC disable flag for IRQ3. We'll
-# implicitly re-enable interrupts through iret.
-1:	cli
+# Disable interrupts again, clear the IRQ3 disable flag, and return.
+	cli
 	inb $PIC1_DATA, %al
 	andb 0xF7, %al
 	outb %al, $PIC1_DATA
@@ -220,10 +200,6 @@ _isr_IRQ3:
 
 _isr_IRQ4:
 	pushal
-	movb $0x71, %al
-	outb %al, $0x00E9
-	popal
-	iret
 # Disable IRQ4 while we handle its COM ports.
 	inb $PIC1_DATA, %al
 	orb 0x10, %al
@@ -232,19 +208,12 @@ _isr_IRQ4:
 	outb %al, $PIC1_CMD
 	sti
 # Check the ports and handle any conditions which need attention.
-	testb $0x1, port_type
-	je 0f
-	mov $COM1, %ebx
 	mov $com1_state, %ebp
 	call service_port
-0:	testb $0x4, port_type
-	je 1f
-	mov $COM3, %ebx
 	mov $com3_state, %ebp
 	call service_port
-# Disable interrupts so we can turn IRQ4 back on, then return to whatever it
-# was that was happening before this interrupt began.
-1:	cli
+# Disable interrupts, re-enable IRQ4, and return from this ISR.
+	cli
 	inb $PIC1_DATA, %al
 	andb 0xEF, %al
 	outb %al, $PIC1_DATA
@@ -252,10 +221,12 @@ _isr_IRQ4:
 	iret
 
 service_port:
-# does this port need attention? If so, what sort? IIR has the answer: bit zero
-# is high when the port is happy and low when a condition needs to be resolved.
-# Bits 2 and 3 indicate the four categories of condition needing service. The
-# device will return them in priority order until we've resolved them all.
+	testb $PORT_PRESENT, FLAGS(%ebp)
+	jz 0f
+check_loop:
+# IIR will tell us what conditions the port has experienced which need service.
+# They are prioritized so we will check repeatedly until bit 1 is set showing
+# that no service is needed.
 	lea IIR(%ebx), %edx
 	inb %dx, %al
 	and $7, %al
@@ -266,7 +237,9 @@ service_port:
 	je receive_ready
 	cmp $6, %al
 	je line_status
-	ret
+	testb $PORT_TX_START, FLAGS(%ebp)
+	jnz check_transmit
+0:	ret
 
 modem_status:
 	lea MSR(%ebx), %edx
@@ -275,8 +248,41 @@ modem_status:
 	pushl %eax
 	call _uart_modem_status
 	popl %eax
-	jmp service_port
+	jmp check_loop
 
+line_status:
+# OE, PE, FE, or BI has become set.
+	lea LSR(%ebx), %edx
+	inb %dx, %al
+	ror $1, %al
+	and $0x0F, %eax
+	pushl %eax
+	call _uart_line_status
+	popl %eax
+	jmp check_loop
+
+receive_ready:
+	pushl %ebp
+	call _uart_rx_ready
+	popl %ebp
+	jmp service_port
+	mov RXHEAD(%ebp), %esi
+	mov RXTAIL(%ebp), %edi
+# if receive buffer still has room, read RBR into buffer
+# repeat until receive buffer is out of room or LSR stops indicating RBR
+# if port has FIFO and receive buffer has fewer than 16 bytes left, or if
+# port does not have FIFO and receive buffer is full, drop RTS/CTS/etc and
+# call our event handler; if new buffer arrives, continue running
+#   ...
+# RBR interrupts can mask THRE, so find out whether we can transmit now too
+# by falling through to check_transmit.
+
+check_transmit:
+# if there is no transmission running, start one.
+	lea LSR(%ebx), %edx
+	inb %dx, %al
+	testb $0x40, %al
+	jz check_loop
 transmit_clear:
 	pushl %ebp
 	call _uart_tx_clear
@@ -290,29 +296,6 @@ transmit_clear:
 # if port has fifo, send up to 16 bytes, as many as we have
 # otherwise, send one byte
 	lea THR(%ebx), %edx
-	jmp service_port
+	jmp check_loop
 
-receive_ready:
-	pushl %ebp
-	call _uart_rx_ready
-	pop %ebp
-	jmp service_port
-	mov RXHEAD(%ebp), %esi
-	mov RXTAIL(%ebp), %edi
-# if receive buffer still has room, read RBR into buffer
-# repeat until receive buffer is out of room or LSR stops indicating RBR
-# if port has FIFO and receive buffer has fewer than 16 bytes left, or if
-# port does not have FIFO and receive buffer is full, drop RTS/CTS/etc and
-# call our event handler; if new buffer arrives, continue running
-	jmp service_port
-
-line_status:
-# OE, PE, FE, or BI has become set.
-	lea LSR(%ebx), %edx
-	xorl %eax, %eax
-	inb %dx, %al
-	pushl %eax
-	call _uart_line_status
-	popl %eax
-	jmp service_port
 

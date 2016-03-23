@@ -33,7 +33,7 @@ test.bin: libkernel.a
 test: test.bin
 	qemu-system-i386 -kernel $^ -nographic -no-reboot \
 		-monitor stdio -debugcon stdio \
-		-chardev file,id=COM1,path=/home/mars/osdev/fleet/kernel/log.txt \
+		-chardev file,id=COM1,path=log.txt \
 		-serial chardev:COM1
 .PHONY: test
 

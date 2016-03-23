@@ -50,6 +50,7 @@ static inline void interrupt() {
 
 void _uart_open(uint8_t mask) {
 	_kprintf("UART open: %x\n", mask);
+	
 //	for (char c = 0; c < 26; ++c) {
 //		outb(COM1 + THR, c + 'A');
 //	}
@@ -60,8 +61,12 @@ void _uart_modem_status(uint8_t msr) {
 	_kprintf("\nMSR:%x\n", msr);
 }
 
-void _uart_line_status(uint8_t lsr) {
-	_kprintf("\nLSR:%x\n", lsr);
+void _uart_line_status(unsigned lsr) {
+	_kprintf("\nLSR: %s %s %s %s\n",
+		(lsr & UART_OVERFLOW_ERROR)? "OE": "--",
+		(lsr & UART_PARITY_ERROR)? "PE": "--",
+		(lsr & UART_FRAMING_ERROR)? "FE": "--",
+		(lsr & UART_BREAK_INDICATOR)? "BI": "--");
 }
 
 struct buffers {

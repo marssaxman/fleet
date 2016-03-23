@@ -10,5 +10,13 @@
 void _uart_init();
 void _uart_transmit(unsigned i, const void *buf, unsigned len);
 
+enum {
+	UART_OVERFLOW_ERROR = 1,
+	UART_PARITY_ERROR = 2,
+	UART_FRAMING_ERROR = 4,
+	UART_BREAK_INDICATOR = 8
+};
+extern void _uart_line_status(unsigned mask);
+
 #endif //UART_H
 
