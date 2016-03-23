@@ -31,6 +31,9 @@ test.bin: libkernel.a
 	ld -o $@ $(LDFLAGS) -T ../build/linker.ld --start-group $^ --end-group
 
 test: test.bin
-	qemu-system-i386 -kernel $^ -monitor stdio -nographic -debugcon stdio
+	qemu-system-i386 -kernel $^ -nographic -no-reboot \
+		-monitor stdio -debugcon stdio \
+		-chardev file,id=COM1,path=/home/mars/osdev/fleet/kernel/log.txt \
+		-serial chardev:COM1
 .PHONY: test
 

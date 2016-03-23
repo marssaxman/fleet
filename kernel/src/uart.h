@@ -8,6 +8,7 @@
 #define UART_H
 
 void _uart_init();
+void _uart_transmit(unsigned i, const void *buf, unsigned len);
 
 #endif //UART_H
 

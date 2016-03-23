@@ -11,5 +11,16 @@ void _interrupt_init();
 void _interrupt_enable();
 void _interrupt_disable();
 
+// Override these weak symbol definitions to provide a generic exception or
+// IRQ handler function
+
+struct cpu_state {
+	uint32_t edi, esi, ebp, esp;
+	uint32_t ebx, edx, ecx, eax;
+	uint32_t error, eip, cs, eflags;
+};
+extern void _interrupt_exception(unsigned code, struct cpu_state*);
+extern void _interrupt_irq(unsigned irq);
+
 #endif //INTERRUPT_H
 

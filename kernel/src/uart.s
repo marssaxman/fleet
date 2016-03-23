@@ -5,15 +5,13 @@
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 # entrypoints we export
-.global _uart_init, _uart_transmit, _uart_receive
+.global _uart_init
 
-# external symbols we invoke:
-.global _uart_open # bit mask: which ports do we have?
-.global _uart_transmit_clear # index: port which has cleared its outgoing data
-.global _uart_receive_ready # index: port which has filled its input buffer
-.global _uart_error # code: protocol violation
+# external entrypoints we invoke
+.global _uart_modem_status, _uart_line_status, _uart_tx_clear, _uart_rx_ready
 
-.local config_port, isr_irq3, isr_irq4, service
+# external entrypoints we override with non-weak implementations
+.global _isr_IRQ3, _isr_IRQ4
 
 .set PIC1_CMD, 0x0020
 .set PIC1_DATA, 0x0021
@@ -45,52 +43,75 @@
 .set RXTAIL, 0xC # ptr
 .set PORT_STATE_SIZE, 0x10
 
+# Bit flags for the port_type structure
+.set PORT_PRESENT, 0x01
+.set PORT_HAS_FIFO, 0x10
+.set COM1_PRESENT, (PORT_PRESENT << 0)
+.set COM2_PRESENT, (PORT_PRESENT << 1)
+.set COM3_PRESENT, (PORT_PRESENT << 2)
+.set COM4_PRESENT, (PORT_PRESENT << 3)
+.set COM1_FIFO, (PORT_HAS_FIFO << 0)
+.set COM2_FIFO, (PORT_HAS_FIFO << 1)
+.set COM3_FIFO, (PORT_HAS_FIFO << 2)
+.set COM4_FIFO, (PORT_HAS_FIFO << 3)
+
 .section .data
-port_present: .skip 4
-port_state: .skip 4 * PORT_STATE_SIZE
+port_state:
+com1_state: .skip PORT_STATE_SIZE
+com2_state: .skip PORT_STATE_SIZE
+com3_state: .skip PORT_STATE_SIZE
+com4_state: .skip PORT_STATE_SIZE
+port_type: .byte 0
 
 .section .text
+.local config_port, isr_irq3, isr_irq4, service_port
+
 _uart_init:
-# Install ISRs on IRQ3 and IRQ4 which serve the UARTs. We won't necessarily
-# need both but it doesn't hurt to install them. The IDT structure is weird
-# because it was grafted onto ancient 16-bit structures, so the ISR address
-# must be written as a pair of noncontiguous half-words.
-	movl $isr_irq3, %eax
-	movw %ax, _idt_signals + (3 * 8) + 0
-	shrl $16, %eax
-	movw %ax, _idt_signals + (3 * 8) + 6
-	movl $isr_irq4, %eax
-	movw %ax, _idt_signals + (4 * 8) + 0
-	shrl $16, %eax
-	movw %ax, _idt_signals + (4 * 8) + 6
 # Check each possible COM port in turn and configure it if present. We use
 # %ebx as the port address parameter for internal routines because we have
 # to save and restore %ebx inside an interrupt handler anyway, and this way
 # it's easy to load specific register addresses without hitting the stack.
 	pushl %ebx
+	xorl %ecx, %ecx
 	movl $COM1, %ebx
 	call config_port
-	movb %cl, port_present+0
+	movb %cl, port_type
 	movl $COM2, %ebx
 	call config_port
-	movb %cl, port_present+1
+	rol $1, %cl
+	orb %cl, port_type
 	movl $COM3, %ebx
 	call config_port
-	movb %cl, port_present+2
+	rol $2, %cl
+	orb %cl, port_type
 	movl $COM4, %ebx
 	call config_port
-	movb %cl, port_present+3
+	rol $3, %cl
+	orb %cl, port_type
 	popl %ebx
 # Clear the PIC's interrupt-inhibit flags for IRQ 3 and IRQ 4. Interrupts
 # won't actually start coming in until the kernel enables them with sti.
 	inb $PIC1_DATA, %al
 	andb 0xE7, %al
 	outb %al, $PIC1_DATA
-# Notify our client regarding our discoveries.
-	xorl %eax, %eax
-	cmpb $0, port_present+3
-	setnz %al
-	
+# Notify our client about our discoveries.
+	movb port_type, %cl
+	and $0x0F, %ecx
+	pushl %ecx
+	call _uart_open
+	addl $4, %esp
+	ret
+
+_uart_transmit:
+# parameters: port number, source buffer, byte count
+	mov 4(%esp), %eax
+	imul $PORT_STATE_SIZE, %ax
+	add $port_state, %eax
+	movl 8(%esp), %ecx
+	movl %ecx, TXTAIL(%eax)
+	movl %ecx, TXHEAD(%eax)
+	movl 12(%esp), %ecx
+	addl %ecx, TXTAIL(%eax)
 	ret
 
 config_port:
@@ -145,7 +166,7 @@ config_port:
 # Does this UART have a working FIFO? We find out by attempting to configure it
 # and seeing what the IIR state looks like afterward. We'll return 2 if it has
 # a FIFO but fall back to 1 if the chip is older than the 16550A.
-	orb $2, %cl
+	movb $(PORT_HAS_FIFO | PORT_PRESENT), %cl
 	lea FCR(%ebx), %edx
 	mov $0xE7, %al
 	outb %al, %dx
@@ -154,7 +175,7 @@ config_port:
 	andb $0x40, %al
 	jnz 0f
 # The FIFO is either broken or absent, so we'll avoid trouble by disabling it.
-	movb $1, %cl
+	movb $PORT_PRESENT, %cl
 	lea FCR(%ebx), %edx
 	xorl %eax, %eax
 	outb %al, %dx
@@ -163,8 +184,13 @@ config_port:
 # Handling the cause of this interrupt may take a while, so we'll keep the data
 # flowing as we work. Disable recurrence of this interrupt while we clear the
 # port, then enable other interrupts; we'll re-enable this one when we're done.
-isr_irq3:
+_isr_IRQ3:
 	pushal
+	movb $0x51, %al
+	outb %al, $0x00E9
+	popal
+	iret
+# Disable IRQ3 while we handle its COM ports.
 	inb $PIC1_DATA, %al
 	orb 0x08, %al
 	outb %al, $PIC1_DATA
@@ -173,16 +199,16 @@ isr_irq3:
 	sti
 # We've unblocked other interrupts but won't re-trigger IRQ3.
 # Check both ports, if present, and attend to their needs.
-	cmpb $0, port_present+1
+	testb $0x2, port_type
 	je 0f
 	mov $COM2, %ebx
-	mov $port_state + 1*PORT_STATE_SIZE, %ebp
-	call service
-0:	cmpb $0, port_present+3
+	mov $com2_state, %ebp
+	call service_port
+0:	testb $0x8, port_type
 	je 1f
 	mov $COM4, %ebx
-	mov $port_state + 3*PORT_STATE_SIZE, %ebp
-	call service
+	mov $com4_state, %ebp
+	call service_port
 # Disable interrupts again, then clear the PIC disable flag for IRQ3. We'll
 # implicitly re-enable interrupts through iret.
 1:	cli
@@ -192,8 +218,12 @@ isr_irq3:
 	popal
 	iret
 
-isr_irq4:
+_isr_IRQ4:
 	pushal
+	movb $0x71, %al
+	outb %al, $0x00E9
+	popal
+	iret
 # Disable IRQ4 while we handle its COM ports.
 	inb $PIC1_DATA, %al
 	orb 0x10, %al
@@ -202,16 +232,16 @@ isr_irq4:
 	outb %al, $PIC1_CMD
 	sti
 # Check the ports and handle any conditions which need attention.
-	cmpb $0, port_present+0
+	testb $0x1, port_type
 	je 0f
 	mov $COM1, %ebx
-	mov $port_state + 0*PORT_STATE_SIZE, %ebp
-	call service
-0:	cmpb $0, port_present+2
+	mov $com1_state, %ebp
+	call service_port
+0:	testb $0x4, port_type
 	je 1f
 	mov $COM3, %ebx
-	mov $port_state + 2*PORT_STATE_SIZE, %ebp
-	call service
+	mov $com3_state, %ebp
+	call service_port
 # Disable interrupts so we can turn IRQ4 back on, then return to whatever it
 # was that was happening before this interrupt began.
 1:	cli
@@ -221,7 +251,7 @@ isr_irq4:
 	popal
 	iret
 
-service:
+service_port:
 # does this port need attention? If so, what sort? IIR has the answer: bit zero
 # is high when the port is happy and low when a condition needs to be resolved.
 # Bits 2 and 3 indicate the four categories of condition needing service. The
@@ -240,11 +270,18 @@ service:
 
 modem_status:
 	lea MSR(%ebx), %edx
+	xorl %eax, %eax
 	inb %dx, %al
-	# ...
-	jmp service
+	pushl %eax
+	call _uart_modem_status
+	popl %eax
+	jmp service_port
 
 transmit_clear:
+	pushl %ebp
+	call _uart_tx_clear
+	pop %ebp
+	jmp service_port
 	mov TXHEAD(%ebp), %esi
 	mov TXTAIL(%ebp), %edi
 # if no CTS, abort
@@ -253,10 +290,13 @@ transmit_clear:
 # if port has fifo, send up to 16 bytes, as many as we have
 # otherwise, send one byte
 	lea THR(%ebx), %edx
-	# ...
-	jmp service
+	jmp service_port
 
 receive_ready:
+	pushl %ebp
+	call _uart_rx_ready
+	pop %ebp
+	jmp service_port
 	mov RXHEAD(%ebp), %esi
 	mov RXTAIL(%ebp), %edi
 # if receive buffer still has room, read RBR into buffer
@@ -264,12 +304,15 @@ receive_ready:
 # if port has FIFO and receive buffer has fewer than 16 bytes left, or if
 # port does not have FIFO and receive buffer is full, drop RTS/CTS/etc and
 # call our event handler; if new buffer arrives, continue running
-	jmp service
+	jmp service_port
 
 line_status:
 # OE, PE, FE, or BI has become set.
 	lea LSR(%ebx), %edx
+	xorl %eax, %eax
 	inb %dx, %al
-	# ...
-	jmp service
+	pushl %eax
+	call _uart_line_status
+	popl %eax
+	jmp service_port
 

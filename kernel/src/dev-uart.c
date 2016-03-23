@@ -41,5 +41,41 @@ static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile("outb %0, %1": : "a"(val), "Nd"(port));
 }
 
+static inline void interrupt() {
+	__asm__ volatile("int $0x23": :);
+}
+
 // scratch space for functions the assembly code in uart.s can invoke to help
 // debug the serial port driver.
+
+void _uart_open(uint8_t mask) {
+	_kprintf("UART open: %x\n", mask);
+//	for (char c = 0; c < 26; ++c) {
+//		outb(COM1 + THR, c + 'A');
+//	}
+	interrupt();
+}
+
+void _uart_modem_status(uint8_t msr) {
+	_kprintf("\nMSR:%x\n", msr);
+}
+
+void _uart_line_status(uint8_t lsr) {
+	_kprintf("\nLSR:%x\n", lsr);
+}
+
+struct buffers {
+	void *tx_head;
+	void *tx_tail;
+	void *rx_head;
+	void *rx_tail;
+};
+
+void _uart_tx_clear(struct buffers *port) {
+	_kprintf("tx ");
+}
+
+void _uart_rx_ready(struct buffers *port) {
+	_kprintf("rx ");
+}
+
