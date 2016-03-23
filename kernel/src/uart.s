@@ -36,6 +36,31 @@
 .set LSR, 5	# Line status
 .set MSR, 6	# Modem status
 
+# Flag definitions
+.set IER_RBRI, 0x01 # Enable data buffer ready interrupt
+.set IER_THRI, 0x02 # Enable transmitter clear interrupt
+.set IER_LSI, 0x04 # Enable line status interrupt
+.set IER_MSI, 0x08 # Enable modem status interrupt
+.set IIR_NONE, 0x01 # No interrupts pending
+.set IIR_ID_MASK, 0x06 # produces one of the following:
+.set IIR_MSI, 0x00 # Modem status change
+.set IIR_THRI, 0x02 # Transmitter holding register empty
+.set IIR_RBRI, 0x04 # Receive buffer interrupt
+.set IIR_LSI, 0x06 # Line status change
+.set MCR_DTR, 0x01 # Control DTR signal
+.set MCR_RTS, 0x02 # Control RTS signal
+.set MCR_OUT1, 0x04 # Misc control signal 1
+.set MCR_OUT2, 0x08 # Misc control signal 2
+.set MCR_LOOP, 0x10 # Loopback mode
+.set MSR_DCTS, 0x01 # CTS change
+.set MSR_DDSR, 0x02 # DSR change
+.set MSR_TERI, 0x04 # Ring indicator ended
+.set MSR_DDCD, 0x08 # DCD change
+.set MSR_CTS, 0x10 # Clear to send
+.set MSR_DSR, 0x20 # Data set ready (present)
+.set MSR_RI, 0x40 # Ring indicator
+.set MSR_DCD, 0x80 # Data carrier detected
+
 # Field offsets for the port state struct
 .set ADDR, 0x0 # short
 .set INDEX, 0x2 # byte
@@ -106,7 +131,7 @@ _uart_transmit:
 	xorl %edx, %edx
 	movw ADDR(%eax), %dx
 	add $IER, %edx
-	movb $0x0F, %al
+	movb $(IER_RBRI|IER_THRI|IER_LSI|IER_MSI), %al
 	out %al, %dx
 	ret
 
@@ -118,8 +143,8 @@ config_port:
 	xorl %ebx, %ebx
 	movw ADDR(%eax), %bx
 # Try to put the device in loopback mode, then check its modem state.
-	movb $0x10, %al
 	lea MCR(%ebx), %edx
+	movb $MCR_LOOP, %al
 	outb %al, %dx
 	lea MSR(%ebx), %edx
 	inb %dx, %al
@@ -127,14 +152,14 @@ config_port:
 	andb $0xF0, %al
 	jnz 0f
 # Still using loopback mode, try to change the modem status.
-	movb $0x1F, %al
 	lea MCR(%ebx), %edx
+	movb $(MCR_LOOP|MCR_DTR|MCR_RTS|MCR_OUT1|MCR_OUT2), %al
 	outb %al, %dx
 	lea MSR(%ebx), %edx
 	inb %dx, %al
 # All four bits should now be set the way we configured them.
 	andb $0xF0, %al
-	cmpb $0xF0, %al
+	cmpb $(MSR_CTS|MSR_DSR|MSR_RI|MSR_DCD), %al
 	jne 0f
 # We appear to have a working UART.
 	orb $PORT_PRESENT, FLAGS(%ebp)
@@ -153,14 +178,14 @@ config_port:
 	lea LCR(%ebx), %edx
 	mov $0x03, %al
 	outb %al, %dx
-# Leave DTR and RTS clear until we get buffers to play with, but set OUT2
-# so the UART will ring up the PIC when it wants us to get an interrupt.
+# Enable DTR so the other device knows we're listening and set OUT2 so the UART
+# will signal its interrupts through the PIC.
 	lea MCR(%ebx), %edx
-	mov $0x09, %al
+	mov $(MCR_DTR|MCR_OUT2), %al
 	outb %al, %dx
 # Enable interrupts other than THRE, which we'll enable to start transmission.
 	lea IER(%ebx), %edx
-	mov $0x0D, %al
+	mov $(IER_RBRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
 # Does this UART have a working FIFO? We find out by attempting to configure it
 # and seeing what the IIR state looks like afterward.
@@ -180,9 +205,6 @@ config_port:
 	popl %ebp
 	ret
 
-# Handling the cause of this interrupt may take a while, so we'll keep the data
-# flowing as we work. Disable recurrence of this interrupt while we clear the
-# port, then enable other interrupts; we'll re-enable this one when we're done.
 _isr_IRQ3:
 	pushal
 	movb $PIC_EOI, %al
@@ -218,16 +240,16 @@ check_loop:
 # all conditions are clear.
 	lea IIR(%ebx), %edx
 	inb %dx, %al
-	and $7, %al
-	testb $1, %al
+	testb $IIR_NONE, %al
 	jnz 0f
-	cmp $0, %al
+	and $IIR_ID_MASK, %al
+	cmp $IIR_MSI, %al
 	je modem_status
-	cmp $2, %al
+	cmp $IIR_THRI, %al
 	je transmit_clear
-	cmp $4, %al
+	cmp $IIR_RBRI, %al
 	je receive_ready
-	cmp $6, %al
+	cmp $IIR_LSI, %al
 	je line_status
 0:	ret
 
@@ -268,7 +290,7 @@ receive_ready:
 0:	jmp check_loop
 
 transmit_clear:
-# todo: check CTS; request bytes when buffer empty
+# Has the other device signalled that we are clear to send?
 	mov TXHEAD(%ebp), %esi
 	cmp $0, %esi
 	jz 0f
@@ -291,13 +313,13 @@ transmit_clear:
 2:	lea THR(%ebx), %edx
 	rep outsb
 	movl %esi, TXHEAD(%ebp)
-# If the buffer is empty, turn our THRE interrupt off and signal tx_clear.
-# sending more data, and signal our event handler in case it wants to supply
-# us with more.
+# Did we just empty the send buffer?
+# If the buffer has just become empty, we need to disable our THRE interrupt
+# and give our client a chance to send more by signalling tx_clear.
 	cmpl %esi, TXTAIL(%ebp)
 	jne 0f
-	movb $0x0D, %al
 	lea IER(%ebx), %edx
+	movb $(IER_RBRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
 	movb INDEX(%ebp), %al
 	and $3, %eax
@@ -305,5 +327,4 @@ transmit_clear:
 	call _uart_tx_clear
 	add $4, %esp
 0:	jmp check_loop
-
 
