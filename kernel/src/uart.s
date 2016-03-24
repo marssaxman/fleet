@@ -88,7 +88,7 @@ com3_state: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
 com4_state: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
 
 .section .text
-.local config_port, isr_irq3, isr_irq4, service_port
+.local configure, isr_IRQ3, isr_IRQ4, service
 
 _uart_init:
 # Check each possible COM port in turn and configure it if present. We use
@@ -99,13 +99,13 @@ _uart_init:
 	xorl %ebx, %ebx
 	pushl %ebp
 	mov $com1_state, %ebp
-	call config_port
+	call configure
 	mov $com2_state, %ebp
-	call config_port
+	call configure
 	mov $com3_state, %ebp
-	call config_port
+	call configure
 	mov $com4_state, %ebp
-	call config_port
+	call configure
 	popl %ebp
 	popl %ebx
 # Clear the PIC's interrupt-inhibit flags for IRQ 3 and IRQ 4.
@@ -113,7 +113,7 @@ _uart_init:
 	andb $0xE7, %al
 	outb %al, $PIC1_DATA
 	ret
-config_port:
+configure:
 # Port struct is in EBP.
 	movw ADDR(%ebp), %bx
 # Try to put the device in loopback mode, then check its modem state.
@@ -228,9 +228,9 @@ _isr_IRQ3:
 	movb $PIC_EOI, %al
 	outb %al, $PIC1_CMD
 	mov $com2_state, %ebp
-	call service_port
+	call service
 	mov $com4_state, %ebp
-	call service_port
+	call service
 	popal
 	iret
 
@@ -239,13 +239,13 @@ _isr_IRQ4:
 	movb $PIC_EOI, %al
 	outb %al, $PIC1_CMD
 	mov $com1_state, %ebp
-	call service_port
+	call service
 	mov $com3_state, %ebp
-	call service_port
+	call service
 	popal
 	iret
 
-service_port:
+service:
 # Port state is in EBP. We can trash any register because this function is only
 # called from the ISRs, which are obligated to restore all registers anyway.
 	testb $PORT_PRESENT, FLAGS(%ebp)

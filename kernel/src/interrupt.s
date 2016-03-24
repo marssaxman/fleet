@@ -271,22 +271,11 @@ _isr_IRQ15: pushal; push $15;
 	popal
 	iret
 
-.section .data
-.align 8
-.local idt, idtr
+.section .data; .align 8; .local idt, idtr
 idt:
-exceptions:
-	.rept 20
-	.hword 0, 8, 0x8E00, 0
-	.endr
-reserved:
-	.rept 12
-	.hword 0, 0, 0, 0
-	.endr
-signals:
-	.rept 16
-	.hword 0, 8, 0x8E00, 0
-	.endr
+exceptions: .rept 20; .hword 0, 8, 0x8E00, 0; .endr
+reserved:   .rept 12; .hword 0, 0, 0x0000, 0; .endr
+signals:    .rept 16; .hword 0, 8, 0x8E00, 0; .endr
 idtr:
 	.hword ((48 * 8) - 1)	# size of table - 1: why? who knows
 	.long idt
