@@ -9,6 +9,7 @@
 
 void _uart_init();
 void _uart_transmit(unsigned port, const void *buf, unsigned len);
+void _uart_receive(unsigned port, void *buf, unsigned max);
 
 enum {
 	UART_OVERFLOW_ERROR = 1,
@@ -19,6 +20,7 @@ enum {
 extern void _uart_line_status(unsigned port, unsigned conditions);
 extern void _uart_modem_status(unsigned port, unsigned conditions);
 extern void _uart_tx_clear(unsigned port);
+extern void _uart_rx_ready(unsigned port);
 
 #endif //UART_H
 

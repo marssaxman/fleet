@@ -43,6 +43,8 @@ void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
 	for (const char *s = src; *s; ++s) { ++len; }
 	_kprintf("transmitting %i chars\n", len);
 	_uart_transmit(0, src, len);
+	char buf[12];
+	_uart_receive(0, buf, 12);
 	while (1) {}
 }
 

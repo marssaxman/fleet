@@ -5,7 +5,7 @@
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 # entrypoints we export
-.global _uart_init, _uart_transmit
+.global _uart_init, _uart_transmit, _uart_receive
 
 # external entrypoints we invoke
 .global _uart_modem_status, _uart_line_status, _uart_tx_clear, _uart_rx_ready
@@ -16,12 +16,6 @@
 .set PIC1_CMD, 0x0020
 .set PIC1_DATA, 0x0021
 .set PIC_EOI, 0x0020
-
-# Port base addresses
-.set COM1, 0x03F8
-.set COM2, 0x02F8
-.set COM3, 0x03E8
-.set COM4, 0x02E8
 
 # Register offsets
 .set RBR, 0	# Receive buffer: DLAB=0, input
@@ -52,6 +46,13 @@
 .set MCR_OUT1, 0x04 # Misc control signal 1
 .set MCR_OUT2, 0x08 # Misc control signal 2
 .set MCR_LOOP, 0x10 # Loopback mode
+.set LSR_DR, 0x01 # Data ready
+.set LSR_OE, 0x02 # Overrun error
+.set LSR_PE, 0x04 # Parity error
+.set LSR_FE, 0x08 # Frame error
+.set LSR_BI, 0x10 # Break indicator
+.set LSR_THRE, 0x20 # Transmit holding register empty
+.set LSR_TEMT, 0x40 # Transmitter empty
 .set MSR_DCTS, 0x01 # CTS change
 .set MSR_DDSR, 0x02 # DSR change
 .set MSR_TERI, 0x04 # Ring indicator ended
@@ -63,32 +64,28 @@
 
 # Field offsets for the port state struct
 .set ADDR, 0x0 # short
-.set INDEX, 0x2 # byte
-.set FLAGS, 0x3 # byte
-.set TXHEAD, 0x4 # ptr
-.set TXTAIL, 0x8 # ptr
-.set RXHEAD, 0xC # ptr
-.set RXTAIL, 0x10 # ptr
-.set PORT_STATE_SIZE, 0x14
+.set INDEX, ADDR+2 # byte
+.set FLAGS, INDEX+1 # byte
+.set TXBASE, FLAGS+1 # ptr
+.set TXHEAD, TXBASE+4 # ptr
+.set TXTAIL, TXHEAD+4 # ptr
+.set RXBASE, TXTAIL+4 # ptr
+.set RXHEAD, RXBASE+4 # ptr
+.set RXTAIL, RXHEAD+4 # ptr
+.set PORT_STATE_SIZE, RXTAIL+4
 
-# Bit flag values
+# Port state flag values
 .set PORT_PRESENT, 0x01
 .set PORT_HAS_FIFO, 0x2
 
 .section .data
+.local port_state, com1_state, com2_state, com3_state, com4_state
+
 port_state:
-com1_state:
-	.hword COM1, 0
-	.long 0, 0, 0, 0
-com2_state:
-	.hword COM2, 1
-	.long 0, 0, 0, 0
-com3_state:
-	.hword COM3, 2
-	.long 0, 0, 0, 0
-com4_state:
-	.hword COM4, 3
-	.long 0, 0, 0, 0
+com1_state: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0
+com2_state: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0
+com3_state: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
+com4_state: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
 
 .section .text
 .local config_port, isr_irq3, isr_irq4, service_port
@@ -98,50 +95,27 @@ _uart_init:
 # %ebx as the port address parameter for internal routines because we have
 # to save and restore %ebx inside an interrupt handler anyway, and this way
 # it's easy to load specific register addresses without hitting the stack.
-	mov $com1_state, %eax
+	pushl %ebx
+	xorl %ebx, %ebx
+	pushl %ebp
+	mov $com1_state, %ebp
 	call config_port
-	mov $com2_state, %eax
+	mov $com2_state, %ebp
 	call config_port
-	mov $com3_state, %eax
+	mov $com3_state, %ebp
 	call config_port
-	mov $com4_state, %eax
+	mov $com4_state, %ebp
 	call config_port
+	popl %ebp
+	popl %ebx
 # Clear the PIC's interrupt-inhibit flags for IRQ 3 and IRQ 4.
 	inb $PIC1_DATA, %al
 	andb $0xE7, %al
 	outb %al, $PIC1_DATA
 	ret
-
-_uart_transmit:
-# parameters: port number, source buffer, byte count
-	mov 4(%esp), %eax
-	imul $PORT_STATE_SIZE, %ax
-	add $port_state, %eax
-# Assume for the moment no TX is currently occuring - check that someday.
-# We may be interrupted so write fields in an order which won't confuse the
-# interrupt handler: zero the head, then write tail first and then head.
-	xorl %ecx, %ecx
-	movl %ecx, TXHEAD(%eax)
-	movl 8(%esp), %ecx
-	movl %ecx, TXTAIL(%eax)
-	movl %ecx, TXHEAD(%eax)
-	movl 12(%esp), %ecx
-	addl %ecx, TXTAIL(%eax)
-# Enable THRE interrupts. Setting this flag should kick one off immediately.
-	xorl %edx, %edx
-	movw ADDR(%eax), %dx
-	add $IER, %edx
-	movb $(IER_RBRI|IER_THRI|IER_LSI|IER_MSI), %al
-	out %al, %dx
-	ret
-
 config_port:
-# Port struct is in EAX and we must save/restore registers as usual.
-	pushl %ebp
-	movl %eax, %ebp
-	pushl %ebx
-	xorl %ebx, %ebx
-	movw ADDR(%eax), %bx
+# Port struct is in EBP.
+	movw ADDR(%ebp), %bx
 # Try to put the device in loopback mode, then check its modem state.
 	lea MCR(%ebx), %edx
 	movb $MCR_LOOP, %al
@@ -201,8 +175,52 @@ config_port:
 1:	lea FCR(%ebx), %edx
 	xorl %eax, %eax
 	outb %al, %dx
-0:	popl %ebx
-	popl %ebp
+0:	ret
+
+_uart_transmit:
+# parameters: port number, source buffer, byte count
+	mov 4(%esp), %eax
+	imul $PORT_STATE_SIZE, %ax
+	add $port_state, %eax
+# Assume for the moment no TX is currently occuring - check that someday.
+# We may be interrupted so write fields in an order which won't confuse the
+# interrupt handler: zero the head, then write tail first and then head.
+	xorl %ecx, %ecx
+	movl %ecx, TXTAIL(%eax)
+	movl 8(%esp), %ecx
+	movl %ecx, TXBASE(%eax)
+	movl %ecx, TXHEAD(%eax)
+	addl 12(%esp), %ecx
+	movl %ecx, TXTAIL(%eax)
+# Enable THRE interrupts. Setting this flag should kick one off immediately.
+	xorl %edx, %edx
+	movw ADDR(%eax), %dx
+	add $IER, %edx
+	movb $(IER_RBRI|IER_THRI|IER_LSI|IER_MSI), %al
+	outb %al, %dx
+	ret
+
+_uart_receive:
+# parameters: port number, dest buffer, max bytes
+	mov 4(%esp), %eax
+	imul $PORT_STATE_SIZE, %ax
+	add $port_state, %eax
+# Assume there is no RX running. Someday we should actually check this.
+# In the meantime, set fields in order so that the ISR will do the right thing
+# should we be interrupted.
+	xorl %ecx, %ecx
+	movl %ecx, RXTAIL(%eax)
+	movl 8(%esp), %ecx
+	movl %ecx, RXBASE(%eax)
+	movl %ecx, RXHEAD(%eax)
+	addl 12(%esp), %ecx
+	movl %ecx, RXTAIL(%eax)
+# Raise our RTS line so the remote end knows it has permission to send.
+	xorl %edx, %edx
+	movw ADDR(%eax), %dx
+	add $MCR, %edx
+	movb $(MCR_RTS|MCR_DTR|MCR_OUT2), %al
+	outb %al, %dx
 	ret
 
 _isr_IRQ3:
@@ -279,25 +297,50 @@ line_status:
 	jmp check_loop
 
 receive_ready:
-	mov RXHEAD(%ebp), %esi
-	mov RXTAIL(%ebp), %edi
-# if receive buffer still has room, read RBR into buffer
-# repeat until receive buffer is out of room or LSR stops indicating RBR
-# if port has FIFO and receive buffer has fewer than 16 bytes left, or if
-# port does not have FIFO and receive buffer is full, drop RTS/CTS/etc and
-# call our event handler; if new buffer arrives, continue running
-#   ...
+# Is there space in our receive buffer? How many bytes?
+	mov RXHEAD(%ebp), %edi
+	cmp $0, %edi
+	jz 0f
+	mov RXTAIL(%ebp), %ecx
+	subl %edi, %ecx
+	jle 0f
+	cld
+	lea RBR(%ebx), %dx
+1:	insb
+	lea LSR(%ebx), %dx
+	inb %dx, %al
+	testb $LSR_DR, %al
+	jnz 2f
+	loop 1b
+2:	movl %edi, RXHEAD(%ebp)
+# Did we just fill the receive buffer? If so, drop RTS so the sender knows it
+# should hold back, then notify our client by signalling rx_ready.
+	cmpl %edi, TXTAIL(%ebp)
+	jne 0f
+	lea MCR(%ebx), %edx
+	movb $(MCR_DTR|MCR_OUT2), %al
+	outb %al, %dx
+	movb INDEX(%ebp), %al
+	and $3, %eax
+	push %eax
+	call _uart_rx_ready
+	add $4, %esp
 0:	jmp check_loop
 
 transmit_clear:
 # Has the other device signalled that we are clear to send?
+	lea MSR(%ebx), %dx
+	inb %dx, %al
+	testb $MSR_CTS, %al
+	jz 0f
+# Is there data in our transmit buffer? How much?
 	mov TXHEAD(%ebp), %esi
 	cmp $0, %esi
 	jz 0f
-# How many bytes remain to be sent?
 	mov TXTAIL(%ebp), %ecx
 	subl %esi, %ecx
-	jz 0f
+	jle 0f
+	cld
 # If the port has no FIFO, we can write only one byte at a time.
 	testb $PORT_HAS_FIFO, FLAGS(%ebp)
 	jnz 1f
