@@ -79,13 +79,13 @@
 .set PORT_HAS_FIFO, 0x2
 
 .section .data
-.local port_state, com1_state, com2_state, com3_state, com4_state
+.local port_state, COM1, COM2, COM3, COM4
 
 port_state:
-com1_state: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0
-com2_state: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0
-com3_state: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
-com4_state: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
+COM1: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0
+COM2: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0
+COM3: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
+COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
 
 .section .text
 .local configure, isr_IRQ3, isr_IRQ4, service
@@ -98,13 +98,13 @@ _uart_init:
 	pushl %ebx
 	xorl %ebx, %ebx
 	pushl %ebp
-	mov $com1_state, %ebp
+	mov $COM1, %ebp
 	call configure
-	mov $com2_state, %ebp
+	mov $COM2, %ebp
 	call configure
-	mov $com3_state, %ebp
+	mov $COM3, %ebp
 	call configure
-	mov $com4_state, %ebp
+	mov $COM4, %ebp
 	call configure
 	popl %ebp
 	popl %ebx
@@ -227,9 +227,9 @@ _isr_IRQ3:
 	pushal
 	movb $PIC_EOI, %al
 	outb %al, $PIC1_CMD
-	mov $com2_state, %ebp
+	mov $COM2, %ebp
 	call service
-	mov $com4_state, %ebp
+	mov $COM4, %ebp
 	call service
 	popal
 	iret
@@ -238,9 +238,9 @@ _isr_IRQ4:
 	pushal
 	movb $PIC_EOI, %al
 	outb %al, $PIC1_CMD
-	mov $com1_state, %ebp
+	mov $COM1, %ebp
 	call service
-	mov $com3_state, %ebp
+	mov $COM3, %ebp
 	call service
 	popal
 	iret
@@ -309,22 +309,26 @@ receive_ready:
 	lea LSR(%ebx), %dx
 	inb %dx, %al
 	testb $LSR_DR, %al
-	jnz 2f
+	jz 2f
 	loop 1b
-2:	movl %edi, RXHEAD(%ebp)
-# Did we just fill the receive buffer? If so, drop RTS so the sender knows it
-# should hold back, then notify our client by signalling rx_ready.
-	cmpl %edi, RXTAIL(%ebp)
-	jne 0f
+# If we just filled the receive buffer, drop RTS so the sender will stop.
+2:	cmpl %edi, RXTAIL(%ebp)
+	jne 3f
 	lea MCR(%ebx), %edx
 	movb $(MCR_DTR|MCR_OUT2), %al
 	outb %al, %dx
+# Let our client know what we just accomplished.
+3:	movl %edi, %ecx
+	subl RXHEAD(%ebp), %ecx
+	push %ecx
+	push RXHEAD(%ebp)
+	movl %edi, RXHEAD(%ebp)
 	movb INDEX(%ebp), %al
-	and $3, %eax
+	andl $3, %eax
 	push %eax
 	call _uart_rx_ready
-	add $4, %esp
-0:	jmp check_loop
+	add $0xC, %esp
+0: jmp check_loop
 
 transmit_clear:
 # Has the other device signalled that we are clear to send?

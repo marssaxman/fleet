@@ -32,6 +32,6 @@ void _uart_tx_clear(unsigned port) {
 	_kprintf("Port %i TX clear\n", port);
 }
 
-void _uart_rx_ready(unsigned port) {
-	_kprintf("Port %i RX ready\n", port);
+void _uart_rx_ready(unsigned port, void *buf, unsigned num) {
+	_kprintf("Port %i RX ready with %i bytes\n", port, num);
 }
