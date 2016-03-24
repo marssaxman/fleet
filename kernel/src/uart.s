@@ -299,14 +299,13 @@ line_status:
 receive_ready:
 # Is there space in our receive buffer? How many bytes?
 	mov RXHEAD(%ebp), %edi
-	cmp $0, %edi
-	jz 0f
 	mov RXTAIL(%ebp), %ecx
 	subl %edi, %ecx
 	jle 0f
 	cld
-	lea RBR(%ebx), %dx
-1:	insb
+# Read bytes until we fill the buffer or drain the UART's queue.
+1:	lea RBR(%ebx), %dx
+	insb
 	lea LSR(%ebx), %dx
 	inb %dx, %al
 	testb $LSR_DR, %al
@@ -315,7 +314,7 @@ receive_ready:
 2:	movl %edi, RXHEAD(%ebp)
 # Did we just fill the receive buffer? If so, drop RTS so the sender knows it
 # should hold back, then notify our client by signalling rx_ready.
-	cmpl %edi, TXTAIL(%ebp)
+	cmpl %edi, RXTAIL(%ebp)
 	jne 0f
 	lea MCR(%ebx), %edx
 	movb $(MCR_DTR|MCR_OUT2), %al
@@ -335,8 +334,6 @@ transmit_clear:
 	jz 0f
 # Is there data in our transmit buffer? How much?
 	mov TXHEAD(%ebp), %esi
-	cmp $0, %esi
-	jz 0f
 	mov TXTAIL(%ebp), %ecx
 	subl %esi, %ecx
 	jle 0f
