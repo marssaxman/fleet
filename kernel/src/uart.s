@@ -321,13 +321,12 @@ receive_ready:
 3:	movl %edi, %ecx
 	subl RXHEAD(%ebp), %ecx
 	push %ecx
-	push RXHEAD(%ebp)
 	movl %edi, RXHEAD(%ebp)
 	movb INDEX(%ebp), %al
 	andl $3, %eax
 	push %eax
 	call _uart_rx_ready
-	add $0xC, %esp
+	add $0x8, %esp
 0: jmp check_loop
 
 transmit_clear:

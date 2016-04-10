@@ -20,7 +20,7 @@ enum {
 extern void _uart_line_status(unsigned port, unsigned conditions);
 extern void _uart_modem_status(unsigned port, unsigned conditions);
 extern void _uart_tx_clear(unsigned port);
-extern void _uart_rx_ready(unsigned port, void *buf, unsigned len);
+extern void _uart_rx_ready(unsigned port, unsigned len);
 
 #endif //UART_H
 
