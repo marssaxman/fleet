@@ -7,9 +7,6 @@
 #include "interrupt.h"
 #include "uart.h"
 #include "debug.h"
-#include "kernel.h"
-
-static struct process *process_queue, **process_link;
 
 void _interrupt_exception(unsigned code, struct cpu_state *state) {
 	_kprintf("Exception #%x (error %x):\n", code, state->error);
@@ -26,49 +23,14 @@ void _interrupt_irq(unsigned irq) {
 }
 
 void _kernel() {
-	process_link = &process_queue;
 	_interrupt_init();
 	_uart_init();
 	const char *message = "Hello, world!\r\n";
 	_uart_transmit(0, message, 15);
 	for (;;) {
-		_poll();
 		_interrupt_enable();
 		__asm__("hlt");
 	}
-}
-
-void _poll() {
-	bool iflag = _interrupt_suspend();
-
-	_interrupt_resume(iflag);
-}
-
-void _start(struct process *p) {
-	kassert(p->process_queue == 0);
-	bool iflag = _interrupt_suspend();
-
-	_interrupt_resume(iflag);
-}
-
-void _stop(struct process *p) {
-	kassert(p->process_queue != 0);
-	bool iflag = _interrupt_suspend();
-
-	_interrupt_resume(iflag);
-}
-
-void _schedule(struct process *p, struct task *t) {
-	kassert(t->task_queue == 0);
-	bool iflag = _interrupt_suspend();
-
-	_interrupt_resume(iflag);
-}
-
-void _post(struct event *e) {
-	bool iflag = _interrupt_suspend();
-
-	_interrupt_resume(iflag);
 }
 
 
