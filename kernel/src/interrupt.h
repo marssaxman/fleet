@@ -8,10 +8,13 @@
 #define INTERRUPT_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 void _interrupt_init();
-void _interrupt_enable();
-void _interrupt_disable();
+void _interrupt_enable(); // turn interrupts on
+void _interrupt_disable(); // turn interrupts off
+bool _interrupt_suspend(); // disable and return previous state
+void _interrupt_resume(bool); // enable if previously enabled
 
 // Override these weak symbol definitions to provide a generic exception or
 // IRQ handler function

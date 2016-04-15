@@ -12,10 +12,6 @@
 // scratch space for functions the assembly code in uart.s can invoke to help
 // debug the serial port driver.
 
-void _uart_open(uint8_t mask) {
-	_kprintf("UART open: %x\n", mask);
-}
-
 void _uart_modem_status(unsigned port, unsigned msr) {
 	_kprintf("\nPort %i MSR:%x\n", port, msr);
 }

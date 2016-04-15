@@ -6,6 +6,7 @@
 
 # Exports
 .global _interrupt_init, _interrupt_enable, _interrupt_disable
+.global _interrupt_suspend, _interrupt_resume
 
 # Override this function to handle exceptions
 .weak _interrupt_exception
@@ -209,10 +210,30 @@ _interrupt_init:
 	movw %ax, signals+(0x0F*8)+6
 	ret
 
+# Default exception and signal handlers
 _interrupt_exception: hlt; ret
 _interrupt_signal: ret
+
+# Enable or disable interrupts
 _interrupt_enable: sti; ret
 _interrupt_disable: cli; ret
+
+# If interrupts are enabled, disable them, then return previous state
+_interrupt_suspend:
+	pushf
+	pop %eax
+	testb $0x20, %al
+	setnz %al
+	jnz 0f
+	cli
+0:	ret
+
+# If previous state was true, enable interrupts again
+_interrupt_resume:
+	movb 4(%esp),%al
+	jnz 0f
+	sti
+0:	ret
 
 _isr_exception00: push $0; pushal; push %esp; push $0x00; jmp 0f
 _isr_exception01: push $0; pushal; push %esp; push $0x01; jmp 0f
