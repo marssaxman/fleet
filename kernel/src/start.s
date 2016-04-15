@@ -47,7 +47,7 @@ _start:
 .long MAGIC, FLAGS, CHECKSUM
 
 .section .bootstrap_stack, "aw", @nobits
-.skip 16384 # 16 KiB
+.skip 256 # tiny: only needs to be enough for _memory_init
 stack_top:
 
 .section .data
