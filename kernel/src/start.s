@@ -8,10 +8,10 @@
 
 .section .text
 _start:
-	# We'll reserve space in the .data section to use as a call stack.
+	# We reserved space in the .data section for a bootstrap call stack.
 	movl $stack_top, %esp
 
-	# Save the bootloader info so we can pass it on to _startc.
+	# Save the bootloader info so we can pass it on to _memory_init.
 	pushl %ebx
 	pushl %eax
 
@@ -26,7 +26,10 @@ _start:
 	mov %ax, %ss
 	ljmp $0x8, $0f; 0:
 
-	# Hand the machine over to the rest of the kernel.
+	# Read the memory map, then allocate a permanent call stack starting at the
+	# top of available memory and working downward.
+	call _memory_init
+	movl _memory_end, %esp
 	call _kernel
 
 	# There's no more work to do should that call ever return, so we'll halt,

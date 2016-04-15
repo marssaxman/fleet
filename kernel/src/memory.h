@@ -11,13 +11,11 @@
 #include <stdint.h>
 
 struct multiboot_info;
-void _memory_init(struct multiboot_info *info);
+void _memory_init(uint32_t magic, struct multiboot_info *info);
 
-extern struct memory_map {
-	void *base;
-	void *pos;
-	void *end;
-} _memory;
+extern void *_memory_base;
+extern void *_memory_break;
+extern void *_memory_end;
 
 #endif // MEMORY_H
 

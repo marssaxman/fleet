@@ -4,7 +4,6 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "memory.h"
 #include "interrupt.h"
 #include "uart.h"
 #include "debug.h"
@@ -23,12 +22,12 @@ void _interrupt_irq(unsigned irq) {
 	_kprintf("Unexpected IRQ #%x\n", irq);
 }
 
-void _kernel(uint32_t magic, struct multiboot_info *multiboot) {
-	kassert(magic == 0x2BADB002);
-	_memory_init(multiboot);
+void _kernel() {
 	_interrupt_init();
 	_uart_init();
 	_interrupt_enable();
+	const char *message = "Hello, world!\r\n";
+	_uart_transmit(0, message, 15);
 	for (;;) {
 		__asm__("hlt");
 	}

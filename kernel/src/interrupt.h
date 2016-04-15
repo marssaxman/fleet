@@ -7,6 +7,8 @@
 #ifndef INTERRUPT_H
 #define INTERRUPT_H
 
+#include <stdint.h>
+
 void _interrupt_init();
 void _interrupt_enable();
 void _interrupt_disable();
