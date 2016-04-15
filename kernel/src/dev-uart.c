@@ -29,9 +29,11 @@ void _uart_line_status(unsigned port, unsigned lsr) {
 }
 
 void _uart_tx_clear(unsigned port) {
-	_kprintf("Port %i TX clear\n", port);
+	unsigned num = _uart_get_tx_count(port);
+	_kprintf("Port %i TX cleared %i bytes\n", port, num);
 }
 
-void _uart_rx_ready(unsigned port, unsigned num) {
+void _uart_rx_ready(unsigned port) {
+	unsigned num = _uart_get_rx_count(port);
 	_kprintf("Port %i RX ready with %i bytes\n", port, num);
 }
