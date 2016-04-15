@@ -33,7 +33,7 @@ struct multiboot_info {
 	uint32_t memory_map_addr;
 };
 
-struct memory_map {
+struct multiboot_memory_map {
 	uint32_t size;
 	uint32_t base_addr_low;
 	uint32_t base_addr_high;

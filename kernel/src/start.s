@@ -16,7 +16,7 @@ _start:
 	pushl %eax
 
 	# The bootloader should have given us a flat 32-bit address space, but we
-	# aren't supposed to assume that so we'll install our own GDT anyway.
+	# aren't supposed to assume that, so we'll install our own GDT anyway.
 	lgdtl (gdtr)
 	mov $0x10, %ax
 	mov %ax, %ds

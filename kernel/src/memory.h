@@ -12,7 +12,12 @@
 
 struct multiboot_info;
 void _memory_init(struct multiboot_info *info);
-void *_memory_alloc(size_t bytes);
-void *sbrk(intptr_t increment);
+
+extern struct memory_map {
+	void *base;
+	void *pos;
+	void *end;
+} _memory;
 
 #endif // MEMORY_H
+
