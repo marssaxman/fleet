@@ -8,15 +8,25 @@
 
 .section .text
 _start:
-	# We reserved space in the .data section for a bootstrap call stack.
-	movl $stack_top, %esp
+# Make sure EAX contains the multiboot magic code, because we depend on the
+# multiboot information record which should be in EBX.
+	cmpl $0x2BADB002, %eax
+	jne .Lhang
 
-	# Save the bootloader info so we can pass it on to _memory_init.
-	pushl %ebx
-	pushl %eax
+# Make sure the multiboot info has lower/upper memory information.
+	testb $1, (%ebx)
+	jz .Lhang
 
-	# The bootloader should have given us a flat 32-bit address space, but we
-	# aren't supposed to assume that, so we'll install our own GDT anyway.
+# This is a single-stack kernel, so we'll place the base of the stack at the
+# end of upper memory. Upper memory starts at 0x00100000, and the multiboot
+# info record contains the number of 1K blocks it contains.
+	movl $0x00100000, %esp
+	movl 8(%ebx), %eax
+	rol $10, %eax
+	addl %eax, %esp
+
+# The bootloader should have given us a flat 32-bit address space, but we
+# aren't supposed to assume that, so we'll install our own GDT anyway.
 	lgdtl (gdtr)
 	mov $0x10, %ax
 	mov %ax, %ds
@@ -26,14 +36,11 @@ _start:
 	mov %ax, %ss
 	ljmp $0x8, $0f; 0:
 
-	# Read the memory map, then allocate a permanent call stack starting at the
-	# top of available memory and working downward.
-	call _memory_init
-	movl _memory_end, %esp
+# Call the kernel entrypoint, passing in the multiboot info.
+	pushl %ebx
 	call _kernel
 
-	# There's no more work to do should that call ever return, so we'll halt,
-	# and we'll do so in a loop in case an NMI wakes it back up again.
+# The program is done. Halt, and halt in a loop in case an NMI wakes us up.
 .Lhang:
 	cli
 	hlt
@@ -45,10 +52,6 @@ _start:
 .set MAGIC, 0x1BADB002 # bootloader looks for this magic number
 .set CHECKSUM, -(MAGIC + FLAGS) # no, the magic number was not accidental
 .long MAGIC, FLAGS, CHECKSUM
-
-.section .bootstrap_stack, "aw", @nobits
-.skip 256 # tiny: only needs to be enough for _memory_init
-stack_top:
 
 .section .data
 .align 8

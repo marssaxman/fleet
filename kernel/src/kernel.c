@@ -5,6 +5,7 @@
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 #include "interrupt.h"
+#include "memory.h"
 #include "uart.h"
 #include "debug.h"
 
@@ -22,8 +23,9 @@ void _interrupt_irq(unsigned irq) {
 	_kprintf("Unexpected IRQ #%x\n", irq);
 }
 
-void _kernel() {
+void _kernel(struct multiboot_info *multiboot) {
 	_interrupt_init();
+	_memory_init(multiboot);
 	_uart_init();
 	const char *message = "Hello, world!\r\n";
 	_uart_transmit(0, message, 15);

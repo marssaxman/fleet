@@ -30,7 +30,6 @@ SECTIONS
 	{
 		*(COMMON)
 		*(.bss)
-		*(.bootstrap_stack)
 		__data_end = .;
 	}
 }

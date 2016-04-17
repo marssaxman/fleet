@@ -11,11 +11,7 @@
 #include <stdint.h>
 
 struct multiboot_info;
-void _memory_init(uint32_t magic, struct multiboot_info *info);
-
-extern void *_memory_base;
-extern void *_memory_break;
-extern void *_memory_end;
+void _memory_init(struct multiboot_info *info);
 
 #endif // MEMORY_H
 

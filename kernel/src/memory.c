@@ -21,9 +21,9 @@ enum {
 // might be useful if we needed to store things. For the time being we're going
 // to do this in a very simple 'sbrk' style, so we're only interested in the
 // largest contiguous block of RAM. 
-void *_memory_base;
-void *_memory_break;
-void *_memory_end;
+static void *_memory_base;
+static void *_memory_break;
+static void *_memory_end;
 
 static void check_region(struct memory_map *region) {
 	// We only care about non-reserved regions.
@@ -64,7 +64,7 @@ static void simple_check(uint32_t bytes_lower, uint32_t bytes_upper) {
 	check_region(&upper);
 }
 
-void _memory_init(uint32_t magic, struct multiboot_info *info) {
+void _memory_init(struct multiboot_info *info) {
 	// No matter what we figure out about the memory map, right now we know
 	// we have memory from the base of the executable to the end of the
 	// bootstrap stack.
@@ -73,10 +73,6 @@ void _memory_init(uint32_t magic, struct multiboot_info *info) {
 	_memory_base = load_image_base;
 	_memory_end = &__data_end; // allocated in libstart
 	_memory_break = _memory_end;
-	if (magic != 0x2BADB002) {
-		// Not launched by multiboot? We don't know anything.
-		return;
-	}
 	// Use whatever information the bootloader gave us to figure out what
 	// lives where in our address space and which parts of it we can use.
 	if (info->flags & 1<<6) {
