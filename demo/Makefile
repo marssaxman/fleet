@@ -11,7 +11,7 @@ $(BIN): $(OBJS)
 	ld -o $@ $(LDFLAGS) --start-group $^ $(LDLIBS) --end-group
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean:
 	-@rm -f $(BIN) $(OBJS)
