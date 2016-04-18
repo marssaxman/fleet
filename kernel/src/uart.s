@@ -5,9 +5,7 @@
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 # entrypoints we export
-.global _uart_init
-.global _uart_transmit, _uart_get_tx_count
-.global _uart_receive, _uart_get_rx_count
+.global _uart_init, _uart_transmit, _uart_receive
 
 # external entrypoints we invoke
 .global _uart_modem_status, _uart_line_status, _uart_tx_clear, _uart_rx_ready
@@ -65,10 +63,9 @@
 .set MSR_DCD, 0x80 # Data carrier detected
 
 # Field offsets for the buffer struct
-.set BUF_BASE, 0
-.set BUF_POS, 4
-.set BUF_END, 8
-.set BUF_SIZE, 12
+.set BUF_POS, 0
+.set BUF_END, 4
+.set BUF_SIZE, 8
 
 # Field offsets for the port state struct
 .set ADDR, 0x0 # short
@@ -192,7 +189,6 @@ _uart_transmit:
 	xorl %ecx, %ecx
 	movl %ecx, (TX+BUF_END)(%eax)
 	movl 8(%esp), %ecx
-	movl %ecx, (TX+BUF_BASE)(%eax)
 	movl %ecx, (TX+BUF_POS)(%eax)
 	addl 12(%esp), %ecx
 	movl %ecx, (TX+BUF_END)(%eax)
@@ -202,16 +198,6 @@ _uart_transmit:
 	add $IER, %edx
 	movb $(IER_RBRI|IER_THRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
-	ret
-
-_uart_get_tx_count:
-# parameter: port number
-	mov 4(%esp), %eax
-	imul $PORT_STATE_SIZE, %ax
-	add $port_state, %eax
-	mov (TX+BUF_POS)(%eax), %ecx
-	subl (TX+BUF_BASE)(%eax), %ecx
-	movl %ecx, %eax
 	ret
 
 _uart_receive:
@@ -225,7 +211,6 @@ _uart_receive:
 	xorl %ecx, %ecx
 	movl %ecx, (RX+BUF_END)(%eax)
 	movl 8(%esp), %ecx
-	movl %ecx, (RX+BUF_BASE)(%eax)
 	movl %ecx, (RX+BUF_POS)(%eax)
 	addl 12(%esp), %ecx
 	movl %ecx, (RX+BUF_END)(%eax)
@@ -235,16 +220,6 @@ _uart_receive:
 	add $MCR, %edx
 	movb $(MCR_RTS|MCR_DTR|MCR_OUT2), %al
 	outb %al, %dx
-	ret
-
-_uart_get_rx_count:
-# parameter: port number
-	mov 4(%esp), %eax
-	imul $PORT_STATE_SIZE, %ax
-	add $port_state, %eax
-	mov (RX+BUF_POS)(%eax), %ecx
-	subl (RX+BUF_BASE)(%eax), %ecx
-	movl %ecx, %eax
 	ret
 
 _isr_IRQ3:

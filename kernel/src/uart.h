@@ -7,12 +7,10 @@
 #ifndef UART_H
 #define UART_H
 
-#include <sys/io.h>
-
 void _uart_init();
 
-void _uart_transmit(unsigned port, struct io_buffer);
-void _uart_receive(unsigned port, struct io_buffer);
+void _uart_transmit(unsigned port, void *buffer, unsigned size);
+void _uart_receive(unsigned port, void *buffer, unsigned size);
 
 enum {
 	UART_OVERFLOW_ERROR = 0x01,
