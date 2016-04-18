@@ -86,10 +86,10 @@
 .local port_state, COM1, COM2, COM3, COM4
 
 port_state:
-COM1: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0
-COM2: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0
-COM3: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
-COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
+COM1: .hword 0x03F8; .byte 0, 0; .space 2 * BUF_SIZE
+COM2: .hword 0x02F8; .byte 1, 0; .space 2 * BUF_SIZE
+COM3: .hword 0x03E8; .byte 2, 0; .space 2 * BUF_SIZE
+COM4: .hword 0x02F8; .byte 3, 0; .space 2 * BUF_SIZE
 
 .section .text
 .local configure, isr_IRQ3, isr_IRQ4, service
