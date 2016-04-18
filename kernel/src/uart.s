@@ -62,18 +62,15 @@
 .set MSR_RI, 0x40 # Ring indicator
 .set MSR_DCD, 0x80 # Data carrier detected
 
-# Field offsets for the buffer struct
-.set BUF_POS, 0
-.set BUF_END, 4
-.set BUF_SIZE, 8
-
 # Field offsets for the port state struct
 .set ADDR, 0x0 # short
 .set INDEX, ADDR+2 # byte
 .set FLAGS, INDEX+1 # byte
-.set TX, FLAGS+1 # buf triple
-.set RX, TX+BUF_SIZE
-.set PORT_STATE_SIZE, RX+BUF_SIZE
+.set TX_BUF, FLAGS+1 # ptr
+.set TX_LEN, TX_BUF+4 # int
+.set RX_BUF, TX_LEN+4 # ptr
+.set RX_LEN, RX_BUF+4 # int
+.set PORT_STATE_SIZE, RX_LEN+4
 
 # Port state flag values
 .set PORT_PRESENT, 0x01
@@ -83,10 +80,10 @@
 .local port_state, COM1, COM2, COM3, COM4
 
 port_state:
-COM1: .hword 0x03F8; .byte 0, 0; .space 2 * BUF_SIZE
-COM2: .hword 0x02F8; .byte 1, 0; .space 2 * BUF_SIZE
-COM3: .hword 0x03E8; .byte 2, 0; .space 2 * BUF_SIZE
-COM4: .hword 0x02F8; .byte 3, 0; .space 2 * BUF_SIZE
+COM1: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0
+COM2: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0
+COM3: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
+COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
 
 .section .text
 .local configure, isr_IRQ3, isr_IRQ4, service
@@ -187,11 +184,11 @@ _uart_transmit:
 # We may be interrupted so write fields in an order which won't confuse the
 # interrupt handler: zero the head, then write tail first and then head.
 	xorl %ecx, %ecx
-	movl %ecx, (TX+BUF_END)(%eax)
+	movl %ecx, TX_LEN(%eax)
 	movl 8(%esp), %ecx
-	movl %ecx, (TX+BUF_POS)(%eax)
-	addl 12(%esp), %ecx
-	movl %ecx, (TX+BUF_END)(%eax)
+	movl %ecx, TX_BUF(%eax)
+	movl 12(%esp), %ecx
+	movl %ecx, TX_LEN(%eax)
 # Enable THRE interrupts. Setting this flag should kick one off immediately.
 	xorl %edx, %edx
 	movw ADDR(%eax), %dx
@@ -209,11 +206,11 @@ _uart_receive:
 # In the meantime, set fields in order so that the ISR will do the right thing
 # should we be interrupted.
 	xorl %ecx, %ecx
-	movl %ecx, (RX+BUF_END)(%eax)
+	movl %ecx, RX_LEN(%eax)
 	movl 8(%esp), %ecx
-	movl %ecx, (RX+BUF_POS)(%eax)
-	addl 12(%esp), %ecx
-	movl %ecx, (RX+BUF_END)(%eax)
+	movl %ecx, RX_BUF(%eax)
+	movl 12(%esp), %ecx
+	movl %ecx, RX_LEN(%eax)
 # Raise our RTS line so the remote end knows it has permission to send.
 	xorl %edx, %edx
 	movw ADDR(%eax), %dx
@@ -293,34 +290,36 @@ line_status:
 	jmp check_loop
 
 receive_ready:
-# Is there space in our receive buffer? How many bytes?
-	mov (RX+BUF_POS)(%ebp), %edi
-	mov (RX+BUF_END)(%ebp), %ecx
-	subl %edi, %ecx
-	jle 0f
+	mov RX_BUF(%ebp), %edi
+	mov RX_LEN(%ebp), %ecx
+	testl %ecx, %ecx
+	je 0f
 	cld
 # Read bytes until we fill the buffer or drain the UART's queue.
-1:	lea RBR(%ebx), %dx
-	insb
-	lea LSR(%ebx), %dx
+1:	lea LSR(%ebx), %dx
 	inb %dx, %al
 	testb $LSR_DR, %al
 	jz 2f
+	lea RBR(%ebx), %dx
+	insb
 	loop 1b
-# If we just filled the receive buffer, drop RTS so the sender will stop.
-2:	movl %edi, (RX+BUF_POS)(%ebp)
-	cmpl %edi, (RX+BUF_END)(%ebp)
-	jne 3f
+# We just filled the receive buffer. Signal the sender to stop transmitting by
+# dropping DTR (which it will read as RTS).
 	lea MCR(%ebx), %edx
 	movb $(MCR_DTR|MCR_OUT2), %al
 	outb %al, %dx
+# Update the buffer & length state information.
+2:	movl %edi, RX_BUF(%ebp)
+	movl %ecx, RX_LEN(%ebp)
+	testl %ecx, %ecx
+	jnz 0f
 # Let our client know what we just accomplished.
 3:	xorl %eax, %eax
 	movb INDEX(%ebp), %al
 	push %eax
 	call _uart_rx_ready
 	add $0x4, %esp
-0: jmp check_loop
+0:	jmp check_loop
 
 transmit_clear:
 # Has the other device signalled that we are clear to send?
@@ -329,9 +328,9 @@ transmit_clear:
 	testb $MSR_CTS, %al
 	jz 0f
 # Is there data in our transmit buffer? How much?
-	mov (TX+BUF_POS)(%ebp), %esi
-	mov (TX+BUF_END)(%ebp), %ecx
-	subl %esi, %ecx
+	mov TX_BUF(%ebp), %esi
+	mov TX_LEN(%ebp), %ecx
+	testl %ecx, %ecx
 	jle 0f
 	cld
 # If the port has no FIFO, we can write only one byte at a time.
@@ -346,13 +345,15 @@ transmit_clear:
 	inc %ecx
 	rol $4, %ecx
 # Write as many bytes as we can to the THR, then save the new head pointer.
-2:	lea THR(%ebx), %edx
+2:	subl %ecx, TX_LEN(%ebp)
+	lea THR(%ebx), %edx
 	rep outsb
-	movl %esi, (TX+BUF_POS)(%ebp)
+	movl %esi, TX_BUF(%ebp)
 # Did we just empty the send buffer?
 # If the buffer has just become empty, we need to disable our THRE interrupt
 # and give our client a chance to send more by signalling tx_clear.
-	cmpl %esi, (TX+BUF_END)(%ebp)
+	movl TX_LEN(%ebp), %ecx
+	testl %ecx, %ecx
 	jne 0f
 	lea IER(%ebx), %edx
 	movb $(IER_RBRI|IER_LSI|IER_MSI), %al
