@@ -271,26 +271,23 @@ check_loop:
 0:	ret
 
 modem_status:
+	xorl %eax, %eax
 	lea MSR(%ebx), %edx
-	xorl %eax, %eax
 	inb %dx, %al
-	pushl %eax
-	xorl %eax, %eax
+	push %eax
 	movb INDEX(%ebp), %al
-	pushl %eax
+	push %eax
 	call _uart_modem_status
-	popl %eax
+	add $8, %esp
 	jmp check_loop
 
 line_status:
-# OE, PE, FE, or BI has become set.
+	xorl %eax, %eax
 	lea LSR(%ebx), %edx
 	inb %dx, %al
-	ror $1, %al
-	and $0x0F, %eax
-	pushl %eax
+	push %eax
 	movb INDEX(%ebp), %al
-	pushl %eax
+	push %eax
 	call _uart_line_status
 	add $8, %esp
 	jmp check_loop

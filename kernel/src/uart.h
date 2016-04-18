@@ -12,18 +12,8 @@ void _uart_init();
 void _uart_transmit(unsigned port, void *buffer, unsigned size);
 void _uart_receive(unsigned port, void *buffer, unsigned size);
 
-enum {
-	UART_OVERFLOW_ERROR = 0x01,
-	UART_PARITY_ERROR = 0x02,
-	UART_FRAMING_ERROR = 0x04,
-	UART_BREAK_INDICATOR = 0x08,
-	UART_CLEAR_TO_SEND = 0x10,
-	UART_DATA_SET_READY = 0x20,
-	UART_RING_INDICATOR = 0x40,
-	UART_CARRIER_DETECT = 0x80,
-};
-extern void _uart_line_status(unsigned port, unsigned conditions);
-extern void _uart_modem_status(unsigned port, unsigned conditions);
+extern void _uart_line_status(unsigned port, unsigned LSR);
+extern void _uart_modem_status(unsigned port, unsigned MSR);
 extern void _uart_tx_clear(unsigned port);
 extern void _uart_rx_ready(unsigned port);
 

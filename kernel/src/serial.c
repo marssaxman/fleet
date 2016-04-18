@@ -17,9 +17,9 @@ void _uart_rx_ready(unsigned port) {
 	_kprintf("Port %i RX buffer ready\n", port);
 }
 
-void _uart_modem_status(unsigned port, unsigned state) {
+void _uart_line_status(unsigned port, unsigned LSR) {
 }
 
-void _uart_line_status(unsigned port, unsigned state) {
+void _uart_modem_status(unsigned port, unsigned MSR) {
 }
 
