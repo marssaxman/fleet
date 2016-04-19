@@ -6,7 +6,7 @@
 
 #include "interrupt.h"
 #include "memory.h"
-#include "uart.h"
+#include "serial.h"
 #include "debug.h"
 #include <fleet/system.h>
 
@@ -20,7 +20,7 @@ void yield() {
 	for(;;) {
 		struct ring_item *i = ring_pull(&workqueue);
 		if (!i) break;
-		struct task *t = ring_item_struct(i, struct task, link);
+		struct task *t = container_of(i, struct task, link);
 		t->method(t);
 	}
 }
@@ -39,13 +39,23 @@ void _interrupt_irq(unsigned irq) {
 	_kprintf("Unexpected IRQ #%x\n", irq);
 }
 
-extern void mic_check();
+static void check_proc(struct task *t) {
+	_kprintf("mic check complete\n");
+}
+
+void mic_check() {
+	static struct stream_transfer hello_xfer;
+	hello_xfer.request.buffer = "Hello, world!\r\n";
+	hello_xfer.request.size = 15;
+	hello_xfer.event.method = check_proc;
+	_serial_transmit(0, &hello_xfer);
+}
 
 void _kernel(struct multiboot_info *multiboot) {
 	ring_init(&workqueue);
 	_interrupt_init();
 	_memory_init(multiboot);
-	_uart_init();
+	_serial_init();
 	mic_check();
 	for (;;) {
 		_interrupt_enable();

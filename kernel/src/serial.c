@@ -6,36 +6,69 @@
 
 #include "uart.h"
 #include "debug.h"
+#include "serial.h"
 #include <stdint.h>
 #include <stdbool.h>
 
-struct portevt {
-	struct task task;
-	unsigned port;
+struct transfer_queue {
+	struct stream_transfer *current;
+	struct ring_list pending;
 };
 
-static struct portevt txclearevt[4];
-static struct portevt rxreadyevt[4];
+static struct serial_socket_data {
+	struct transfer_queue tx, rx;
+} com[4];
 
-static void txclear(struct task *t) {
-	struct portevt *p = ring_item_struct(t, struct portevt, task);
-	_kprintf("Port %i TX buffer cleared\n", p->port);
+static void tq_push(struct transfer_queue *q, struct stream_transfer *t) {
+	ring_push(&q->pending, &t->link);
 }
 
-static void rxready(struct task *t) {
-	struct portevt *p = ring_item_struct(t, struct portevt, task);
-	_kprintf("Port %i RX buffer ready\n", p->port);
+static void tq_pull(struct transfer_queue *q, struct uart_buffer *next) {
+	if (q->current) {
+		post(&q->current->event);
+	}
+	struct ring_item *link = ring_pull(&q->pending);
+	if (link) {
+		q->current = container_of(link, struct stream_transfer, link);
+		next->ptr = q->current->request.buffer;
+		next->length = q->current->request.size;
+	} else {
+		q->current = 0;
+	}
 }
 
-void _uart_line_status(unsigned port, unsigned LSR) {
+void _serial_init() {
+	_uart_init();
+	for (unsigned i = 0; i < 4; ++i) {
+		ring_init(&com[i].tx.pending);
+		ring_init(&com[i].rx.pending);
+	}
 }
 
-void _uart_modem_status(unsigned port, unsigned MSR) {
+unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {
+	tq_push(&com[s].tx, t);
+	_uart_transmit(s);
+	return 0;
 }
 
-void mic_check() {
-	txclearevt[0].port = 0;
-	txclearevt[0].task.method = txclear;
-	void *buffer = "Hello, world!\r\n";
-	_uart_transmit(0, buffer, 15, &txclearevt[0].task);
+unsigned _serial_receive(stream_socket s, struct stream_transfer *t) {
+	tq_push(&com[s].rx, t);
+	_uart_receive(s);
+	return 0;
 }
+
+void _uart_isr_thre(uart_id port, struct uart_buffer *next) {
+	tq_pull(&com[port].tx, next);
+}
+
+void _uart_isr_rbr(uart_id port, struct uart_buffer *next) {
+	tq_pull(&com[port].rx, next);
+}
+
+void _uart_line_status(uart_id port, uint8_t LSR) {
+}
+
+void _uart_modem_status(uart_id port, uint8_t MSR) {
+}
+
+

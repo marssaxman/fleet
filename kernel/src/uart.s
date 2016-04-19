@@ -8,7 +8,8 @@
 .global _uart_init, _uart_transmit, _uart_receive
 
 # external entrypoints we invoke
-.global post, _uart_modem_status, _uart_line_status
+.global _uart_isr_thre, _uart_isr_rbr
+.global _uart_modem_status, _uart_line_status
 
 # external entrypoints we override with non-weak implementations
 .global _isr_IRQ3, _isr_IRQ4
@@ -53,6 +54,7 @@
 .set LSR_BI, 0x10 # Break indicator
 .set LSR_THRE, 0x20 # Transmit holding register empty
 .set LSR_TEMT, 0x40 # Transmitter empty
+.set LSR_RXFE, 0x80 # Error in receiver FIFO
 .set MSR_DCTS, 0x01 # CTS change
 .set MSR_DDSR, 0x02 # DSR change
 .set MSR_TERI, 0x04 # Ring indicator ended
@@ -68,11 +70,9 @@
 .set FLAGS, INDEX+1 # byte
 .set TX_BUF, FLAGS+1 # ptr
 .set TX_LEN, TX_BUF+4 # int
-.set TX_SIG, TX_LEN+4 # ptr
-.set RX_BUF, TX_SIG+4 # ptr
+.set RX_BUF, TX_LEN+4 # ptr
 .set RX_LEN, RX_BUF+4 # int
-.set RX_SIG, RX_LEN+4 # ptr
-.set PORT_STATE_SIZE, RX_SIG+4
+.set PORT_STATE_SIZE, RX_LEN+4
 
 # Port state flag values
 .set PORT_PRESENT, 0x01
@@ -82,10 +82,10 @@
 .local port_state, COM1, COM2, COM3, COM4
 
 port_state:
-COM1: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0, 0, 0
-COM2: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0, 0, 0
-COM3: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0, 0, 0
-COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0, 0, 0
+COM1: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0
+COM2: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0
+COM3: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
+COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
 
 .section .text
 .local configure, isr_IRQ3, isr_IRQ4, service
@@ -178,46 +178,23 @@ configure:
 0:	ret
 
 _uart_transmit:
-# parameters: port number, source buffer, byte count, completion task
 	mov 4(%esp), %eax
 	imul $PORT_STATE_SIZE, %ax
 	add $port_state, %eax
-# Assume for the moment no TX is currently occuring - check that someday.
-# We may be interrupted so write fields in an order which won't confuse the
-# interrupt handler: zero the head, then write tail first and then head.
-	xorl %ecx, %ecx
-	movl %ecx, TX_LEN(%eax)
-	movl 8(%esp), %ecx
-	movl %ecx, TX_BUF(%eax)
-	movl 12(%esp), %ecx
-	movl %ecx, TX_LEN(%eax)
-	movl 16(%esp), %edx
-	movl %edx, TX_SIG(%eax)
-# Enable THRE interrupts. Setting this flag should kick one off immediately.
-	xorl %edx, %edx
+# Enable THRE interrupts. If they weren't already enabled, setting this flag
+# will kick one off right away.
 	movw ADDR(%eax), %dx
-	add $IER, %edx
+	add $IER, %dx
 	movb $(IER_RBRI|IER_THRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
 	ret
 
 _uart_receive:
-# parameters: port number, dest buffer, max bytes, completion task
 	mov 4(%esp), %eax
 	imul $PORT_STATE_SIZE, %ax
 	add $port_state, %eax
-# Assume there is no RX running. Someday we should actually check this.
-# In the meantime, set fields in order so that the ISR will do the right thing
-# should we be interrupted.
-	xorl %ecx, %ecx
-	movl %ecx, RX_LEN(%eax)
-	movl 8(%esp), %ecx
-	movl %ecx, RX_BUF(%eax)
-	movl 12(%esp), %ecx
-	movl %ecx, RX_LEN(%eax)
-	movl 16(%esp), %edx
-	movl %edx, RX_SIG(%eax)
-# Raise our RTS line so the remote end knows it has permission to send.
+# Raise our RTS line, giving the remote end permission to transmit. We will
+# get an RBR interrupt when data next arrives.
 	xorl %edx, %edx
 	movw ADDR(%eax), %dx
 	add $MCR, %edx
@@ -296,74 +273,87 @@ line_status:
 	jmp check_loop
 
 receive_ready:
+	# The port has signalled RBR, suggesting that we could receive data.
+	# Do we have any empty space waiting in our receive buffer?
+	mov RX_LEN(%ebp), %ecx
+	testl %ecx, %ecx
+	je .L_rx_full
+	# Read bytes until we fill the buffer or drain the UART's queue.
+	cld
+	mov RX_BUF(%ebp), %edi
+.L_rx_next:
+	lea LSR(%ebx), %dx
+	inb %dx, %al
+	testb $LSR_DR, %al
+	jz .L_rx_wait
+	lea RBR(%ebx), %dx
+	insb
+	loop .L_rx_next
+	movl %ecx, RX_LEN(%ebp)
+	# Let our client know that we need another read buffer.
+.L_rx_full:
+	lea RX_BUF(%ebp), %edx
+	push %edx
+	push INDEX(%ebp)
+	call _uart_isr_rbr
+	add $8, %esp
 	mov RX_BUF(%ebp), %edi
 	mov RX_LEN(%ebp), %ecx
 	testl %ecx, %ecx
-	je 0f
-	cld
-# Read bytes until we fill the buffer or drain the UART's queue.
-1:	lea LSR(%ebx), %dx
-	inb %dx, %al
-	testb $LSR_DR, %al
-	jz 2f
-	lea RBR(%ebx), %dx
-	insb
-	loop 1b
-# We just filled the receive buffer. Signal the sender to stop transmitting by
-# dropping DTR (which it will read as RTS).
+	jnz .L_rx_next
+	# The read buffer is still empty. Drop RTS so the other device knows we 
+	# would like it to stop transmitting now.
 	lea MCR(%ebx), %edx
-	movb $(MCR_DTR|MCR_OUT2), %al
+	movb $(MCR_RTS|MCR_OUT2), %al
 	outb %al, %dx
-# Update the buffer & length state information.
-2:	movl %edi, RX_BUF(%ebp)
+	jmp check_loop
+	# Save the updated buffer address and size now that we've consumed some.
+.L_rx_wait:
+	movl %edi, RX_BUF(%ebp)
 	movl %ecx, RX_LEN(%ebp)
-	testl %ecx, %ecx
-	jnz 0f
-# Let our client know what we just accomplished.
-3:	pushl RX_SIG(%ebp)
-	call post
-	add $4, %esp
-0:	jmp check_loop
+	jmp check_loop
 
 transmit_clear:
-# Has the other device signalled that we are clear to send?
+	# The port has signalled THRE, giving us an opportunity to transmit data.
+	# Do we have any outgoing data waiting in our transmit buffer?
+	mov TX_LEN(%ebp), %ecx
+	testl %ecx, %ecx
+	jz .L_tx_empty
+	# Read bytes until we drain the buffer, the other device drops CTS, or the
+	# line status says the transmit register is no longer empty.
+	cld
+	mov TX_BUF(%ebp), %esi
+.L_tx_next:
+	lea LSR(%ebx), %dx
+	inb %dx, %al
+	testb $LSR_THRE, %al
+	jz .L_tx_wait
 	lea MSR(%ebx), %dx
 	inb %dx, %al
 	testb $MSR_CTS, %al
-	jz 0f
-# Is there data in our transmit buffer? How much?
+	jz .L_tx_wait
+	lea THR(%ebx), %edx
+	outsb
+	loop .L_tx_next
+	movl %ecx, TX_LEN(%ebp)
+	# We have drained the transmit buffer. Ask our client for another one.
+.L_tx_empty:
+	lea TX_BUF(%ebp), %edx
+	push %edx
+	push INDEX(%ebp)
+	call _uart_isr_thre
+	add $8, %esp
 	mov TX_BUF(%ebp), %esi
 	mov TX_LEN(%ebp), %ecx
 	testl %ecx, %ecx
-	jle 0f
-	cld
-# If the port has no FIFO, we can write only one byte at a time.
-	testb $PORT_HAS_FIFO, FLAGS(%ebp)
-	jnz 1f
-	xorl %ecx, %ecx
-	inc %ecx
-# If the port has a FIFO, we can write up to 16 bytes at a time.
-1:	cmp $16, %ecx
-	jle 2f
-	xorl %ecx, %ecx
-	inc %ecx
-	rol $4, %ecx
-# Write as many bytes as we can to the THR, then save the new head pointer.
-2:	subl %ecx, TX_LEN(%ebp)
-	lea THR(%ebx), %edx
-	rep outsb
-	movl %esi, TX_BUF(%ebp)
-# Did we just empty the send buffer?
-# If the buffer has just become empty, we need to disable our THRE interrupt
-# and give our client a chance to send more by signalling tx_clear.
-	movl TX_LEN(%ebp), %ecx
-	testl %ecx, %ecx
-	jne 0f
+	jnz .L_tx_next
+	# The transmit buffer is still empty. Turn off THRE interrupts.
 	lea IER(%ebx), %edx
 	movb $(IER_RBRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
-	pushl TX_SIG(%ebp)
-	call post
-	add $4, %esp
-0:	jmp check_loop
+	jmp check_loop
+.L_tx_wait:
+	movl %esi, TX_BUF(%ebp)
+	movl %ecx, TX_LEN(%ebp)
+	jmp check_loop
 

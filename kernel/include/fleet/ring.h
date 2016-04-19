@@ -17,9 +17,10 @@ void ring_init(struct ring_list*);
 void ring_push(struct ring_list*, struct ring_item*); // add to end
 struct ring_item* ring_pop(struct ring_list*); // remove last
 struct ring_item* ring_pull(struct ring_list*); // remove first
+void ring_remove(struct ring_item*);
 
-#define ring_item_struct(ptr, type, field) \
-		((type*)(((intptr_t)ptr) - offsetof(type,field)))
+#define container_of(ptr, type, field) \
+		((type*)(((intptr_t)ptr) - offsetof(type, field)))
 
 #endif //_FLEET_RING_H
 
