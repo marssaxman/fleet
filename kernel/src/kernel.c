@@ -10,32 +10,19 @@
 #include "debug.h"
 #include <fleet/system.h>
 
-static struct task *work_head = 0;
-static struct task *work_tail = 0;
+static struct ring_list workqueue;
 
 void post(struct task *t) {
-	bool iflag = _interrupt_suspend();
-	if (work_tail) {
-		work_tail->next = t;
-	} else {
-		work_head = t;
-	}
-	work_tail = t;
-	_interrupt_resume(iflag);
+	ring_push(&workqueue, &t->link);
 }
 
 void yield() {
-	bool iflag = _interrupt_suspend();
-	while (work_head) {
-		struct task *t = work_head;
-		work_head = t->next;
-		if (!work_head) work_tail = 0;
-		t->next = 0;
-		_interrupt_resume(iflag);
+	for(;;) {
+		struct ring_item *i = ring_pull(&workqueue);
+		if (!i) break;
+		struct task *t = ring_item_struct(i, struct task, link);
 		t->method(t);
-		_interrupt_disable();
 	}
-	_interrupt_resume(iflag);
 }
 
 void _interrupt_exception(unsigned code, struct cpu_state *state) {
@@ -53,6 +40,7 @@ void _interrupt_irq(unsigned irq) {
 }
 
 void _kernel(struct multiboot_info *multiboot) {
+	ring_init(&workqueue);
 	_interrupt_init();
 	_memory_init(multiboot);
 	_uart_init();

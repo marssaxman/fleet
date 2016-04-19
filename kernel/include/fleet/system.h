@@ -7,9 +7,11 @@
 #ifndef _FLEET_SYSTEM_H
 #define _FLEET_SYSTEM_H
 
+#include <fleet/ring.h>
+
 struct task {
 	void (*method)(struct task*);
-	struct task *next;
+	struct ring_item link;
 };
 
 void post(struct task*);
