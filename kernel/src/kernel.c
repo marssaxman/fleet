@@ -27,10 +27,8 @@ void _kernel(struct multiboot_info *multiboot) {
 	_interrupt_init();
 	_memory_init(multiboot);
 	_uart_init();
-	struct io_buffer message;
-	message.buffer = "Hello, world!\r\n";
-	message.length = 15;
-	_uart_transmit(0, message);
+	void *buffer = "Hello, world!\r\n";
+	_uart_transmit(0, buffer, 15);
 	for (;;) {
 		_interrupt_enable();
 		__asm__("hlt");
