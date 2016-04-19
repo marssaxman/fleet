@@ -42,6 +42,7 @@
 .set IIR_THRI, 0x02 # Transmitter holding register empty
 .set IIR_RBRI, 0x04 # Receive buffer interrupt
 .set IIR_LSI, 0x06 # Line status change
+.set IIR_FIFO, 0x40 # 16550A or later with FIFO enabled
 .set MCR_DTR, 0x01 # Control DTR signal
 .set MCR_RTS, 0x02 # Control RTS signal
 .set MCR_OUT1, 0x04 # Misc control signal 1
@@ -168,11 +169,10 @@ configure:
 	outb %al, %dx
 	lea IIR(%ebx), %edx
 	inb %dx, %al
-	andb $0x40, %al
-	jz 1f
-	orb $PORT_HAS_FIFO, FLAGS(%ebp)
+	testb $IIR_FIFO, %al
+	jnz 0f
 # The FIFO is either broken or absent, so we'll avoid trouble by disabling it.
-1:	lea FCR(%ebx), %edx
+	lea FCR(%ebx), %edx
 	xorl %eax, %eax
 	outb %al, %dx
 0:	ret
