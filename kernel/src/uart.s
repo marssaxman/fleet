@@ -8,7 +8,7 @@
 .global _uart_init, _uart_transmit, _uart_receive
 
 # external entrypoints we invoke
-.global _uart_modem_status, _uart_line_status, _uart_tx_clear, _uart_rx_ready
+.global post, _uart_modem_status, _uart_line_status
 
 # external entrypoints we override with non-weak implementations
 .global _isr_IRQ3, _isr_IRQ4
@@ -68,9 +68,11 @@
 .set FLAGS, INDEX+1 # byte
 .set TX_BUF, FLAGS+1 # ptr
 .set TX_LEN, TX_BUF+4 # int
-.set RX_BUF, TX_LEN+4 # ptr
+.set TX_SIG, TX_LEN+4 # ptr
+.set RX_BUF, TX_SIG+4 # ptr
 .set RX_LEN, RX_BUF+4 # int
-.set PORT_STATE_SIZE, RX_LEN+4
+.set RX_SIG, RX_LEN+4 # ptr
+.set PORT_STATE_SIZE, RX_SIG+4
 
 # Port state flag values
 .set PORT_PRESENT, 0x01
@@ -80,10 +82,10 @@
 .local port_state, COM1, COM2, COM3, COM4
 
 port_state:
-COM1: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0
-COM2: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0
-COM3: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
-COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
+COM1: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0, 0, 0
+COM2: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0, 0, 0
+COM3: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0, 0, 0
+COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0, 0, 0
 
 .section .text
 .local configure, isr_IRQ3, isr_IRQ4, service
@@ -176,7 +178,7 @@ configure:
 0:	ret
 
 _uart_transmit:
-# parameters: port number, source buffer, byte count
+# parameters: port number, source buffer, byte count, completion task
 	mov 4(%esp), %eax
 	imul $PORT_STATE_SIZE, %ax
 	add $port_state, %eax
@@ -189,6 +191,8 @@ _uart_transmit:
 	movl %ecx, TX_BUF(%eax)
 	movl 12(%esp), %ecx
 	movl %ecx, TX_LEN(%eax)
+	movl 16(%esp), %edx
+	movl %edx, TX_SIG(%eax)
 # Enable THRE interrupts. Setting this flag should kick one off immediately.
 	xorl %edx, %edx
 	movw ADDR(%eax), %dx
@@ -198,7 +202,7 @@ _uart_transmit:
 	ret
 
 _uart_receive:
-# parameters: port number, dest buffer, max bytes
+# parameters: port number, dest buffer, max bytes, completion task
 	mov 4(%esp), %eax
 	imul $PORT_STATE_SIZE, %ax
 	add $port_state, %eax
@@ -211,6 +215,8 @@ _uart_receive:
 	movl %ecx, RX_BUF(%eax)
 	movl 12(%esp), %ecx
 	movl %ecx, RX_LEN(%eax)
+	movl 16(%esp), %edx
+	movl %edx, RX_SIG(%eax)
 # Raise our RTS line so the remote end knows it has permission to send.
 	xorl %edx, %edx
 	movw ADDR(%eax), %dx
@@ -314,11 +320,9 @@ receive_ready:
 	testl %ecx, %ecx
 	jnz 0f
 # Let our client know what we just accomplished.
-3:	xorl %eax, %eax
-	movb INDEX(%ebp), %al
-	push %eax
-	call _uart_rx_ready
-	add $0x4, %esp
+3:	pushl RX_SIG(%ebp)
+	call post
+	add $4, %esp
 0:	jmp check_loop
 
 transmit_clear:
@@ -358,10 +362,8 @@ transmit_clear:
 	lea IER(%ebx), %edx
 	movb $(IER_RBRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
-	xorl %eax, %eax
-	movb INDEX(%ebp), %al
-	push %eax
-	call _uart_tx_clear
+	pushl TX_SIG(%ebp)
+	call post
 	add $4, %esp
 0:	jmp check_loop
 

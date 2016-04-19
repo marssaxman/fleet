@@ -8,6 +8,7 @@
 #define _FLEET_RING_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 struct ring_list { void *_[2]; };
 struct ring_item { void *_[2]; };

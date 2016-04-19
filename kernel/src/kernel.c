@@ -39,13 +39,14 @@ void _interrupt_irq(unsigned irq) {
 	_kprintf("Unexpected IRQ #%x\n", irq);
 }
 
+extern void mic_check();
+
 void _kernel(struct multiboot_info *multiboot) {
 	ring_init(&workqueue);
 	_interrupt_init();
 	_memory_init(multiboot);
 	_uart_init();
-	void *buffer = "Hello, world!\r\n";
-	_uart_transmit(0, buffer, 15);
+	mic_check();
 	for (;;) {
 		_interrupt_enable();
 		yield();

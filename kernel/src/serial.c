@@ -9,12 +9,22 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void _uart_tx_clear(unsigned port) {
-	_kprintf("Port %i TX buffer cleared\n", port);
+struct portevt {
+	struct task task;
+	unsigned port;
+};
+
+static struct portevt txclearevt[4];
+static struct portevt rxreadyevt[4];
+
+static void txclear(struct task *t) {
+	struct portevt *p = ring_item_struct(t, struct portevt, task);
+	_kprintf("Port %i TX buffer cleared\n", p->port);
 }
 
-void _uart_rx_ready(unsigned port) {
-	_kprintf("Port %i RX buffer ready\n", port);
+static void rxready(struct task *t) {
+	struct portevt *p = ring_item_struct(t, struct portevt, task);
+	_kprintf("Port %i RX buffer ready\n", p->port);
 }
 
 void _uart_line_status(unsigned port, unsigned LSR) {
@@ -23,3 +33,9 @@ void _uart_line_status(unsigned port, unsigned LSR) {
 void _uart_modem_status(unsigned port, unsigned MSR) {
 }
 
+void mic_check() {
+	txclearevt[0].port = 0;
+	txclearevt[0].task.method = txclear;
+	void *buffer = "Hello, world!\r\n";
+	_uart_transmit(0, buffer, 15, &txclearevt[0].task);
+}
