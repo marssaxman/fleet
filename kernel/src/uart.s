@@ -89,83 +89,93 @@ COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
 .section .text
 .local configure, isr_IRQ3, isr_IRQ4, service
 
-_uart_probe: # state struct, port address
+# int _uart_probe(struct uart_state *port, uint16_t addr);
+# We have reason to believe that there may be a UART device at this address.
+# Try to communicate with it: if its responses are consistent with a UART,
+# configure it with reasonable defaults and populate the device data struct.
+_uart_probe:
 	pushl %ebx
 	pushl %ebp
-	movl 0x0C(%esp), %ebp
+	movl 0x0C(%esp), %ebp # port
 	xorl %ebx, %ebx
-	movw 0x10(%esp), %bx
-	movw %bx, ADDR(%ebp)
-	call configure
-	xorl %eax, %eax
-	testb $PORT_PRESENT, FLAGS(%ebp)
-	setz %al
-	popl %ebp
-	popl %ebx
-	ret
-
-configure:
-# Port struct is in EBP.
-	movw ADDR(%ebp), %bx
-# Try to put the device in loopback mode, then check its modem state.
+	movw 0x10(%esp), %bx # address
+	# Put the device in loopback mode and clear all of its modem status bits.
+	# Check the MSR to see if its state is consistent with our configuration.
 	lea MCR(%ebx), %edx
 	movb $MCR_LOOP, %al
 	outb %al, %dx
 	lea MSR(%ebx), %edx
+	xorl %eax, %eax
 	inb %dx, %al
-# None of the status bits should be set until we try to set them.
-	andb $0xF0, %al
-	jnz 0f
-# Still using loopback mode, try to change the modem status.
+	testb $(MSR_CTS|MSR_DSR|MSR_RI|MSR_DCD), %al
+	setnz %al
+	jnz .L_probe_return
+	# Verify that the success was not an accident by setting all four status
+	# bits, then checking MSR. The corresponding flags should now be set.
 	lea MCR(%ebx), %edx
 	movb $(MCR_LOOP|MCR_DTR|MCR_RTS|MCR_OUT1|MCR_OUT2), %al
 	outb %al, %dx
 	lea MSR(%ebx), %edx
+	xorl %eax, %eax
 	inb %dx, %al
-# All four bits should now be set the way we configured them.
-	andb $0xF0, %al
-	cmpb $(MSR_CTS|MSR_DSR|MSR_RI|MSR_DCD), %al
-	jne 0f
-# We appear to have a working UART.
-	orb $PORT_PRESENT, FLAGS(%ebp)
-# Set its configuration the way we want.
-# Use DLAB mode to configure port speed; we'll use 115.2K = fastest = best.
+	testb $(MSR_CTS|MSR_DSR|MSR_RI|MSR_DCD), %al
+	setnz %al
+	jz .L_probe_return
+	# This address belongs to a UART device: fill out the device state struct,
+	# then configure the device with some reasonable initial state.
+	movw %bx, ADDR(%ebp)
+	movb $1, FLAGS(%ebp)
+	# Put the port into DLAB mode so we can set its speed. Use 115.2K, because
+	# fastest is best, and because we are actually talking to an emulated UART
+	# in the host machine so there's no reason to hold back.
 	lea LCR(%ebx), %edx
 	mov $0x80, %al
-	outb %al, %dx
-	lea DLL(%ebx), %edx
-	mov $1, %al
 	outb %al, %dx
 	lea DLH(%ebx), %edx
 	xor %al, %al
 	outb %al, %dx
-# Clear DLAB, since its job is done, and configure 8N1 mode, again via LCR.
+	lea DLL(%ebx), %edx
+	inc %al
+	outb %al, %dx
+	# Clear DLAB, since its job is done, and configure the standard 8N1 mode.
+	# Both changes are accomplished by writing to LCR.
 	lea LCR(%ebx), %edx
 	mov $0x03, %al
 	outb %al, %dx
-# Enable DTR so the other device knows we're listening and set OUT2 so the UART
-# will signal its interrupts through the PIC.
+	# Set the MCR's OUT2 flag, which instructs the UART to raise interrupts
+	# through the PIC instead of waiting for us to poll. We will also raise
+	# DTR for now, thereby establishing a connection, though this will have to
+	# change when the device driver model manages connection state.
 	lea MCR(%ebx), %edx
 	mov $(MCR_DTR|MCR_OUT2), %al
 	outb %al, %dx
-# Enable interrupts other than THRE, which we'll enable to start transmission.
+	# Since we're establishing a connection right up front, enable all of the
+	# interrupts we might care about. We won't set THRE, though, because we
+	# enable that when we start transmitting, to kick off the state machine.
 	lea IER(%ebx), %edx
 	mov $(IER_RBRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
-# Does this UART have a working FIFO? We find out by attempting to configure it
-# and seeing what the IIR state looks like afterward.
+	# Attempt to enable FIFO mode for better performance. We expect the device
+	# to be an emulated 16550A, but we'll check the IIR flag bits anyway to
+	# be sure the FIFO is present and functional, because it's tidier that way.
 	lea FCR(%ebx), %edx
 	mov $0xE7, %al
 	outb %al, %dx
 	lea IIR(%ebx), %edx
+	xorl %eax, %eax
 	inb %dx, %al
 	testb $IIR_FIFO, %al
-	jnz 0f
-# The FIFO is either broken or absent, so we'll avoid trouble by disabling it.
+	setz %al
+	jnz .L_probe_return
+	# FIFO configuration failed. Turn FIFO mode back off, since we don't know
+	# how this older device will respond.
 	lea FCR(%ebx), %edx
 	xorl %eax, %eax
 	outb %al, %dx
-0:	ret
+.L_probe_return:
+	popl %ebp
+	popl %ebx
+	ret
 
 _uart_transmit:
 	mov 4(%esp), %eax
