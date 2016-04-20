@@ -9,12 +9,19 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 // A ring_list is the master link joining the head and tail of a circular,
 // doubly-linked list of structs each containing a ring_item, forming a deque.
 struct ring_list { void *_[2]; };
 struct ring_item { void *_[2]; };
+
 void ring_init(struct ring_list*);
+bool ring_empty(struct ring_list*);
+struct ring_item *ring_head(struct ring_list*);
+struct ring_item *ring_tail(struct ring_list*);
+struct ring_item *ring_next(struct ring_list*, struct ring_item*);
+struct ring_item *ring_prev(struct ring_list*, struct ring_item*);
 
 // Put an item onto the front or push it onto the back.
 void ring_put(struct ring_list*, struct ring_item*);

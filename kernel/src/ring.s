@@ -11,29 +11,70 @@
 .set ITEM_NEXT, 0
 .set ITEM_PREV, 4
 
-ring_init:
-	# ring starts out pointing at itself from both ends
+# void ring_init(struct ring_list*);
+# A ring starts out pointing at itself from both ends.
+ring_init: .global ring_init
 	movl 4(%esp), %eax
 	movl %eax, LIST_HEAD(%eax)
 	movl %eax, LIST_TAIL(%eax)
 	ret
 
-ring_push:
-	# insert an item at the tail of this list
-	movl 4(%esp), %eax # list
-	movl 8(%esp), %ecx # item
-	pushf
-	cli
-	movl %eax, ITEM_NEXT(%ecx) # item->next = list
-	movl LIST_TAIL(%eax), %edx # prev = list->tail
-	movl %edx, ITEM_PREV(%ecx) # item->prev = prev
-	movl %ecx, ITEM_NEXT(%edx) # prev->next = item
-	movl %ecx, LIST_TAIL(%eax) # list->tail = item
-	popf
-	ret
+# bool ring_empty(struct ring_list*);
+# Is this ring currently pointing at itself from both ends?
+ring_empty: .global ring_empty
+	xorl %eax, %eax
+	movl 4(%esp), %ecx
+	cmpl %ecx, LIST_HEAD(%ecx)
+	jne 0f
+	cmpl %ecx, LIST_TAIL(%ecx)
+	sete %al
+0:	ret
 
-ring_put:
-	# insert an item at the head of this list
+# struct ring_item *ring_head(struct ring_list*);
+# Get the first item in the list, if any.
+ring_head: .global ring_head
+	movl 4(%esp), %ecx
+	movl LIST_HEAD(%ecx), %eax
+	cmpl %ecx, %eax
+	jne 0f
+	xorl %eax, %eax
+0:	ret
+
+# struct ring_item *ring_tail(struct ring_list*);
+# Get the last item in the list, if any.
+ring_tail: .global ring_tail
+	movl 4(%esp), %ecx
+	movl LIST_TAIL(%ecx), %eax
+	cmpl %ecx, %eax
+	jne 0f
+	xorl %eax, %eax
+0:	ret
+
+# struct ring_item *ring_next(struct ring_list*, struct ring_item*);
+# Get the item following the current one.
+ring_next: .global ring_next
+	movl 4(%esp), %ecx
+	movl 8(%esp), %eax
+	movl ITEM_NEXT(%eax), %eax
+	cmpl %ecx, %eax
+	jne 0f
+	xorl %eax, %eax
+0:	ret
+
+# struct ring_item *ring_prev(struct ring_list*, struct ring_item*);
+# Get the item preceding the current one.
+ring_prev: .global ring_prev
+	movl 4(%esp), %ecx
+	movl 8(%esp), %eax
+	movl ITEM_PREV(%eax), %eax
+	cmpl %ecx, %eax
+	jne 0f
+	xorl %eax, %eax
+0:	ret
+
+# void ring_put(struct ring_list*, struct ring_item*);
+# Insert an item at the head of this list.
+ring_put: .global ring_put
 	movl 4(%esp), %eax # list
 	movl 8(%esp), %ecx # item
 	pushf
@@ -46,24 +87,24 @@ ring_put:
 	popf
 	ret
 
-ring_pop:
-	# remove the tail and return it
-	movl 4(%esp), %ecx # list
+# void ring_push(struct ring_list*, struct ring_item*);
+# Insert an item at the tail of this list.
+ring_push: .global ring_push
+	movl 4(%esp), %eax # list
+	movl 8(%esp), %ecx # item
 	pushf
 	cli
-	# Get the last item in the list. If it is equal to the list item itself,
-	# that is the sentinel value showing that the list is empty.
-	movl LIST_TAIL(%ecx), %eax
-	cmpl %eax, %ecx
-	je .L_empty_return
-	# Link the tail's previous item to the list, removing the old tail.
-	movl ITEM_PREV(%eax), %edx
-	movl %edx, LIST_TAIL(%ecx)
-	movl %ecx, ITEM_NEXT(%edx)
-	jmp .L_detach_return
+	movl %eax, ITEM_NEXT(%ecx) # item->next = list
+	movl LIST_TAIL(%eax), %edx # prev = list->tail
+	movl %edx, ITEM_PREV(%ecx) # item->prev = prev
+	movl %ecx, ITEM_NEXT(%edx) # prev->next = item
+	movl %ecx, LIST_TAIL(%eax) # list->tail = item
+	popf
+	ret
 
-ring_pull:
-	# remove the head and return it
+# struct ring_item* ring_pull(struct ring_list*);
+# Remove the head and return it.
+ring_pull: .global ring_pull
 	movl 4(%esp), %ecx # list
 	pushf
 	cli
@@ -76,6 +117,23 @@ ring_pull:
 	movl ITEM_NEXT(%eax), %edx
 	movl %edx, LIST_HEAD(%ecx)
 	movl %ecx, ITEM_PREV(%edx)
+	jmp .L_detach_return
+
+# struct ring_item* ring_pop(struct ring_list*);
+# Remove the tail and return it.
+ring_pop: .global ring_pop
+	movl 4(%esp), %ecx # list
+	pushf
+	cli
+	# Get the last item in the list. If it is equal to the list item itself,
+	# that is the sentinel value showing that the list is empty.
+	movl LIST_TAIL(%ecx), %eax
+	cmpl %eax, %ecx
+	je .L_empty_return
+	# Link the tail's previous item to the list, removing the old tail.
+	movl ITEM_PREV(%eax), %edx
+	movl %edx, LIST_TAIL(%ecx)
+	movl %ecx, ITEM_NEXT(%edx)
 	jmp .L_detach_return
 
 .L_detach_return:
