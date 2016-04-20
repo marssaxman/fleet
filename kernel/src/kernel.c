@@ -10,18 +10,20 @@
 #include "debug.h"
 #include <fleet/system.h>
 
-static struct ring_list workqueue;
+static struct ring_list eventqueue;
 
-void post(struct task *t) {
-	ring_push(&workqueue, &t->link);
+void post(struct event *e) {
+	ring_push(&eventqueue, &e->link);
 }
 
 void yield() {
 	for(;;) {
-		struct ring_item *i = ring_pull(&workqueue);
+		struct ring_item *i = ring_pull(&eventqueue);
 		if (!i) break;
-		struct task *t = container_of(i, struct task, link);
-		t->method(t);
+		struct event *e = container_of(i, struct event, link);
+		if (e->handler) {
+			e->handler(e);
+		}
 	}
 }
 
@@ -39,7 +41,7 @@ void _interrupt_irq(unsigned irq) {
 	_kprintf("Unexpected IRQ #%x\n", irq);
 }
 
-static void check_proc(struct task *t) {
+static void check_proc(struct event *e) {
 	_kprintf("mic check complete\n");
 }
 
@@ -47,12 +49,12 @@ void mic_check() {
 	static struct stream_transfer hello_xfer;
 	hello_xfer.request.buffer = "Hello, world!\r\n";
 	hello_xfer.request.size = 15;
-	hello_xfer.event.method = check_proc;
+	hello_xfer.signal.handler = check_proc;
 	_serial_transmit(0, &hello_xfer);
 }
 
 void _kernel(struct multiboot_info *multiboot) {
-	ring_init(&workqueue);
+	ring_init(&eventqueue);
 	_interrupt_init();
 	_memory_init(multiboot);
 	_serial_init();

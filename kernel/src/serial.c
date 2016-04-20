@@ -25,7 +25,7 @@ static void tq_push(struct transfer_queue *q, struct stream_transfer *t) {
 
 static void tq_pull(struct transfer_queue *q, struct uart_buffer *next) {
 	if (q->current) {
-		post(&q->current->event);
+		post(&q->current->signal);
 	}
 	struct ring_item *link = ring_pull(&q->pending);
 	if (link) {

@@ -21,7 +21,7 @@ struct stream_transfer {
 		unsigned error;
 		size_t length;
 	} response;
-	struct task event;
+	struct event signal;
 };
 
 unsigned transmit(stream_socket, struct stream_transfer*);

@@ -9,12 +9,12 @@
 
 #include <fleet/ring.h>
 
-struct task {
-	void (*method)(struct task*);
+struct event {
+	void (*handler)(struct event*);
 	struct ring_item link;
 };
 
-void post(struct task*);
+void post(struct event*);
 void yield();
 
 #endif //_FLEET_SYSTEM_H
