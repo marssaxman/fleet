@@ -4,7 +4,7 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global ring_init, ring_empty, ring_push, ring_pop, ring_pull
+.global ring_init, ring_push, ring_put, ring_pop, ring_pull
 
 .set LIST_HEAD, 0
 .set LIST_TAIL, 4
@@ -19,21 +19,35 @@ ring_init:
 	ret
 
 ring_push:
-	# add item to end of list
+	# insert an item at the tail of this list
 	movl 4(%esp), %eax # list
 	movl 8(%esp), %ecx # item
 	pushf
 	cli
-	movl %eax, ITEM_NEXT(%ecx)
-	movl LIST_TAIL(%eax), %edx
-	movl %edx, ITEM_PREV(%ecx)
-	movl %ecx, ITEM_NEXT(%edx)
-	movl %eax, LIST_TAIL(%eax)
+	movl %eax, ITEM_NEXT(%ecx) # item->next = list
+	movl LIST_TAIL(%eax), %edx # prev = list->tail
+	movl %edx, ITEM_PREV(%ecx) # item->prev = prev
+	movl %ecx, ITEM_NEXT(%edx) # prev->next = item
+	movl %ecx, LIST_TAIL(%eax) # list->tail = item
+	popf
+	ret
+
+ring_put:
+	# insert an item at the head of this list
+	movl 4(%esp), %eax # list
+	movl 8(%esp), %ecx # item
+	pushf
+	cli
+	movl %eax, ITEM_PREV(%ecx) # item->prev = list
+	movl LIST_HEAD(%eax), %edx # next = list->head
+	movl %edx, ITEM_NEXT(%ecx) # item->next = next
+	movl %ecx, ITEM_PREV(%edx) # next->prev = item
+	movl %ecx, LIST_HEAD(%eax) # list->head = item
 	popf
 	ret
 
 ring_pop:
-	# remove and return the last item in the list
+	# remove the tail and return it
 	movl 4(%esp), %ecx # list
 	pushf
 	cli
@@ -49,7 +63,7 @@ ring_pop:
 	jmp .L_detach_return
 
 ring_pull:
-	# remove and return the first item in the list
+	# remove the head and return it
 	movl 4(%esp), %ecx # list
 	pushf
 	cli
@@ -62,17 +76,6 @@ ring_pull:
 	movl ITEM_NEXT(%eax), %edx
 	movl %edx, LIST_HEAD(%ecx)
 	movl %ecx, ITEM_PREV(%edx)
-	jmp .L_detach_return
-
-ring_remove:
-	# detach this item from the links on either side
-	movl 4(%esp), %eax
-	pushf
-	cli
-	movl ITEM_PREV(%eax), %ecx
-	movl ITEM_NEXT(%eax), %edx
-	movl %ecx, ITEM_PREV(%edx)
-	movl %edx, ITEM_NEXT(%ecx)
 	jmp .L_detach_return
 
 .L_detach_return:
