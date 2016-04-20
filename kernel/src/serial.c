@@ -38,11 +38,17 @@ static void tq_pull(struct transfer_queue *q, struct iovec *next) {
 }
 
 void _serial_init() {
-	_uart_init();
 	for (unsigned i = 0; i < 4; ++i) {
+		if (_uart_probe(&_uart_state[i], _uart_state[i].addr)) {
+			continue;
+		}
 		ring_init(&com[i].tx.pending);
 		ring_init(&com[i].rx.pending);
 	}
+	// enable IRQ3 and IRQ4
+	__asm__("inb $0x0021, %al");
+	__asm__("andb $0xE7, %al");
+	__asm__("outb %al, $0x0021");
 }
 
 unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {

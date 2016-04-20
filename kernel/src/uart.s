@@ -5,7 +5,7 @@
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 # entrypoints we export
-.global _uart_init, _uart_transmit, _uart_receive, _uart_state
+.global _uart_probe, _uart_transmit, _uart_receive, _uart_state
 
 # external entrypoints we invoke
 .global _uart_isr_thre, _uart_isr_rbr, _uart_isr_lsi, _uart_isr_msi
@@ -89,29 +89,21 @@ COM4: .hword 0x02F8; .byte 3, 0; .long 0, 0, 0, 0
 .section .text
 .local configure, isr_IRQ3, isr_IRQ4, service
 
-_uart_init:
-# Check each possible COM port in turn and configure it if present. We use
-# %ebx as the port address parameter for internal routines because we have
-# to save and restore %ebx inside an interrupt handler anyway, and this way
-# it's easy to load specific register addresses without hitting the stack.
+_uart_probe: # state struct, port address
 	pushl %ebx
-	xorl %ebx, %ebx
 	pushl %ebp
-	mov $COM1, %ebp
+	movl 0x0C(%esp), %ebp
+	xorl %ebx, %ebx
+	movw 0x10(%esp), %bx
+	movw %bx, ADDR(%ebp)
 	call configure
-	mov $COM2, %ebp
-	call configure
-	mov $COM3, %ebp
-	call configure
-	mov $COM4, %ebp
-	call configure
+	xorl %eax, %eax
+	testb $PORT_PRESENT, FLAGS(%ebp)
+	setz %al
 	popl %ebp
 	popl %ebx
-# Clear the PIC's interrupt-inhibit flags for IRQ 3 and IRQ 4.
-	inb $PIC1_DATA, %al
-	andb $0xE7, %al
-	outb %al, $PIC1_DATA
 	ret
+
 configure:
 # Port struct is in EBP.
 	movw ADDR(%ebp), %bx
