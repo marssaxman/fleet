@@ -6,7 +6,6 @@
 
 # Exports
 .global _interrupt_init, _interrupt_enable, _interrupt_disable
-.global _interrupt_suspend, _interrupt_resume
 
 # Override this function to handle exceptions
 .weak _interrupt_exception
