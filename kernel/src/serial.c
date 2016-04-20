@@ -65,10 +65,12 @@ void _uart_isr_rbr(uart_id port, struct uart_buffer *next) {
 	tq_pull(&com[port].rx, next);
 }
 
-void _uart_line_status(uart_id port, uint8_t LSR) {
+void _uart_isr_lsi(uart_id port, uint8_t LSR) {
+	_kprintf("LSI on COM%d: LSR=%x\n", port, LSR);
 }
 
-void _uart_modem_status(uart_id port, uint8_t MSR) {
+void _uart_isr_msi(uart_id port, uint8_t MSR) {
+	_kprintf("MSI on COM%d: MSR=%x\n", port, MSR);
 }
 
 

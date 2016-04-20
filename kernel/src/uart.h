@@ -23,16 +23,10 @@ struct uart_buffer {
 	size_t length;
 };
 
-// The port has cleared its transmit buffer. Populate its buffer struct with
-// a new ptr and length, or the transmitter will go to sleep.
 extern void _uart_isr_thre(uart_id port, struct uart_buffer *next);
-
-// The port has filled its receive buffer. Give it a new buffer, or it will
-// drop DTR and the receiver will sleep.
 extern void _uart_isr_rbr(uart_id port, struct uart_buffer *next);
-
-extern void _uart_line_status(uart_id port, uint8_t LSR);
-extern void _uart_modem_status(uart_id port, uint8_t MSR);
+extern void _uart_isr_lsi(uart_id port, uint8_t LSR);
+extern void _uart_isr_msi(uart_id port, uint8_t MSR);
 
 #endif //UART_H
 

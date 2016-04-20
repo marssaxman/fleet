@@ -8,8 +8,7 @@
 .global _uart_init, _uart_transmit, _uart_receive
 
 # external entrypoints we invoke
-.global _uart_isr_thre, _uart_isr_rbr
-.global _uart_modem_status, _uart_line_status
+.global _uart_isr_thre, _uart_isr_rbr, _uart_isr_lsi, _uart_isr_msi
 
 # external entrypoints we override with non-weak implementations
 .global _isr_IRQ3, _isr_IRQ4
@@ -257,7 +256,7 @@ modem_status:
 	push %eax
 	movb INDEX(%ebp), %al
 	push %eax
-	call _uart_modem_status
+	call _uart_isr_msi
 	add $8, %esp
 	jmp check_loop
 
@@ -268,7 +267,7 @@ line_status:
 	push %eax
 	movb INDEX(%ebp), %al
 	push %eax
-	call _uart_line_status
+	call _uart_isr_lsi
 	add $8, %esp
 	jmp check_loop
 
