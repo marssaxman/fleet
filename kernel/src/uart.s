@@ -5,7 +5,7 @@
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
 # entrypoints we export
-.global _uart_init, _uart_transmit, _uart_receive
+.global _uart_init, _uart_transmit, _uart_receive, _uart_state
 
 # external entrypoints we invoke
 .global _uart_isr_thre, _uart_isr_rbr, _uart_isr_lsi, _uart_isr_msi
@@ -76,12 +76,11 @@
 
 # Port state flag values
 .set PORT_PRESENT, 0x01
-.set PORT_HAS_FIFO, 0x2
 
 .section .data
-.local port_state, COM1, COM2, COM3, COM4
+.local COM1, COM2, COM3, COM4
 
-port_state:
+_uart_state:
 COM1: .hword 0x03F8; .byte 0, 0; .long 0, 0, 0, 0
 COM2: .hword 0x02F8; .byte 1, 0; .long 0, 0, 0, 0
 COM3: .hword 0x03E8; .byte 2, 0; .long 0, 0, 0, 0
@@ -178,8 +177,6 @@ configure:
 
 _uart_transmit:
 	mov 4(%esp), %eax
-	imul $PORT_STATE_SIZE, %ax
-	add $port_state, %eax
 # Enable THRE interrupts. If they weren't already enabled, setting this flag
 # will kick one off right away.
 	movw ADDR(%eax), %dx
@@ -190,8 +187,6 @@ _uart_transmit:
 
 _uart_receive:
 	mov 4(%esp), %eax
-	imul $PORT_STATE_SIZE, %ax
-	add $port_state, %eax
 # Raise our RTS line, giving the remote end permission to transmit. We will
 # get an RBR interrupt when data next arrives.
 	xorl %edx, %edx
@@ -254,8 +249,7 @@ modem_status:
 	lea MSR(%ebx), %edx
 	inb %dx, %al
 	push %eax
-	movb INDEX(%ebp), %al
-	push %eax
+	push %ebp
 	call _uart_isr_msi
 	add $8, %esp
 	jmp check_loop
@@ -265,8 +259,7 @@ line_status:
 	lea LSR(%ebx), %edx
 	inb %dx, %al
 	push %eax
-	movb INDEX(%ebp), %al
-	push %eax
+	push %ebp
 	call _uart_isr_lsi
 	add $8, %esp
 	jmp check_loop
@@ -291,9 +284,7 @@ receive_ready:
 	movl %ecx, RX_SIZE(%ebp)
 	# Let our client know that we need another read buffer.
 .L_rx_full:
-	lea RX_BASE(%ebp), %edx
-	push %edx
-	push INDEX(%ebp)
+	push %ebp
 	call _uart_isr_rbr
 	add $8, %esp
 	mov RX_BASE(%ebp), %edi
@@ -337,11 +328,9 @@ transmit_clear:
 	movl %ecx, TX_SIZE(%ebp)
 	# We have drained the transmit buffer. Ask our client for another one.
 .L_tx_empty:
-	lea TX_BASE(%ebp), %edx
-	push %edx
-	push INDEX(%ebp)
+	push %ebp
 	call _uart_isr_thre
-	add $8, %esp
+	add $4, %esp
 	mov TX_BASE(%ebp), %esi
 	mov TX_SIZE(%ebp), %ecx
 	testl %ecx, %ecx

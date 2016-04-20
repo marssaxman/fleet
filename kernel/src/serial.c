@@ -47,30 +47,30 @@ void _serial_init() {
 
 unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {
 	tq_push(&com[s].tx, t);
-	_uart_transmit(s);
+	_uart_transmit(&_uart_state[s]);
 	return 0;
 }
 
 unsigned _serial_receive(stream_socket s, struct stream_transfer *t) {
 	tq_push(&com[s].rx, t);
-	_uart_receive(s);
+	_uart_receive(&_uart_state[s]);
 	return 0;
 }
 
-void _uart_isr_thre(uart_id port, struct iovec *next) {
-	tq_pull(&com[port].tx, next);
+void _uart_isr_thre(struct uart_state *port) {
+	tq_pull(&com[port->index].tx, &port->tx);
 }
 
-void _uart_isr_rbr(uart_id port, struct iovec *next) {
-	tq_pull(&com[port].rx, next);
+void _uart_isr_rbr(struct uart_state *port) {
+	tq_pull(&com[port->index].rx, &port->rx);
 }
 
-void _uart_isr_lsi(uart_id port, uint8_t LSR) {
-	_kprintf("LSI on COM%d: LSR=%x\n", port, LSR);
+void _uart_isr_lsi(struct uart_state *port, uint8_t LSR) {
+	_kprintf("LSI on COM%d: LSR=%x\n", port->index, LSR);
 }
 
-void _uart_isr_msi(uart_id port, uint8_t MSR) {
-	_kprintf("MSI on COM%d: MSR=%x\n", port, MSR);
+void _uart_isr_msi(struct uart_state *port, uint8_t MSR) {
+	_kprintf("MSI on COM%d: MSR=%x\n", port->index, MSR);
 }
 
 
