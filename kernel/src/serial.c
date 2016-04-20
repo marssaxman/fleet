@@ -23,15 +23,15 @@ static void tq_push(struct transfer_queue *q, struct stream_transfer *t) {
 	ring_push(&q->pending, &t->link);
 }
 
-static void tq_pull(struct transfer_queue *q, struct uart_buffer *next) {
+static void tq_pull(struct transfer_queue *q, struct iovec *next) {
 	if (q->current) {
 		post(&q->current->signal);
 	}
 	struct ring_item *link = ring_pull(&q->pending);
 	if (link) {
 		q->current = container_of(link, struct stream_transfer, link);
-		next->ptr = q->current->request.buffer;
-		next->length = q->current->request.size;
+		next->base = q->current->request.base;
+		next->size = q->current->request.size;
 	} else {
 		q->current = 0;
 	}
@@ -57,11 +57,11 @@ unsigned _serial_receive(stream_socket s, struct stream_transfer *t) {
 	return 0;
 }
 
-void _uart_isr_thre(uart_id port, struct uart_buffer *next) {
+void _uart_isr_thre(uart_id port, struct iovec *next) {
 	tq_pull(&com[port].tx, next);
 }
 
-void _uart_isr_rbr(uart_id port, struct uart_buffer *next) {
+void _uart_isr_rbr(uart_id port, struct iovec *next) {
 	tq_pull(&com[port].rx, next);
 }
 

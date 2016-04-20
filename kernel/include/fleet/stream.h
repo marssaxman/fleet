@@ -8,15 +8,13 @@
 #define _FLEET_STREAM_H
 
 #include <fleet/system.h>
+#include <fleet/io.h>
 
 typedef unsigned stream_socket;
 
 struct stream_transfer {
 	struct ring_item link;
-	struct {
-		void *buffer;
-		size_t size;
-	} request;
+	struct iovec request;
 	struct {
 		unsigned error;
 		size_t length;

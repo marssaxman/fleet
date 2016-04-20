@@ -68,11 +68,11 @@
 .set ADDR, 0x0 # short
 .set INDEX, ADDR+2 # byte
 .set FLAGS, INDEX+1 # byte
-.set TX_BUF, FLAGS+1 # ptr
-.set TX_LEN, TX_BUF+4 # int
-.set RX_BUF, TX_LEN+4 # ptr
-.set RX_LEN, RX_BUF+4 # int
-.set PORT_STATE_SIZE, RX_LEN+4
+.set TX_BASE, FLAGS+1 # ptr
+.set TX_SIZE, TX_BASE+4 # int
+.set RX_BASE, TX_SIZE+4 # ptr
+.set RX_SIZE, RX_BASE+4 # int
+.set PORT_STATE_SIZE, RX_SIZE+4
 
 # Port state flag values
 .set PORT_PRESENT, 0x01
@@ -274,12 +274,12 @@ line_status:
 receive_ready:
 	# The port has signalled RBR, suggesting that we could receive data.
 	# Do we have any empty space waiting in our receive buffer?
-	mov RX_LEN(%ebp), %ecx
+	mov RX_SIZE(%ebp), %ecx
 	testl %ecx, %ecx
 	je .L_rx_full
 	# Read bytes until we fill the buffer or drain the UART's queue.
 	cld
-	mov RX_BUF(%ebp), %edi
+	mov RX_BASE(%ebp), %edi
 .L_rx_next:
 	lea LSR(%ebx), %dx
 	inb %dx, %al
@@ -288,16 +288,16 @@ receive_ready:
 	lea RBR(%ebx), %dx
 	insb
 	loop .L_rx_next
-	movl %ecx, RX_LEN(%ebp)
+	movl %ecx, RX_SIZE(%ebp)
 	# Let our client know that we need another read buffer.
 .L_rx_full:
-	lea RX_BUF(%ebp), %edx
+	lea RX_BASE(%ebp), %edx
 	push %edx
 	push INDEX(%ebp)
 	call _uart_isr_rbr
 	add $8, %esp
-	mov RX_BUF(%ebp), %edi
-	mov RX_LEN(%ebp), %ecx
+	mov RX_BASE(%ebp), %edi
+	mov RX_SIZE(%ebp), %ecx
 	testl %ecx, %ecx
 	jnz .L_rx_next
 	# The read buffer is still empty. Drop RTS so the other device knows we 
@@ -308,20 +308,20 @@ receive_ready:
 	jmp check_loop
 	# Save the updated buffer address and size now that we've consumed some.
 .L_rx_wait:
-	movl %edi, RX_BUF(%ebp)
-	movl %ecx, RX_LEN(%ebp)
+	movl %edi, RX_BASE(%ebp)
+	movl %ecx, RX_SIZE(%ebp)
 	jmp check_loop
 
 transmit_clear:
 	# The port has signalled THRE, giving us an opportunity to transmit data.
 	# Do we have any outgoing data waiting in our transmit buffer?
-	mov TX_LEN(%ebp), %ecx
+	mov TX_SIZE(%ebp), %ecx
 	testl %ecx, %ecx
 	jz .L_tx_empty
 	# Read bytes until we drain the buffer, the other device drops CTS, or the
 	# line status says the transmit register is no longer empty.
 	cld
-	mov TX_BUF(%ebp), %esi
+	mov TX_BASE(%ebp), %esi
 .L_tx_next:
 	lea LSR(%ebx), %dx
 	inb %dx, %al
@@ -334,16 +334,16 @@ transmit_clear:
 	lea THR(%ebx), %edx
 	outsb
 	loop .L_tx_next
-	movl %ecx, TX_LEN(%ebp)
+	movl %ecx, TX_SIZE(%ebp)
 	# We have drained the transmit buffer. Ask our client for another one.
 .L_tx_empty:
-	lea TX_BUF(%ebp), %edx
+	lea TX_BASE(%ebp), %edx
 	push %edx
 	push INDEX(%ebp)
 	call _uart_isr_thre
 	add $8, %esp
-	mov TX_BUF(%ebp), %esi
-	mov TX_LEN(%ebp), %ecx
+	mov TX_BASE(%ebp), %esi
+	mov TX_SIZE(%ebp), %ecx
 	testl %ecx, %ecx
 	jnz .L_tx_next
 	# The transmit buffer is still empty. Turn off THRE interrupts.
@@ -352,7 +352,7 @@ transmit_clear:
 	outb %al, %dx
 	jmp check_loop
 .L_tx_wait:
-	movl %esi, TX_BUF(%ebp)
-	movl %ecx, TX_LEN(%ebp)
+	movl %esi, TX_BASE(%ebp)
+	movl %ecx, TX_SIZE(%ebp)
 	jmp check_loop
 
