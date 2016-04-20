@@ -4,9 +4,6 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-# entrypoints we export
-.global _uart_probe, _uart_transmit, _uart_receive, _uart_state
-
 # external entrypoints we invoke
 .global _uart_isr_thre, _uart_isr_rbr, _uart_isr_lsi, _uart_isr_msi
 
@@ -77,7 +74,7 @@
 .section .data
 .local COM1, COM2, COM3, COM4
 
-_uart_state:
+_uart_state: .global _uart_state
 COM1: .hword 0; .byte 0, 0; .long 0, 0, 0, 0
 COM2: .hword 0; .byte 1, 0; .long 0, 0, 0, 0
 COM3: .hword 0; .byte 2, 0; .long 0, 0, 0, 0
@@ -90,7 +87,7 @@ COM4: .hword 0; .byte 3, 0; .long 0, 0, 0, 0
 # We have reason to believe that there may be a UART device at this address.
 # Try to communicate with it: if its responses are consistent with a UART,
 # configure it with reasonable defaults and populate the device data struct.
-_uart_probe:
+_uart_probe: .global _uart_probe
 	pushl %ebx
 	pushl %ebp
 	movl 0x0C(%esp), %ebp # port
@@ -138,18 +135,12 @@ _uart_probe:
 	lea LCR(%ebx), %edx
 	mov $0x03, %al
 	outb %al, %dx
-	# Set the MCR's OUT2 flag, which instructs the UART to raise interrupts
-	# through the PIC instead of waiting for us to poll. We will also raise
-	# DTR for now, thereby establishing a connection, though this will have to
-	# change when the device driver model manages connection state.
-	lea MCR(%ebx), %edx
-	mov $(MCR_DTR|MCR_OUT2), %al
-	outb %al, %dx
-	# Since we're establishing a connection right up front, enable all of the
-	# interrupts we might care about. We won't set THRE, though, because we
-	# enable that when we start transmitting, to kick off the state machine.
+	# Leave the modem state cleared and interrupts disabled; we'll enable them
+	# when the port is opened.
+	xorl %eax, %eax
 	lea IER(%ebx), %edx
-	mov $(IER_RBRI|IER_LSI|IER_MSI), %al
+	outb %al, %dx
+	lea MCR(%ebx), %edx
 	outb %al, %dx
 	# Attempt to enable FIFO mode for better performance. We expect the device
 	# to be an emulated 16550A, but we'll check the IIR flag bits anyway to
@@ -173,24 +164,84 @@ _uart_probe:
 	popl %ebx
 	ret
 
-_uart_transmit:
-	mov 4(%esp), %eax
-# Enable THRE interrupts. If they weren't already enabled, setting this flag
-# will kick one off right away.
-	movw ADDR(%eax), %dx
+# void _uart_open(struct uart_state *port);
+# Raise DTR and enable PIC interrupts. Enable RBRI, LSI, and MSI so we get
+# notifications if the other end of the line does something interesting.
+_uart_open: .global _uart_open
+	mov 4(%esp), %ecx
+	movw ADDR(%ecx), %dx
+	add $MCR, %dx
+	movb $(MCR_DTR|MCR_OUT2), %al
+	outb %al, %dx
+	movw ADDR(%ecx), %dx
 	add $IER, %dx
-	movb $(IER_RBRI|IER_THRI|IER_LSI|IER_MSI), %al
+	mov $(IER_RBRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
 	ret
 
-_uart_receive:
-	mov 4(%esp), %eax
-# Raise our RTS line, giving the remote end permission to transmit. We will
-# get an RBR interrupt when data next arrives.
-	xorl %edx, %edx
-	movw ADDR(%eax), %dx
-	add $MCR, %edx
-	movb $(MCR_RTS|MCR_DTR|MCR_OUT2), %al
+# void _uart_close(struct uart_state *port);
+# Drop DTR and RTS to signal the other device we are no longer active.
+# Disable interrupts and shut down our transmit/receive loops.
+_uart_close: .global _uart_close
+	mov 4(%esp), %ecx
+	xorl %eax, %eax
+	movw ADDR(%ecx), %dx
+	add $MCR, %dx
+	outb %al, %dx
+	movw ADDR(%ecx), %dx
+	add $IER, %dx
+	outb %al, %dx
+	ret
+
+# void _uart_tx_start(struct uart_state *port);
+# The THRE interrupt controls our transmit loop. If transmission is active,
+# setting THRE will have no effect; but if it was not previously set, setting
+# it will trigger an immediate THRI, to which we can respond by sending data.
+_uart_tx_start: .global _uart_tx_start
+	mov 4(%esp), %ecx
+	movw ADDR(%ecx), %dx
+	add $IER, %dx
+	inb %dx, %al
+	orb $IER_THRI, %al
+	outb %al, %dx
+	ret
+
+# void _uart_tx_stop(struct uart_state *port);
+# Clearing THRE instructs the UART to stop notifying us when it is ready to
+# receive more data. The THRI drives our transmit loop, so we'll get no more
+# notifications prompting us to send bytes.
+_uart_tx_stop: .global _uart_tx_stop
+	mov 4(%esp), %ecx
+	movw ADDR(%ecx), %dx
+	add $IER, %dx
+	inb %dx, %al
+	andb $(~IER_THRI), %al
+	outb %al, %dx
+	ret
+
+# void _uart_rx_start(struct uart_state *port);
+# The RTS line controls our receive loop. Raising it gives the remote device
+# permission to send. We leave the RBR interrupt enabled all the time anyway,
+# but it won't fire until we've actually received some data.
+_uart_rx_start: .global _uart_rx_start
+	mov 4(%esp), %ecx
+	movw ADDR(%ecx), %dx
+	add $MCR, %dx
+	inb %dx, %al
+	orb $MCR_RTS, %al
+	outb %al, %dx
+	ret
+
+# void _uart_rx_stop(struct uart_state *port);
+# Dropping RTS signals the remote device that we are no longer interested in
+# receiving data, which will hopefully stop the incoming flow. We'll leave the
+# RBR interrupt enabled in case there is already data in the pipeline.
+_uart_rx_stop: .global _uart_rx_stop
+	mov 4(%esp), %ecx
+	movw ADDR(%ecx), %dx
+	add $MCR, %dx
+	inb %dx, %al
+	andb $(~MCR_RTS), %al
 	outb %al, %dx
 	ret
 
@@ -292,7 +343,7 @@ receive_ready:
 	# The read buffer is still empty. Drop RTS so the other device knows we 
 	# would like it to stop transmitting now.
 	lea MCR(%ebx), %edx
-	movb $(MCR_RTS|MCR_OUT2), %al
+	movb $(MCR_DTR|MCR_OUT2), %al
 	outb %al, %dx
 	jmp check_loop
 	# Save the updated buffer address and size now that we've consumed some.

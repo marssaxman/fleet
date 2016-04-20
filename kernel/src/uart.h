@@ -10,8 +10,8 @@
 #include <fleet/system.h>
 #include <fleet/io.h>
 
-// Low-level UART device driver, providing basic IO and interrupt routines
-// which can be used to build a more full-featured stream device.
+// Low-level UART control functions which are more conveniently implemented in
+// assembly language, supporting the actual device driver in serial.c.
 
 struct uart_state {
 	uint16_t addr;
@@ -23,8 +23,12 @@ struct uart_state {
 extern struct uart_state _uart_state[4];
 
 int _uart_probe(struct uart_state *port, uint16_t addr);
-void _uart_transmit(struct uart_state *port);
-void _uart_receive(struct uart_state *port);
+void _uart_open(struct uart_state*);
+void _uart_close(struct uart_state*);
+void _uart_tx_start(struct uart_state*);
+void _uart_tx_stop(struct uart_state*);
+void _uart_rx_start(struct uart_state*);
+void _uart_rx_stop(struct uart_state*);
 
 extern void _uart_isr_thre(struct uart_state *port);
 extern void _uart_isr_rbr(struct uart_state *port);
