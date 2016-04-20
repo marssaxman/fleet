@@ -38,8 +38,10 @@ static void tq_pull(struct transfer_queue *q, struct iovec *next) {
 }
 
 void _serial_init() {
+	// Traditional IO port addresses for the standard PC UARTs, COM1-COM4.
+	static const uint16_t com_addrs[4] = {0x03F8, 0x02F8, 0x03E8, 0x02F8};
 	for (unsigned i = 0; i < 4; ++i) {
-		if (_uart_probe(&_uart_state[i], _uart_state[i].addr)) {
+		if (_uart_probe(&_uart_state[i], com_addrs[i])) {
 			continue;
 		}
 		ring_init(&com[i].tx.pending);
