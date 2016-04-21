@@ -54,28 +54,18 @@
 .set MSR_RI, 0x40 # Ring indicator
 .set MSR_DCD, 0x80 # Data carrier detected
 
-# Field offsets for the port state struct
+# Field offsets for the state struct
 .set ADDR, 0x0 # short
 .set INDEX, ADDR+2 # byte
-.set FLAGS, INDEX+1 # byte
-.set TX_BASE, FLAGS+1 # ptr
+.set IRQ, INDEX+1 # byte
+.set TX_BASE, IRQ+1 # ptr
 .set TX_SIZE, TX_BASE+4 # int
 .set RX_BASE, TX_SIZE+4 # ptr
 .set RX_SIZE, RX_BASE+4 # int
-.set PORT_STATE_SIZE, RX_SIZE+4
-
-.section .data
-.local COM1, COM2, COM3, COM4
-
-_uart_state: .global _uart_state
-COM1: .hword 0; .byte 0, 0; .long 0, 0, 0, 0
-COM2: .hword 0; .byte 1, 0; .long 0, 0, 0, 0
-COM3: .hword 0; .byte 2, 0; .long 0, 0, 0, 0
-COM4: .hword 0; .byte 3, 0; .long 0, 0, 0, 0
 
 .section .text
 
-# int _uart_probe(struct uart_state *port, uint16_t addr);
+# int _uart_probe(struct uart_state *port);
 # We have reason to believe that there may be a UART device at this address.
 # Try to communicate with it: if its responses are consistent with a UART,
 # configure it with reasonable defaults and populate the device data struct.
@@ -84,7 +74,7 @@ _uart_probe: .global _uart_probe
 	pushl %ebp
 	movl 0x0C(%esp), %ebp # port
 	xorl %ebx, %ebx
-	movw 0x10(%esp), %bx # address
+	movw ADDR(%ebp), %bx
 	# Put the device in loopback mode and clear all of its modem status bits.
 	# Check the MSR to see if its state is consistent with our configuration.
 	lea MCR(%ebx), %edx
@@ -107,9 +97,7 @@ _uart_probe: .global _uart_probe
 	testb $(MSR_CTS|MSR_DSR|MSR_RI|MSR_DCD), %al
 	setnz %al
 	jz .L_probe_return
-	# This address belongs to a UART device: fill out the device state struct,
-	# then configure the device with some reasonable initial state.
-	movw %bx, ADDR(%ebp)
+	# This appears to be a working UART. Give it some reasonable settings.
 	# Put the port into DLAB mode so we can set its speed. Use 115.2K, because
 	# fastest is best, and because we are actually talking to an emulated UART
 	# in the host machine so there's no reason to hold back.

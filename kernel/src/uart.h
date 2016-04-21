@@ -16,13 +16,13 @@
 struct uart_state {
 	uint16_t addr;
 	uint8_t index;
-	uint8_t flags;
+	uint8_t irq;
 	struct iovec tx;
 	struct iovec rx;
 };
 extern struct uart_state _uart_state[4];
 
-int _uart_probe(struct uart_state *port, uint16_t addr);
+int _uart_probe(struct uart_state *port);
 void _uart_open(struct uart_state*);
 void _uart_close(struct uart_state*);
 void _uart_tx_start(struct uart_state*);

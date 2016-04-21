@@ -18,7 +18,7 @@ struct transfer_queue {
 
 static struct serial_socket_data {
 	struct irq_action signal;
-	struct uart_state *state;
+	struct uart_state state;
 	struct transfer_queue tx, rx;
 } com[4];
 
@@ -43,7 +43,7 @@ static void tq_pull(struct transfer_queue *q, struct iovec *next) {
 static void _serial_isr(struct irq_action *context) {
 	struct serial_socket_data *data;
 	data = container_of(context, struct serial_socket_data, signal);
-	_uart_service(data->state);
+	_uart_service(&data->state);
 }
 
 void _serial_init() {
@@ -52,27 +52,29 @@ void _serial_init() {
 	static const uint8_t com_irqs[4] = {4, 3, 4, 3};
 	for (unsigned i = 0; i < 4; ++i) {
 		struct serial_socket_data *data = &com[i];
-		data->state = &_uart_state[i];
-		if (0 != _uart_probe(data->state, com_addrs[i])) {
+		data->state.addr = com_addrs[i];
+		data->state.index = i;
+		data->state.irq = com_irqs[i];
+		if (0 != _uart_probe(&data->state)) {
 			continue;
 		}
 		ring_init(&data->tx.pending);
 		ring_init(&data->rx.pending);
 		data->signal.isr = _serial_isr;
 		_irq_attach(com_irqs[i], &data->signal);
-		_uart_open(data->state);
+		_uart_open(&data->state);
 	}
 }
 
 unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {
 	tq_push(&com[s].tx, t);
-	_uart_tx_start(com[s].state);
+	_uart_tx_start(&com[s].state);
 	return 0;
 }
 
 unsigned _serial_receive(stream_socket s, struct stream_transfer *t) {
 	tq_push(&com[s].rx, t);
-	_uart_rx_start(com[s].state);
+	_uart_rx_start(&com[s].state);
 	return 0;
 }
 
