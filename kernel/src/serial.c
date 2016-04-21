@@ -11,43 +11,90 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-struct ioqueue {
+struct channel {
 	struct stream_transfer *current;
 	struct ring_list pending;
+	struct iovec buffer;
 };
 
 static struct serial {
 	struct irq_action signal;
-	struct uart_state state;
-	struct ioqueue tx, rx;
+	struct channel tx, rx;
+	uint16_t addr;
 } com[4];
 
-static void ioqueue_init(struct ioqueue *q) {
+static void channel_init(struct channel *q) {
 	q->current = 0;
 	ring_init(&q->pending);
+	q->buffer.base = 0;
+	q->buffer.size = 0;
 }
 
-static void ioqueue_push(struct ioqueue *q, struct stream_transfer *t) {
+static void channel_push(struct channel *q, struct stream_transfer *t) {
 	ring_push(&q->pending, &t->link);
 }
 
-static void ioqueue_pull(struct ioqueue *q, struct iovec *next) {
+static void channel_pull(struct channel *q) {
 	if (q->current) {
 		post(&q->current->signal);
 	}
 	struct ring_item *link = ring_pull(&q->pending);
 	if (link) {
 		q->current = container_of(link, struct stream_transfer, link);
-		next->base = q->current->request.base;
-		next->size = q->current->request.size;
+		q->buffer = q->current->request;
 	} else {
 		q->current = 0;
+		q->buffer.base = 0;
+		q->buffer.size = 0;
 	}
 }
 
-static void _serial_isr(struct irq_action *context) {
+static void transmit_clear(struct serial *port) {
+	for(;;) {
+		_uart_tx_service(port->addr, &port->tx.buffer);
+		if (0 != port->tx.buffer.size) return;
+		channel_pull(&port->tx);
+		if (0 == port->tx.current) {
+			_uart_tx_stop(port->addr);
+			return;
+		}
+	}
+}
+
+static void receive_ready(struct serial *port) {
+	for (;;) {
+		_uart_rx_service(port->addr, &port->rx.buffer);
+		if (0 != port->rx.buffer.size) return;
+		channel_pull(&port->rx);
+		if (0 == port->rx.current) {
+			_uart_rx_stop(port->addr);
+			return;
+		}
+	}
+}
+
+static void line_event(struct serial *port) {
+	int index = (port - com) / sizeof(struct serial);
+	unsigned LSR = _uart_line_status(port->addr);
+	_kprintf("LSI on COM%d: LSR=%x\n", index, LSR);
+}
+
+static void modem_event(struct serial *port) {
+	int index = (port - com) / sizeof(struct serial);
+	unsigned MSR = _uart_modem_status(port->addr);
+	_kprintf("MSI on COM%d: MSR=%x\n", index, MSR);
+}
+
+static void service(struct irq_action *context) {
 	struct serial *port = container_of(context, struct serial, signal);
-	_uart_service(&port->state);
+	for (;;) switch (_uart_poll(port->addr)) {
+		case UART_NONE: return;
+		case UART_THRI: transmit_clear(port); continue;
+		case UART_RBRI: receive_ready(port); continue;
+		case UART_LSI: line_event(port); continue;
+		case UART_MSI: modem_event(port); continue;
+		default: _panic("illegal uart condition code");
+	}
 }
 
 void _serial_init() {
@@ -58,47 +105,24 @@ void _serial_init() {
 		// Verify that we can communicate with a UART at this address.
 		if (0 != _uart_probe(com_addrs[i])) continue;
 		struct serial *port = &com[i];
-		port->state.addr = com_addrs[i];
-		ioqueue_init(&port->tx);
-		ioqueue_init(&port->rx);
-		port->signal.isr = _serial_isr;
+		port->addr = com_addrs[i];
+		channel_init(&port->tx);
+		channel_init(&port->rx);
+		port->signal.isr = service;
 		_irq_attach(com_irqs[i], &port->signal);
-		_uart_open(port->state.addr);
+		_uart_open(port->addr);
 	}
 }
 
 unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {
-	ioqueue_push(&com[s].tx, t);
-	_uart_tx_start(com[s].state.addr);
+	channel_push(&com[s].tx, t);
+	_uart_tx_start(com[s].addr);
 	return 0;
 }
 
 unsigned _serial_receive(stream_socket s, struct stream_transfer *t) {
-	ioqueue_push(&com[s].rx, t);
-	_uart_rx_start(com[s].state.addr);
+	channel_push(&com[s].rx, t);
+	_uart_rx_start(com[s].addr);
 	return 0;
 }
-
-void _uart_isr_thre(struct uart_state *dev) {
-	struct serial *port = container_of(dev, struct serial, state);
-	ioqueue_pull(&port->tx, &dev->tx);
-}
-
-void _uart_isr_rbr(struct uart_state *dev) {
-	struct serial *port = container_of(dev, struct serial, state);
-	ioqueue_pull(&port->rx, &dev->rx);
-}
-
-void _uart_isr_lsi(struct uart_state *dev, uint8_t LSR) {
-	struct serial *port = container_of(dev, struct serial, state);
-	int index = (port - com) / sizeof(struct serial);
-	_kprintf("LSI on COM%d: LSR=%x\n", index, LSR);
-}
-
-void _uart_isr_msi(struct uart_state *dev, uint8_t MSR) {
-	struct serial *port = container_of(dev, struct serial, state);
-	int index = (port - com) / sizeof(struct serial);
-	_kprintf("MSI on COM%d: MSR=%x\n", index, MSR);
-}
-
 

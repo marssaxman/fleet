@@ -7,8 +7,8 @@
 #ifndef UART_H
 #define UART_H
 
-#include <fleet/event.h>
 #include <fleet/io.h>
+#include <stdint.h>
 
 // Low-level UART control functions which are more conveniently implemented in
 // assembly language, supporting the actual device driver in serial.c.
@@ -35,19 +35,6 @@ void _uart_tx_service(uint16_t addr, struct iovec *buf);
 void _uart_rx_start(uint16_t addr);
 void _uart_rx_stop(uint16_t addr);
 void _uart_rx_service(uint16_t addr, struct iovec *buf);
-
-struct uart_state {
-	uint16_t addr;
-	uint16_t _unused;
-	struct iovec tx;
-	struct iovec rx;
-};
-void _uart_service(struct uart_state*);
-
-extern void _uart_isr_thre(struct uart_state *port);
-extern void _uart_isr_rbr(struct uart_state *port);
-extern void _uart_isr_lsi(struct uart_state *port, uint8_t LSR);
-extern void _uart_isr_msi(struct uart_state *port, uint8_t MSR);
 
 #endif //UART_H
 
