@@ -16,6 +16,7 @@ struct transfer_queue {
 };
 
 static struct serial_socket_data {
+	struct uart_state *state;
 	struct transfer_queue tx, rx;
 } com[4];
 
@@ -41,12 +42,14 @@ void _serial_init() {
 	// Traditional IO port addresses for the standard PC UARTs, COM1-COM4.
 	static const uint16_t com_addrs[4] = {0x03F8, 0x02F8, 0x03E8, 0x02F8};
 	for (unsigned i = 0; i < 4; ++i) {
-		if (0 != _uart_probe(&_uart_state[i], com_addrs[i])) {
+		struct serial_socket_data *data = &com[i];
+		data->state = &_uart_state[i];
+		if (0 != _uart_probe(data->state, com_addrs[i])) {
 			continue;
 		}
-		ring_init(&com[i].tx.pending);
-		ring_init(&com[i].rx.pending);
-		_uart_open(&_uart_state[i]);
+		ring_init(&data->tx.pending);
+		ring_init(&data->rx.pending);
+		_uart_open(data->state);
 	}
 	// enable IRQ3 and IRQ4
 	__asm__("inb $0x0021, %al");
@@ -56,13 +59,13 @@ void _serial_init() {
 
 unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {
 	tq_push(&com[s].tx, t);
-	_uart_tx_start(&_uart_state[s]);
+	_uart_tx_start(com[s].state);
 	return 0;
 }
 
 unsigned _serial_receive(stream_socket s, struct stream_transfer *t) {
 	tq_push(&com[s].rx, t);
-	_uart_rx_start(&_uart_state[s]);
+	_uart_rx_start(com[s].state);
 	return 0;
 }
 

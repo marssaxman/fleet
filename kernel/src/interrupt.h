@@ -8,14 +8,16 @@
 #define INTERRUPT_H
 
 #include <stdint.h>
-#include <stdbool.h>
 
 void _interrupt_init();
 void _interrupt_enable(); // turn interrupts on
 void _interrupt_disable(); // turn interrupts off
 
-// Override these weak symbol definitions to provide a generic exception or
-// IRQ handler function
+struct irq_action {
+	void (*isr)(struct irq_action*);
+	struct irq_action *next;
+};
+void _irq_attach(unsigned irq, struct irq_action*);
 
 struct cpu_state {
 	uint32_t edi, esi, ebp, esp;
@@ -23,7 +25,6 @@ struct cpu_state {
 	uint32_t error, eip, cs, eflags;
 };
 extern void _interrupt_exception(unsigned code, struct cpu_state*);
-extern void _interrupt_irq(unsigned irq);
 
 #endif //INTERRUPT_H
 
