@@ -11,22 +11,27 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-struct transfer_queue {
+struct ioqueue {
 	struct stream_transfer *current;
 	struct ring_list pending;
 };
 
-static struct serial_socket_data {
+static struct serial {
 	struct irq_action signal;
 	struct uart_state state;
-	struct transfer_queue tx, rx;
+	struct ioqueue tx, rx;
 } com[4];
 
-static void tq_push(struct transfer_queue *q, struct stream_transfer *t) {
+static void ioqueue_init(struct ioqueue *q) {
+	q->current = 0;
+	ring_init(&q->pending);
+}
+
+static void ioqueue_push(struct ioqueue *q, struct stream_transfer *t) {
 	ring_push(&q->pending, &t->link);
 }
 
-static void tq_pull(struct transfer_queue *q, struct iovec *next) {
+static void ioqueue_pull(struct ioqueue *q, struct iovec *next) {
 	if (q->current) {
 		post(&q->current->signal);
 	}
@@ -41,9 +46,8 @@ static void tq_pull(struct transfer_queue *q, struct iovec *next) {
 }
 
 static void _serial_isr(struct irq_action *context) {
-	struct serial_socket_data *data;
-	data = container_of(context, struct serial_socket_data, signal);
-	_uart_service(&data->state);
+	struct serial *port = container_of(context, struct serial, signal);
+	_uart_service(&port->state);
 }
 
 void _serial_init() {
@@ -51,47 +55,50 @@ void _serial_init() {
 	static const uint16_t com_addrs[4] = {0x03F8, 0x02F8, 0x03E8, 0x02F8};
 	static const uint8_t com_irqs[4] = {4, 3, 4, 3};
 	for (unsigned i = 0; i < 4; ++i) {
-		struct serial_socket_data *data = &com[i];
-		data->state.addr = com_addrs[i];
-		data->state.index = i;
-		data->state.irq = com_irqs[i];
-		if (0 != _uart_probe(&data->state)) {
-			continue;
-		}
-		ring_init(&data->tx.pending);
-		ring_init(&data->rx.pending);
-		data->signal.isr = _serial_isr;
-		_irq_attach(com_irqs[i], &data->signal);
-		_uart_open(&data->state);
+		// Verify that we can communicate with a UART at this address.
+		if (0 != _uart_probe(com_addrs[i])) continue;
+		struct serial *port = &com[i];
+		port->state.addr = com_addrs[i];
+		ioqueue_init(&port->tx);
+		ioqueue_init(&port->rx);
+		port->signal.isr = _serial_isr;
+		_irq_attach(com_irqs[i], &port->signal);
+		_uart_open(port->state.addr);
 	}
 }
 
 unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {
-	tq_push(&com[s].tx, t);
-	_uart_tx_start(&com[s].state);
+	ioqueue_push(&com[s].tx, t);
+	_uart_tx_start(com[s].state.addr);
 	return 0;
 }
 
 unsigned _serial_receive(stream_socket s, struct stream_transfer *t) {
-	tq_push(&com[s].rx, t);
-	_uart_rx_start(&com[s].state);
+	ioqueue_push(&com[s].rx, t);
+	_uart_rx_start(com[s].state.addr);
 	return 0;
 }
 
-void _uart_isr_thre(struct uart_state *port) {
-	tq_pull(&com[port->index].tx, &port->tx);
+void _uart_isr_thre(struct uart_state *dev) {
+	struct serial *port = container_of(dev, struct serial, state);
+	ioqueue_pull(&port->tx, &dev->tx);
 }
 
-void _uart_isr_rbr(struct uart_state *port) {
-	tq_pull(&com[port->index].rx, &port->rx);
+void _uart_isr_rbr(struct uart_state *dev) {
+	struct serial *port = container_of(dev, struct serial, state);
+	ioqueue_pull(&port->rx, &dev->rx);
 }
 
-void _uart_isr_lsi(struct uart_state *port, uint8_t LSR) {
-	_kprintf("LSI on COM%d: LSR=%x\n", port->index, LSR);
+void _uart_isr_lsi(struct uart_state *dev, uint8_t LSR) {
+	struct serial *port = container_of(dev, struct serial, state);
+	int index = (port - com) / sizeof(struct serial);
+	_kprintf("LSI on COM%d: LSR=%x\n", index, LSR);
 }
 
-void _uart_isr_msi(struct uart_state *port, uint8_t MSR) {
-	_kprintf("MSI on COM%d: MSR=%x\n", port->index, MSR);
+void _uart_isr_msi(struct uart_state *dev, uint8_t MSR) {
+	struct serial *port = container_of(dev, struct serial, state);
+	int index = (port - com) / sizeof(struct serial);
+	_kprintf("MSI on COM%d: MSR=%x\n", index, MSR);
 }
 
 

@@ -56,44 +56,54 @@
 
 # Field offsets for the state struct
 .set ADDR, 0x0 # short
-.set INDEX, ADDR+2 # byte
-.set IRQ, INDEX+1 # byte
-.set TX_BASE, IRQ+1 # ptr
+.set TX_BASE, ADDR+4 # ptr
 .set TX_SIZE, TX_BASE+4 # int
 .set RX_BASE, TX_SIZE+4 # ptr
 .set RX_SIZE, RX_BASE+4 # int
 
+.macro prolog
+	pushl %ebx
+	xorl %ebx, %ebx
+	movw 0x8(%esp), %bx
+.endm
+
+.macro epilog
+	popl %ebx
+	ret
+.endm
+
+.macro write name
+	lea \name(%ebx), %edx
+	outb %al, %dx
+.endm
+
+.macro read name
+	lea \name(%ebx), %edx
+	inb %dx, %al
+.endm
+
 .section .text
 
-# int _uart_probe(struct uart_state *port);
+# int _uart_probe(uint16_t addr);
 # We have reason to believe that there may be a UART device at this address.
 # Try to communicate with it: if its responses are consistent with a UART,
 # configure it with reasonable defaults and populate the device data struct.
 _uart_probe: .global _uart_probe
-	pushl %ebx
-	pushl %ebp
-	movl 0x0C(%esp), %ebp # port
-	xorl %ebx, %ebx
-	movw ADDR(%ebp), %bx
+	prolog
+	xorl %eax, %eax
 	# Put the device in loopback mode and clear all of its modem status bits.
 	# Check the MSR to see if its state is consistent with our configuration.
-	lea MCR(%ebx), %edx
 	movb $MCR_LOOP, %al
-	outb %al, %dx
-	lea MSR(%ebx), %edx
-	xorl %eax, %eax
-	inb %dx, %al
+	write MCR
+	read MSR
 	testb $(MSR_CTS|MSR_DSR|MSR_RI|MSR_DCD), %al
 	setnz %al
 	jnz .L_probe_return
 	# Verify that the success was not an accident by setting all four status
 	# bits, then checking MSR. The corresponding flags should now be set.
-	lea MCR(%ebx), %edx
 	movb $(MCR_LOOP|MCR_DTR|MCR_RTS|MCR_OUT1|MCR_OUT2), %al
-	outb %al, %dx
-	lea MSR(%ebx), %edx
-	xorl %eax, %eax
-	inb %dx, %al
+	write MCR
+	read MSR
 	testb $(MSR_CTS|MSR_DSR|MSR_RI|MSR_DCD), %al
 	setnz %al
 	jz .L_probe_return
@@ -101,129 +111,101 @@ _uart_probe: .global _uart_probe
 	# Put the port into DLAB mode so we can set its speed. Use 115.2K, because
 	# fastest is best, and because we are actually talking to an emulated UART
 	# in the host machine so there's no reason to hold back.
-	lea LCR(%ebx), %edx
 	mov $0x80, %al
-	outb %al, %dx
-	lea DLH(%ebx), %edx
+	write LCR
 	xor %al, %al
-	outb %al, %dx
-	lea DLL(%ebx), %edx
+	write DLH
 	inc %al
-	outb %al, %dx
+	write DLL
 	# Clear DLAB, since its job is done, and configure the standard 8N1 mode.
 	# Both changes are accomplished by writing to LCR.
-	lea LCR(%ebx), %edx
 	mov $0x03, %al
-	outb %al, %dx
+	write LCR
 	# Leave the modem state cleared and interrupts disabled; we'll enable them
 	# when the port is opened.
 	xorl %eax, %eax
-	lea IER(%ebx), %edx
-	outb %al, %dx
-	lea MCR(%ebx), %edx
-	outb %al, %dx
+	write IER
+	write MCR
 	# Attempt to enable FIFO mode for better performance. We expect the device
 	# to be an emulated 16550A, but we'll check the IIR flag bits anyway to
 	# be sure the FIFO is present and functional, because it's tidier that way.
-	lea FCR(%ebx), %edx
 	mov $0xE7, %al
-	outb %al, %dx
-	lea IIR(%ebx), %edx
-	xorl %eax, %eax
-	inb %dx, %al
+	write FCR
+	read IIR
 	testb $IIR_FIFO, %al
 	setz %al
 	jnz .L_probe_return
 	# FIFO configuration failed. Turn FIFO mode back off, since we don't know
 	# how this older device will respond.
-	lea FCR(%ebx), %edx
 	xorl %eax, %eax
-	outb %al, %dx
+	write FCR
 .L_probe_return:
-	popl %ebp
-	popl %ebx
-	ret
+	epilog
 
-# void _uart_open(struct uart_state *port);
+# void _uart_open(uint16_t addr);
 # Raise DTR and enable PIC interrupts. Enable RBRI, LSI, and MSI so we get
 # notifications if the other end of the line does something interesting.
 _uart_open: .global _uart_open
-	mov 4(%esp), %ecx
-	movw ADDR(%ecx), %dx
-	add $MCR, %dx
+	prolog
 	movb $(MCR_DTR|MCR_OUT2), %al
-	outb %al, %dx
-	movw ADDR(%ecx), %dx
-	add $IER, %dx
+	write MCR
 	mov $(IER_RBRI|IER_LSI|IER_MSI), %al
-	outb %al, %dx
-	ret
+	write IER
+	epilog
 
-# void _uart_close(struct uart_state *port);
+# void _uart_close(uint16_t addr);
 # Drop DTR and RTS to signal the other device we are no longer active.
 # Disable interrupts and shut down our transmit/receive loops.
 _uart_close: .global _uart_close
-	mov 4(%esp), %ecx
+	prolog
 	xorl %eax, %eax
-	movw ADDR(%ecx), %dx
-	add $MCR, %dx
-	outb %al, %dx
-	movw ADDR(%ecx), %dx
-	add $IER, %dx
-	outb %al, %dx
-	ret
+	write MCR
+	write IER
+	epilog
 
-# void _uart_tx_start(struct uart_state *port);
+# void _uart_tx_start(uint16_t addr);
 # The THRE interrupt controls our transmit loop. If transmission is active,
 # setting THRE will have no effect; but if it was not previously set, setting
 # it will trigger an immediate THRI, to which we can respond by sending data.
 _uart_tx_start: .global _uart_tx_start
-	mov 4(%esp), %ecx
-	movw ADDR(%ecx), %dx
-	add $IER, %dx
-	inb %dx, %al
+	prolog
+	read IER
 	orb $IER_THRI, %al
 	outb %al, %dx
-	ret
+	epilog
 
-# void _uart_tx_stop(struct uart_state *port);
+# void _uart_tx_stop(uint16_t addr);
 # Clearing THRE instructs the UART to stop notifying us when it is ready to
 # receive more data. The THRI drives our transmit loop, so we'll get no more
 # notifications prompting us to send bytes.
 _uart_tx_stop: .global _uart_tx_stop
-	mov 4(%esp), %ecx
-	movw ADDR(%ecx), %dx
-	add $IER, %dx
-	inb %dx, %al
+	prolog
+	read IER
 	andb $(~IER_THRI), %al
 	outb %al, %dx
-	ret
+	epilog
 
-# void _uart_rx_start(struct uart_state *port);
+# void _uart_rx_start(uint16_t addr);
 # The RTS line controls our receive loop. Raising it gives the remote device
 # permission to send. We leave the RBR interrupt enabled all the time anyway,
 # but it won't fire until we've actually received some data.
 _uart_rx_start: .global _uart_rx_start
-	mov 4(%esp), %ecx
-	movw ADDR(%ecx), %dx
-	add $MCR, %dx
-	inb %dx, %al
+	prolog
+	read MCR
 	orb $MCR_RTS, %al
 	outb %al, %dx
-	ret
+	epilog
 
-# void _uart_rx_stop(struct uart_state *port);
+# void _uart_rx_stop(uint16_t addr);
 # Dropping RTS signals the remote device that we are no longer interested in
 # receiving data, which will hopefully stop the incoming flow. We'll leave the
 # RBR interrupt enabled in case there is already data in the pipeline.
 _uart_rx_stop: .global _uart_rx_stop
-	mov 4(%esp), %ecx
-	movw ADDR(%ecx), %dx
-	add $MCR, %dx
-	inb %dx, %al
+	prolog
+	read MCR
 	andb $(~MCR_RTS), %al
 	outb %al, %dx
-	ret
+	epilog
 
 # void _uart_service(struct uart_state*);
 # An event has occurred which may indicate work to be done on this device.
@@ -237,8 +219,7 @@ _uart_service: .global _uart_service
 	xorl %ebx, %ebx
 	movw ADDR(%ebp), %bx
 .L_check_loop:
-	lea IIR(%ebx), %edx
-	inb %dx, %al
+	read IIR
 	testb $IIR_NONE, %al
 	jnz .L_none
 	and $IIR_ID_MASK, %al
@@ -256,8 +237,7 @@ _uart_service: .global _uart_service
 	ret
 .L_modem_status:
 	xorl %eax, %eax
-	lea MSR(%ebx), %edx
-	inb %dx, %al
+	read MSR
 	push %eax
 	push %ebp
 	call _uart_isr_msi
@@ -265,8 +245,7 @@ _uart_service: .global _uart_service
 	jmp .L_check_loop
 .L_line_status:
 	xorl %eax, %eax
-	lea LSR(%ebx), %edx
-	inb %dx, %al
+	read LSR
 	push %eax
 	push %ebp
 	call _uart_isr_lsi
@@ -282,8 +261,7 @@ _uart_service: .global _uart_service
 	cld
 	mov RX_BASE(%ebp), %edi
 .L_rx_next:
-	lea LSR(%ebx), %dx
-	inb %dx, %al
+	read LSR
 	testb $LSR_DR, %al
 	jz .L_rx_wait
 	lea RBR(%ebx), %dx
@@ -301,9 +279,8 @@ _uart_service: .global _uart_service
 	jnz .L_rx_next
 	# The read buffer is still empty. Drop RTS so the other device knows we 
 	# would like it to stop transmitting now.
-	lea MCR(%ebx), %edx
 	movb $(MCR_DTR|MCR_OUT2), %al
-	outb %al, %dx
+	write MCR
 	jmp .L_check_loop
 	# Save the updated buffer address and size now that we've consumed some.
 .L_rx_wait:
@@ -321,12 +298,10 @@ _uart_service: .global _uart_service
 	cld
 	mov TX_BASE(%ebp), %esi
 .L_tx_next:
-	lea LSR(%ebx), %dx
-	inb %dx, %al
+	read LSR
 	testb $LSR_THRE, %al
 	jz .L_tx_wait
-	lea MSR(%ebx), %dx
-	inb %dx, %al
+	read MSR
 	testb $MSR_CTS, %al
 	jz .L_tx_wait
 	lea THR(%ebx), %edx
@@ -343,9 +318,8 @@ _uart_service: .global _uart_service
 	testl %ecx, %ecx
 	jnz .L_tx_next
 	# The transmit buffer is still empty. Turn off THRE interrupts.
-	lea IER(%ebx), %edx
 	movb $(IER_RBRI|IER_LSI|IER_MSI), %al
-	outb %al, %dx
+	write IER
 	jmp .L_check_loop
 .L_tx_wait:
 	movl %esi, TX_BASE(%ebp)

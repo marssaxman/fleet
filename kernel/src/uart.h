@@ -15,19 +15,18 @@
 
 struct uart_state {
 	uint16_t addr;
-	uint8_t index;
-	uint8_t irq;
+	uint16_t _unused;
 	struct iovec tx;
 	struct iovec rx;
 };
 
-int _uart_probe(struct uart_state *port);
-void _uart_open(struct uart_state*);
-void _uart_close(struct uart_state*);
-void _uart_tx_start(struct uart_state*);
-void _uart_tx_stop(struct uart_state*);
-void _uart_rx_start(struct uart_state*);
-void _uart_rx_stop(struct uart_state*);
+int _uart_probe(uint16_t addr);
+void _uart_open(uint16_t addr);
+void _uart_close(uint16_t addr);
+void _uart_tx_start(uint16_t addr);
+void _uart_tx_stop(uint16_t addr);
+void _uart_rx_start(uint16_t addr);
+void _uart_rx_stop(uint16_t addr);
 void _uart_service(struct uart_state*);
 
 extern void _uart_isr_thre(struct uart_state *port);
