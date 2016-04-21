@@ -54,6 +54,10 @@
 .set MSR_RI, 0x40 # Ring indicator
 .set MSR_DCD, 0x80 # Data carrier detected
 
+
+.set BUF_BASE, 0
+.set BUF_SIZE, 4
+
 # Field offsets for the state struct
 .set ADDR, 0x0 # short
 .set TX_BASE, ADDR+4 # ptr
@@ -72,6 +76,10 @@
 	ret
 .endm
 
+.macro entrypoint name
+	\name: .global \name
+.endm
+
 .macro write name
 	lea \name(%ebx), %edx
 	outb %al, %dx
@@ -82,13 +90,19 @@
 	inb %dx, %al
 .endm
 
+.section .data
+
+# Mappings from values found in the lower three bits of IIR to the condition
+# codes defined in uart.h; used by _uart_poll.
+.L_iir_condition_table: .byte 4, 0, 1, 0, 2, 0, 3, 0
+
 .section .text
 
 # int _uart_probe(uint16_t addr);
 # We have reason to believe that there may be a UART device at this address.
 # Try to communicate with it: if its responses are consistent with a UART,
 # configure it with reasonable defaults and populate the device data struct.
-_uart_probe: .global _uart_probe
+entrypoint _uart_probe
 	prolog
 	xorl %eax, %eax
 	# Put the device in loopback mode and clear all of its modem status bits.
@@ -145,7 +159,7 @@ _uart_probe: .global _uart_probe
 # void _uart_open(uint16_t addr);
 # Raise DTR and enable PIC interrupts. Enable RBRI, LSI, and MSI so we get
 # notifications if the other end of the line does something interesting.
-_uart_open: .global _uart_open
+entrypoint _uart_open
 	prolog
 	movb $(MCR_DTR|MCR_OUT2), %al
 	write MCR
@@ -156,18 +170,45 @@ _uart_open: .global _uart_open
 # void _uart_close(uint16_t addr);
 # Drop DTR and RTS to signal the other device we are no longer active.
 # Disable interrupts and shut down our transmit/receive loops.
-_uart_close: .global _uart_close
+entrypoint _uart_close
 	prolog
 	xorl %eax, %eax
 	write MCR
 	write IER
 	epilog
 
+# int _uart_poll(uint16_t addr);
+# Is there an interrupt condition present? Map the value in the low bits of
+# the IIR to one of the condition codes we present in uart.h.
+entrypoint _uart_poll
+	prolog
+	xorl %eax, %eax
+	read IIR
+	and $0x7, %al
+	movb .L_iir_condition_table(%eax), %al
+	epilog
+
+# uint8_t _uart_line_status(uint16_t addr)
+entrypoint _uart_line_status
+	xorl %edx, %edx
+	movb $LSR, %dl
+	addw 4(%esp), %dx
+	inb %dx, %al
+	ret
+
+# uint8_t _uart_modem_status(uint16_t addr)
+entrypoint _uart_modem_status
+	xorl %edx, %edx
+	movb $MSR, %dl
+	addw 4(%esp), %dx
+	inb %dx, %al
+	ret
+
 # void _uart_tx_start(uint16_t addr);
 # The THRE interrupt controls our transmit loop. If transmission is active,
 # setting THRE will have no effect; but if it was not previously set, setting
 # it will trigger an immediate THRI, to which we can respond by sending data.
-_uart_tx_start: .global _uart_tx_start
+entrypoint _uart_tx_start
 	prolog
 	read IER
 	orb $IER_THRI, %al
@@ -178,18 +219,44 @@ _uart_tx_start: .global _uart_tx_start
 # Clearing THRE instructs the UART to stop notifying us when it is ready to
 # receive more data. The THRI drives our transmit loop, so we'll get no more
 # notifications prompting us to send bytes.
-_uart_tx_stop: .global _uart_tx_stop
+entrypoint _uart_tx_stop
 	prolog
 	read IER
 	andb $(~IER_THRI), %al
 	outb %al, %dx
 	epilog
 
+# void _uart_tx_service(uint16_t addr, struct iovec *buf)
+# Transmit bytes while there is data in the buffer and the line is clear.
+# Update the buffer with the ending address and remaining length.
+entrypoint _uart_tx_service
+	prolog
+	pushl %esi
+	movl 0x10(%esp), %eax # buf
+	movl BUF_BASE(%eax), %esi
+	movl BUF_SIZE(%eax), %ecx
+	testl %ecx, %ecx
+	jz 2f
+0:	read LSR
+	testb $LSR_THRE, %al
+	jz 1f
+	read MSR
+	testb $MSR_CTS, %al
+	jz 1f
+	lea THR(%ebx), %edx
+	outsb
+	loop 0b
+1:	movl 0x10(%esp), %eax
+	movl %ecx, BUF_SIZE(%eax)
+	movl %esi, BUF_BASE(%eax)
+2:	popl %esi
+	epilog
+
 # void _uart_rx_start(uint16_t addr);
 # The RTS line controls our receive loop. Raising it gives the remote device
 # permission to send. We leave the RBR interrupt enabled all the time anyway,
 # but it won't fire until we've actually received some data.
-_uart_rx_start: .global _uart_rx_start
+entrypoint _uart_rx_start
 	prolog
 	read MCR
 	orb $MCR_RTS, %al
@@ -200,11 +267,34 @@ _uart_rx_start: .global _uart_rx_start
 # Dropping RTS signals the remote device that we are no longer interested in
 # receiving data, which will hopefully stop the incoming flow. We'll leave the
 # RBR interrupt enabled in case there is already data in the pipeline.
-_uart_rx_stop: .global _uart_rx_stop
+entrypoint _uart_rx_stop
 	prolog
 	read MCR
 	andb $(~MCR_RTS), %al
 	outb %al, %dx
+	epilog
+
+# void _uart_rx_service(uint16_t addr, struct iovec *buf);
+# Read bytes while there is room in the buffer and data on the line.
+# Update the buf base and size to account for the space we used.
+entrypoint _uart_rx_service
+	prolog
+	pushl %edi
+	movl 0x10(%esp), %eax # buf
+	movl BUF_BASE(%eax), %edi
+	movl BUF_SIZE(%eax), %ecx
+	testl %ecx, %ecx
+	jz 2f
+0:	read LSR
+	testb $LSR_DR, %al
+	jz 1f
+	lea RBR(%ebx), %dx
+	insb
+	loop 0b
+1:	movl 0x10(%esp), %eax
+	movl %ecx, BUF_SIZE(%eax)
+	movl %edi, BUF_BASE(%eax)
+2:	popl %edi
 	epilog
 
 # void _uart_service(struct uart_state*);
@@ -212,7 +302,7 @@ _uart_rx_stop: .global _uart_rx_stop
 # Check IIR for the interrupt condition and respond accordingly. The UART may
 # have multiple conditions, so we'll poll IIR until bit 1 is set showing that
 # all conditions are clear.
-_uart_service: .global _uart_service
+entrypoint _uart_service
 	pushl %ebx
 	pushl %ebp
 	movl 0x0C(%esp), %ebp # port state
