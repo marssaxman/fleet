@@ -7,7 +7,7 @@
 #ifndef _FLEET_STREAM_H
 #define _FLEET_STREAM_H
 
-#include <fleet/system.h>
+#include <fleet/event.h>
 #include <fleet/io.h>
 
 typedef unsigned stream_socket;

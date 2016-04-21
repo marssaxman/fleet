@@ -8,7 +8,7 @@
 #include "memory.h"
 #include "serial.h"
 #include "debug.h"
-#include <fleet/system.h>
+#include <fleet/event.h>
 
 static struct ring_list eventqueue;
 

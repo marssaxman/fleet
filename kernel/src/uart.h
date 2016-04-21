@@ -7,7 +7,7 @@
 #ifndef UART_H
 #define UART_H
 
-#include <fleet/system.h>
+#include <fleet/event.h>
 #include <fleet/io.h>
 
 // Low-level UART control functions which are more conveniently implemented in
@@ -20,7 +20,6 @@ struct uart_state {
 	struct iovec tx;
 	struct iovec rx;
 };
-extern struct uart_state _uart_state[4];
 
 int _uart_probe(struct uart_state *port);
 void _uart_open(struct uart_state*);
