@@ -7,6 +7,7 @@
 #include "uart.h"
 #include "debug.h"
 #include "serial.h"
+#include "interrupt.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -16,6 +17,7 @@ struct transfer_queue {
 };
 
 static struct serial_socket_data {
+	struct irq_action signal;
 	struct uart_state *state;
 	struct transfer_queue tx, rx;
 } com[4];
@@ -38,9 +40,16 @@ static void tq_pull(struct transfer_queue *q, struct iovec *next) {
 	}
 }
 
+static void _serial_isr(struct irq_action *context) {
+	struct serial_socket_data *data;
+	data = container_of(context, struct serial_socket_data, signal);
+	_uart_service(data->state);
+}
+
 void _serial_init() {
 	// Traditional IO port addresses for the standard PC UARTs, COM1-COM4.
 	static const uint16_t com_addrs[4] = {0x03F8, 0x02F8, 0x03E8, 0x02F8};
+	static const uint8_t com_irqs[4] = {4, 3, 4, 3};
 	for (unsigned i = 0; i < 4; ++i) {
 		struct serial_socket_data *data = &com[i];
 		data->state = &_uart_state[i];
@@ -49,12 +58,10 @@ void _serial_init() {
 		}
 		ring_init(&data->tx.pending);
 		ring_init(&data->rx.pending);
+		data->signal.isr = _serial_isr;
+		_irq_attach(com_irqs[i], &data->signal);
 		_uart_open(data->state);
 	}
-	// enable IRQ3 and IRQ4
-	__asm__("inb $0x0021, %al");
-	__asm__("andb $0xE7, %al");
-	__asm__("outb %al, $0x0021");
 }
 
 unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {

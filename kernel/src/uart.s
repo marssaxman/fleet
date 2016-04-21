@@ -7,13 +7,6 @@
 # external entrypoints we invoke
 .global _uart_isr_thre, _uart_isr_rbr, _uart_isr_lsi, _uart_isr_msi
 
-# external entrypoints we override with non-weak implementations
-.global _isr_IRQ3, _isr_IRQ4
-
-.set PIC1_CMD, 0x0020
-.set PIC1_DATA, 0x0021
-.set PIC_EOI, 0x0020
-
 # Register offsets
 .set RBR, 0	# Receive buffer: DLAB=0, input
 .set THR, 0	# Transmit holding: DLAB=0, output
@@ -81,7 +74,6 @@ COM3: .hword 0; .byte 2, 0; .long 0, 0, 0, 0
 COM4: .hword 0; .byte 3, 0; .long 0, 0, 0, 0
 
 .section .text
-.local configure, isr_IRQ3, isr_IRQ4, service
 
 # int _uart_probe(struct uart_state *port, uint16_t addr);
 # We have reason to believe that there may be a UART device at this address.
@@ -245,55 +237,36 @@ _uart_rx_stop: .global _uart_rx_stop
 	outb %al, %dx
 	ret
 
-_isr_IRQ3:
-	pushal
-	movb $PIC_EOI, %al
-	outb %al, $PIC1_CMD
-	mov $COM2, %ebp
-	call service
-	mov $COM4, %ebp
-	call service
-	popal
-	iret
-
-_isr_IRQ4:
-	pushal
-	movb $PIC_EOI, %al
-	outb %al, $PIC1_CMD
-	mov $COM1, %ebp
-	call service
-	mov $COM3, %ebp
-	call service
-	popal
-	iret
-
-service:
-# Port state is in EBP. We can trash any register because this function is only
-# called from the ISRs, which are obligated to restore all registers anyway.
-	xorl %ebx, %ebx
-	movw ADDR(%ebp), %bx
-	test %ebx, %ebx
-	jz 0f
-check_loop:
+# void _uart_service(struct uart_state*);
+# An event has occurred which may indicate work to be done on this device.
 # Check IIR for the interrupt condition and respond accordingly. The UART may
 # have multiple conditions, so we'll poll IIR until bit 1 is set showing that
 # all conditions are clear.
+_uart_service: .global _uart_service
+	pushl %ebx
+	pushl %ebp
+	movl 0x0C(%esp), %ebp # port state
+	xorl %ebx, %ebx
+	movw ADDR(%ebp), %bx
+.L_check_loop:
 	lea IIR(%ebx), %edx
 	inb %dx, %al
 	testb $IIR_NONE, %al
-	jnz 0f
+	jnz .L_none
 	and $IIR_ID_MASK, %al
 	cmp $IIR_MSI, %al
-	je modem_status
+	je .L_modem_status
 	cmp $IIR_THRI, %al
-	je transmit_clear
+	je .L_transmit_clear
 	cmp $IIR_RBRI, %al
-	je receive_ready
+	je .L_receive_ready
 	cmp $IIR_LSI, %al
-	je line_status
-0:	ret
-
-modem_status:
+	je .L_line_status
+.L_none:
+	popl %ebp
+	popl %ebx
+	ret
+.L_modem_status:
 	xorl %eax, %eax
 	lea MSR(%ebx), %edx
 	inb %dx, %al
@@ -301,9 +274,8 @@ modem_status:
 	push %ebp
 	call _uart_isr_msi
 	add $8, %esp
-	jmp check_loop
-
-line_status:
+	jmp .L_check_loop
+.L_line_status:
 	xorl %eax, %eax
 	lea LSR(%ebx), %edx
 	inb %dx, %al
@@ -311,9 +283,8 @@ line_status:
 	push %ebp
 	call _uart_isr_lsi
 	add $8, %esp
-	jmp check_loop
-
-receive_ready:
+	jmp .L_check_loop
+.L_receive_ready:
 	# The port has signalled RBR, suggesting that we could receive data.
 	# Do we have any empty space waiting in our receive buffer?
 	mov RX_SIZE(%ebp), %ecx
@@ -345,14 +316,13 @@ receive_ready:
 	lea MCR(%ebx), %edx
 	movb $(MCR_DTR|MCR_OUT2), %al
 	outb %al, %dx
-	jmp check_loop
+	jmp .L_check_loop
 	# Save the updated buffer address and size now that we've consumed some.
 .L_rx_wait:
 	movl %edi, RX_BASE(%ebp)
 	movl %ecx, RX_SIZE(%ebp)
-	jmp check_loop
-
-transmit_clear:
+	jmp .L_check_loop
+.L_transmit_clear:
 	# The port has signalled THRE, giving us an opportunity to transmit data.
 	# Do we have any outgoing data waiting in our transmit buffer?
 	mov TX_SIZE(%ebp), %ecx
@@ -388,9 +358,9 @@ transmit_clear:
 	lea IER(%ebx), %edx
 	movb $(IER_RBRI|IER_LSI|IER_MSI), %al
 	outb %al, %dx
-	jmp check_loop
+	jmp .L_check_loop
 .L_tx_wait:
 	movl %esi, TX_BASE(%ebp)
 	movl %ecx, TX_SIZE(%ebp)
-	jmp check_loop
+	jmp .L_check_loop
 

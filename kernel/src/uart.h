@@ -29,6 +29,7 @@ void _uart_tx_start(struct uart_state*);
 void _uart_tx_stop(struct uart_state*);
 void _uart_rx_start(struct uart_state*);
 void _uart_rx_stop(struct uart_state*);
+void _uart_service(struct uart_state*);
 
 extern void _uart_isr_thre(struct uart_state *port);
 extern void _uart_isr_rbr(struct uart_state *port);
