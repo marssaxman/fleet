@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "multiboot.h"
 #include "debug.h"
+#include "kstring.h"
 #include <stdint.h>
 
 // The multiboot standard doesn't define memory region type codes except to
@@ -21,9 +22,9 @@ enum {
 // might be useful if we needed to store things. For the time being we're going
 // to do this in a very simple 'sbrk' style, so we're only interested in the
 // largest contiguous block of RAM. 
-static void *_memory_base;
-static void *_memory_break;
-static void *_memory_end;
+static void *memory_base;
+static void *memory_break;
+static void *memory_end;
 
 static void check_region(struct memory_map *region) {
 	// We only care about non-reserved regions.
@@ -37,10 +38,10 @@ static void check_region(struct memory_map *region) {
 	uint32_t region_length = region->length_low;
 	// How does this region compare to the ones we have seen previously? If we
 	// have already found something better, we'll stick with it.
-	if (region_length < (_memory_end - _memory_base)) return;
+	if (region_length < (memory_end - memory_base)) return;
 	// This is the best option we've found yet.
-	_memory_base = (void*)base_addr;
-	_memory_end = (void*)(base_addr + region_length);
+	memory_base = (void*)base_addr;
+	memory_end = (void*)(base_addr + region_length);
 }
 
 static void map_check(struct memory_map *mmap, uint32_t size) {
@@ -66,13 +67,12 @@ static void simple_check(uint32_t bytes_lower, uint32_t bytes_upper) {
 
 void _memory_init(struct multiboot_info *info) {
 	// No matter what we figure out about the memory map, right now we know
-	// we have memory from the base of the executable to the end of the
-	// bootstrap stack.
+	// we have at least as much memory as it takes to contain the executable.
 	void *load_image_base = (void*)0x00100000; // from linker script
 	extern int __data_end; // from linker script
-	_memory_base = load_image_base;
-	_memory_end = &__data_end; // allocated in libstart
-	_memory_break = _memory_end;
+	memory_base = load_image_base;
+	memory_end = &__data_end;
+	memory_break = memory_end;
 	// Use whatever information the bootloader gave us to figure out what
 	// lives where in our address space and which parts of it we can use.
 	if (info->flags & 1<<6) {
@@ -83,17 +83,28 @@ void _memory_init(struct multiboot_info *info) {
 		// We know how large the upper and lower memory banks are.
 		simple_check(info->mem_lower * 1024, info->mem_upper * 1024);
 	}
-	if (load_image_base < _memory_end && (void*)&__data_end > _memory_base) {
+	if (load_image_base < memory_end && (void*)&__data_end > memory_base) {
 		// The beginning of our memory region is already home to our
 		// executable image and bootstrap stack. Move the allocation pointer
 		// past it so we don't accidentally reuse it.
-		_memory_break = &__data_end;
+		memory_break = &__data_end;
 	} else {
-		_memory_break = _memory_base;
+		memory_break = memory_base;
 	}
-	if (load_image_base > _memory_base && load_image_base < _memory_end) {
+	if (load_image_base > memory_base && load_image_base < memory_end) {
 		// Truncate the memory region so it no longer overlaps the executable.
-		_memory_end = load_image_base;
+		memory_end = load_image_base;
 	}
+}
+
+void *_kalloc(size_t bytes) {
+	void *out = memory_break;
+	memory_break += bytes;
+	_kassert(memory_break <= memory_end);
+	return out;
+}
+
+void *_kalloc_zero(size_t bytes) {
+	return _kmemzero(_kalloc(bytes), bytes);
 }
 

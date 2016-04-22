@@ -13,7 +13,7 @@ void _kvprintf(const char *format, va_list args);
 void _kprintf(const char *format,...);
 void _panic(const char *msg, ...);
 void _kassertfail(const char *file, int line, const char *cond);
-#define kassert(c) ((c)? ((void)0): _kassertfail(__FILE__, __LINE__, #c))
+#define _kassert(c) ((c)? ((void)0): _kassertfail(__FILE__, __LINE__, #c))
 
 #endif // DEBUG_H
 

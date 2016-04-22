@@ -12,6 +12,8 @@
 
 struct multiboot_info;
 void _memory_init(struct multiboot_info *info);
+void *_kalloc(size_t);
+void *_kalloc_zero(size_t);
 
 #endif // MEMORY_H
 
