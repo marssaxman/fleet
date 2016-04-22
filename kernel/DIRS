@@ -1,0 +1,11 @@
+headers:
+	private system include path for kernel source
+	contains C99 headers defined for a freestanding runtime environment
+
+include:
+	public system include path for fleet-based application source
+	contains public API
+
+src:
+	implementation of the kernel and its drivers
+
