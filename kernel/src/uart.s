@@ -79,12 +79,6 @@
 	inb %dx, %al
 .endm
 
-.section .data
-
-# Mappings from values found in the lower three bits of IIR to the condition
-# codes defined in uart.h; used by _uart_poll.
-.L_iir_condition_table: .byte 4, 0, 1, 0, 2, 0, 3, 0
-
 .section .text
 
 # int _uart_probe(uint16_t addr);
@@ -166,33 +160,6 @@ entrypoint _uart_close
 	write IER
 	epilog
 
-# int _uart_poll(uint16_t addr);
-# Is there an interrupt condition present? Map the value in the low bits of
-# the IIR to one of the condition codes we present in uart.h.
-entrypoint _uart_poll
-	prolog
-	xorl %eax, %eax
-	read IIR
-	and $0x7, %al
-	movb .L_iir_condition_table(%eax), %al
-	epilog
-
-# uint8_t _uart_line_status(uint16_t addr)
-entrypoint _uart_line_status
-	xorl %edx, %edx
-	movb $LSR, %dl
-	addw 4(%esp), %dx
-	inb %dx, %al
-	ret
-
-# uint8_t _uart_modem_status(uint16_t addr)
-entrypoint _uart_modem_status
-	xorl %edx, %edx
-	movb $MSR, %dl
-	addw 4(%esp), %dx
-	inb %dx, %al
-	ret
-
 # void _uart_tx_start(uint16_t addr);
 # The THRE interrupt controls our transmit loop. If transmission is active,
 # setting THRE will have no effect; but if it was not previously set, setting
@@ -215,7 +182,53 @@ entrypoint _uart_tx_stop
 	outb %al, %dx
 	epilog
 
-# void _uart_tx_service(uint16_t addr, struct iovec *buf)
+# void _uart_rx_start(uint16_t addr);
+# The RTS line controls our receive loop. Raising it gives the remote device
+# permission to send. We leave the RBR interrupt enabled all the time anyway,
+# but it won't fire until we've actually received some data.
+entrypoint _uart_rx_start
+	prolog
+	read MCR
+	orb $MCR_RTS, %al
+	outb %al, %dx
+	epilog
+
+# void _uart_rx_stop(uint16_t addr);
+# Dropping RTS signals the remote device that we are no longer interested in
+# receiving data, which will hopefully stop the incoming flow. We'll leave the
+# RBR interrupt enabled in case there is already data in the pipeline.
+entrypoint _uart_rx_stop
+	prolog
+	read MCR
+	andb $(~MCR_RTS), %al
+	outb %al, %dx
+	epilog
+
+# uint8_t _uart_IIR(uint16_t addr)
+entrypoint _uart_IIR
+	xorl %edx, %edx
+	movb $IIR, %dl
+	addw 4(%esp), %dx
+	inb %dx, %al
+	ret
+
+# uint8_t _uart_LSR(uint16_t addr)
+entrypoint _uart_LSR
+	xorl %edx, %edx
+	movb $LSR, %dl
+	addw 4(%esp), %dx
+	inb %dx, %al
+	ret
+
+# uint8_t _uart_MSR(uint16_t addr)
+entrypoint _uart_MSR
+	xorl %edx, %edx
+	movb $MSR, %dl
+	addw 4(%esp), %dx
+	inb %dx, %al
+	ret
+
+# void _uart_tx_service(uint16_t addr, struct uart_buf*)
 # Transmit bytes while there is data in the buffer and the line is clear.
 # Update the buffer with the ending address and remaining length.
 entrypoint _uart_tx_service
@@ -241,29 +254,7 @@ entrypoint _uart_tx_service
 2:	popl %esi
 	epilog
 
-# void _uart_rx_start(uint16_t addr);
-# The RTS line controls our receive loop. Raising it gives the remote device
-# permission to send. We leave the RBR interrupt enabled all the time anyway,
-# but it won't fire until we've actually received some data.
-entrypoint _uart_rx_start
-	prolog
-	read MCR
-	orb $MCR_RTS, %al
-	outb %al, %dx
-	epilog
-
-# void _uart_rx_stop(uint16_t addr);
-# Dropping RTS signals the remote device that we are no longer interested in
-# receiving data, which will hopefully stop the incoming flow. We'll leave the
-# RBR interrupt enabled in case there is already data in the pipeline.
-entrypoint _uart_rx_stop
-	prolog
-	read MCR
-	andb $(~MCR_RTS), %al
-	outb %al, %dx
-	epilog
-
-# void _uart_rx_service(uint16_t addr, struct iovec *buf);
+# void _uart_rx_service(uint16_t addr, struct uart_buf*);
 # Read bytes while there is room in the buffer and data on the line.
 # Update the buf base and size to account for the space we used.
 entrypoint _uart_rx_service

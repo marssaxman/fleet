@@ -33,8 +33,8 @@ static void check_proc(struct event *e) {
 
 void mic_check() {
 	static struct stream_transfer hello_xfer;
-	hello_xfer.request.base = "Hello, world!\r\n";
-	hello_xfer.request.size = 15;
+	hello_xfer.request.buffer = "Hello, world!\r\n";
+	hello_xfer.request.length = 15;
 	hello_xfer.signal.handler = check_proc;
 	_serial_transmit(0, &hello_xfer);
 }

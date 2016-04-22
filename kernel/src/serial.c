@@ -14,7 +14,7 @@
 struct channel {
 	struct stream_transfer *current;
 	struct ring_list pending;
-	struct iovec buffer;
+	struct uart_buf buffer;
 };
 
 static struct serial {
@@ -53,7 +53,7 @@ static void channel_init(struct channel *q) {
 }
 
 static void channel_push(struct channel *q, struct stream_transfer *t) {
-	ring_push(&q->pending, &t->link);
+	ring_push(&q->pending, &t->queue);
 }
 
 static void channel_pull(struct channel *q) {
@@ -62,8 +62,9 @@ static void channel_pull(struct channel *q) {
 	}
 	struct ring_item *link = ring_pull(&q->pending);
 	if (link) {
-		q->current = container_of(link, struct stream_transfer, link);
-		q->buffer = q->current->request;
+		q->current = container_of(link, struct stream_transfer, queue);
+		q->buffer.base = q->current->request.buffer;
+		q->buffer.size = q->current->request.length;
 	} else {
 		q->current = 0;
 		q->buffer.base = 0;
@@ -97,25 +98,24 @@ static void receive_ready(struct serial *port) {
 
 static void line_event(struct serial *port) {
 	int index = (port - com) / sizeof(struct serial);
-	unsigned LSR = _uart_line_status(port->addr);
+	unsigned LSR = _uart_LSR(port->addr);
 	_kprintf("LSI on COM%d: LSR=%x\n", index, LSR);
 }
 
 static void modem_event(struct serial *port) {
 	int index = (port - com) / sizeof(struct serial);
-	unsigned MSR = _uart_modem_status(port->addr);
+	unsigned MSR = _uart_MSR(port->addr);
 	_kprintf("MSI on COM%d: MSR=%x\n", index, MSR);
 }
 
 static void service(struct irq_action *context) {
 	struct serial *port = container_of(context, struct serial, signal);
-	for (;;) switch (_uart_poll(port->addr)) {
-		case UART_NONE: return;
-		case UART_THRI: transmit_clear(port); continue;
-		case UART_RBRI: receive_ready(port); continue;
-		case UART_LSI: line_event(port); continue;
-		case UART_MSI: modem_event(port); continue;
-		default: _panic("illegal uart condition code");
+	for (;;) switch (_uart_IIR(port->addr) & 0x07) {
+		case 0x0: modem_event(port); continue;
+		case 0x2: transmit_clear(port); continue;
+		case 0x4: receive_ready(port); continue;
+		case 0x6: line_event(port); continue;
+		default: return; // if low bit is set, no interrupt is present
 	}
 }
 
@@ -136,15 +136,15 @@ void _serial_init() {
 	}
 }
 
-unsigned _serial_transmit(stream_socket s, struct stream_transfer *t) {
-	channel_push(&com[s].tx, t);
-	_uart_tx_start(com[s].addr);
+unsigned _serial_transmit(int socket, struct stream_transfer *t) {
+	channel_push(&com[socket].tx, t);
+	_uart_tx_start(com[socket].addr);
 	return 0;
 }
 
-unsigned _serial_receive(stream_socket s, struct stream_transfer *t) {
-	channel_push(&com[s].rx, t);
-	_uart_rx_start(com[s].addr);
+unsigned _serial_receive(int socket, struct stream_transfer *t) {
+	channel_push(&com[socket].rx, t);
+	_uart_rx_start(com[socket].addr);
 	return 0;
 }
 

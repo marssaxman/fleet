@@ -8,11 +8,24 @@
 #define _FLEET_IO_H
 
 #include <stddef.h>
+#include <fleet/ring.h>
+#include <fleet/event.h>
 
-struct iovec {
-	void *base;
-	size_t size;
+struct stream_transfer {
+	struct {
+		void *buffer;
+		size_t length;
+	} request;
+	struct {
+		unsigned error;
+		size_t length;
+	} response;
+	struct event signal;
+	struct ring_item queue;
 };
+
+unsigned transmit(int socket, struct stream_transfer*);
+unsigned receive(int socket, struct stream_transfer*);
 
 #endif //_FLEET_IO_H
 

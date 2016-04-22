@@ -7,10 +7,10 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
-#include <fleet/stream.h>
+#include <fleet/io.h>
 
 void _serial_init();
-unsigned _serial_transmit(stream_socket s, struct stream_transfer *t);
-unsigned _serial_receive(stream_socket s, struct stream_transfer *t);
+unsigned _serial_transmit(int socket, struct stream_transfer *t);
+unsigned _serial_receive(int socket, struct stream_transfer *t);
 
 #endif //SERIAL_H
