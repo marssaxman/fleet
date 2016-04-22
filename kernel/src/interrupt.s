@@ -4,6 +4,8 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
+.global _exception
+
 .set PIC1_CMD, 0x0020
 .set PIC1_DATA, 0x0021
 .set PIC2_CMD, 0x00a0
@@ -132,7 +134,7 @@ _irq_attach: .global _irq_attach
 .L_entry_exception_1D:          pushal; push %esp; push $0x1D; jmp 0f
 .L_entry_exception_1E:          pushal; push %esp; push $0x1E; jmp 0f
 .L_entry_exception_1F:          pushal; push %esp; push $0x1F; jmp 0f
-0:  call _interrupt_exception
+0:  call _exception
 	add $8, %esp
 	popal
 	add $4, %esp
