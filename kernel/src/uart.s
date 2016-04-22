@@ -51,16 +51,8 @@
 .set MSR_RI, 0x40 # Ring indicator
 .set MSR_DCD, 0x80 # Data carrier detected
 
-
 .set BUF_BASE, 0
 .set BUF_SIZE, 4
-
-# Field offsets for the state struct
-.set ADDR, 0x0 # short
-.set TX_BASE, ADDR+4 # ptr
-.set TX_SIZE, TX_BASE+4 # int
-.set RX_BASE, TX_SIZE+4 # ptr
-.set RX_SIZE, RX_BASE+4 # int
 
 .macro prolog
 	pushl %ebx

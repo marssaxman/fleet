@@ -23,6 +23,28 @@ static struct serial {
 	uint16_t addr;
 } com[4];
 
+enum LSR_FLAGS {
+	LSR_DR = 0x01, // Data ready
+	LSR_OE = 0x02, // Overrun error
+	LSR_PE = 0x04, // Parity error
+	LSR_FE = 0x08, // Frame error
+	LSR_BI = 0x10, // Break indicator
+	LSR_THRE = 0x20, // Transmit holding register empty
+	LSR_TEMT = 0x40, // Transmitter empty
+	LSR_RXFE = 0x80, // Error in receiver FIFO
+};
+
+enum MSR_FLAGS {
+	MSR_DCTS = 0x01, // CTS change
+	MSR_DDSR = 0x02, // DSR change
+	MSR_TERI = 0x04, // Ring indicator ended
+	MSR_DDCD = 0x08, // DCD change
+	MSR_CTS = 0x10, // Clear to send
+	MSR_DSR = 0x20, // Data set ready (present)
+	MSR_RI = 0x40, // Ring indicator
+	MSR_DCD = 0x80, // Data carrier detected
+};
+
 static void channel_init(struct channel *q) {
 	q->current = 0;
 	ring_init(&q->pending);
