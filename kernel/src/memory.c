@@ -99,7 +99,8 @@ void _memory_init(struct multiboot_info *info) {
 
 void *_kalloc(size_t bytes) {
 	void *out = memory_break;
-	memory_break += bytes;
+	// Round up to nearest word
+	memory_break += ((bytes+3)&~3);
 	_kassert(memory_break <= memory_end);
 	return out;
 }
