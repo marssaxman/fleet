@@ -18,13 +18,18 @@ enum {
 
 #define _PAGESIZE 4096
 
+// The linker generates symbols marking the executable image's address range.
+extern struct {} __image_base, __image_end;
+#define IMAGE_BASE ((void*)&__image_base)
+#define IMAGE_END ((void*)&__image_end)
+
 // Keep track of what lives where in our address space and which parts of it
 // might be useful if we needed to store things. For the time being we're going
 // to do this in a very simple 'sbrk' style, so we're only interested in the
 // largest contiguous block of RAM. 
-static void *memory_base;
-static void *memory_break;
-static void *memory_end;
+static void *memory_base = IMAGE_BASE;
+static void *memory_end = IMAGE_END;
+static void *memory_break = IMAGE_END;
 
 static void check_region(struct memory_map *region) {
 	// We only care about non-reserved regions.
@@ -66,13 +71,6 @@ static void simple_check(uint32_t bytes_lower, uint32_t bytes_upper) {
 }
 
 void _memory_init(struct multiboot_info *info) {
-	// No matter what we figure out about the memory map, right now we know
-	// we have at least as much memory as it takes to contain the executable.
-	void *load_image_base = (void*)0x00100000; // from linker script
-	extern int __data_end; // from linker script
-	memory_base = load_image_base;
-	memory_end = &__data_end;
-	memory_break = memory_end;
 	// Use whatever information the bootloader gave us to figure out what
 	// lives where in our address space and which parts of it we can use.
 	if (info->flags & 1<<6) {
@@ -83,17 +81,17 @@ void _memory_init(struct multiboot_info *info) {
 		// We know how large the upper and lower memory banks are.
 		simple_check(info->mem_lower * 1024, info->mem_upper * 1024);
 	}
-	if (load_image_base < memory_end && (void*)&__data_end > memory_base) {
+	if (IMAGE_BASE < memory_end && IMAGE_END > memory_base) {
 		// The beginning of our memory region is already home to our
 		// executable image and bootstrap stack. Move the allocation pointer
 		// past it so we don't accidentally reuse it.
-		memory_break = &__data_end;
+		memory_break = IMAGE_END;
 	} else {
 		memory_break = memory_base;
 	}
-	if (load_image_base > memory_base && load_image_base < memory_end) {
+	if (IMAGE_BASE > memory_base && IMAGE_BASE < memory_end) {
 		// Truncate the memory region so it no longer overlaps the executable.
-		memory_end = load_image_base;
+		memory_end = IMAGE_BASE;
 	}
 }
 
