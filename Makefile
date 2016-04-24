@@ -1,6 +1,6 @@
 default: all
 
-DIRS:=kernel libc
+DIRS:=kernel libc loader
 
 all: $(DIRS)
 .PHONY: all $(DIRS)
