@@ -136,6 +136,18 @@ ring_pop: .global ring_pop
 	movl %ecx, ITEM_NEXT(%edx)
 	jmp .L_detach_return
 
+# void ring_remove(struct ring_item*);
+# remove this item from whatever group it is part of.
+ring_remove: .global ring_remove
+	movl 4(%esp), %eax
+	pushf
+	cli
+	movl ITEM_PREV(%eax), %ecx
+	movl ITEM_NEXT(%eax), %edx
+	movl %ecx, ITEM_PREV(%edx)
+	movl %edx, ITEM_NEXT(%ecx)
+	jmp .L_detach_return
+
 .L_detach_return:
 	# Clear the item's links to show that it is no longer attached to a ring.
 	xorl %ecx, %ecx

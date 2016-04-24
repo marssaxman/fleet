@@ -10,10 +10,15 @@
 #include <fleet/io.h>
 
 struct socket_methods {
+	int (*open)(void *data);
 	int (*read)(void *data, struct stream_transfer*);
 	int (*write)(void *data, struct stream_transfer*);
+	int (*close)(void *data);
 };
 
+#define OPEN_MAX 64
+
+void _socket_init();
 int _socket_alloc(struct socket_methods*, void *data);
 void _socket_free(int socket);
 

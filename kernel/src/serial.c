@@ -121,17 +121,19 @@ static void service(struct irq_action *context) {
 
 void _serial_init() {
 	// Traditional IO port addresses for the standard PC UARTs, COM1-COM4.
-	static const uint16_t com_addrs[4] = {0x03F8, 0x02F8, 0x03E8, 0x02F8};
-	static const uint8_t com_irqs[4] = {4, 3, 4, 3};
+	static const struct {
+		uint16_t addr;
+		uint8_t irq;
+	} uart[4] = {{0x03F8, 4}, {0x02F8, 3}, {0x03E8, 4}, {0x02E8, 3}};
 	for (unsigned i = 0; i < 4; ++i) {
 		// Verify that we can communicate with a UART at this address.
-		if (0 != _uart_probe(com_addrs[i])) continue;
+		if (0 != _uart_probe(uart[i].addr)) continue;
 		struct serial *port = &com[i];
-		port->addr = com_addrs[i];
+		port->addr = uart[i].addr;
 		channel_init(&port->tx);
 		channel_init(&port->rx);
 		port->signal.isr = service;
-		_irq_attach(com_irqs[i], &port->signal);
+		_irq_attach(uart[i].irq, &port->signal);
 		_uart_open(port->addr);
 	}
 }

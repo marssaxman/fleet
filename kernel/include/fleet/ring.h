@@ -30,6 +30,7 @@ void ring_push(struct ring_list*, struct ring_item*);
 // Pull an item from the front or pop it from the back.
 struct ring_item* ring_pull(struct ring_list*);
 struct ring_item* ring_pop(struct ring_list*);
+void ring_remove(struct ring_item*);
 
 #define container_of(ptr, type, field) \
 		((type*)(((intptr_t)ptr) - offsetof(type, field)))

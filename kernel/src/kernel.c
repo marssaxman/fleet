@@ -8,7 +8,7 @@
 #include "memory.h"
 #include "serial.h"
 #include "debug.h"
-#include <fleet/event.h>
+#include "socket.h"
 
 static struct ring_list eventqueue;
 
@@ -43,6 +43,7 @@ void _kernel(struct multiboot_info *multiboot) {
 	ring_init(&eventqueue);
 	_interrupt_init();
 	_memory_init(multiboot);
+	_socket_init();
 	_serial_init();
 	mic_check();
 	for (;;) {
