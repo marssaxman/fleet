@@ -23,6 +23,6 @@ obj/%.o: src/%.s
 
 clean:
 	-@rm -f *.a *.bin
-	-@rm -rf obj
+	-@rm -rf bin obj
 .PHONY: clean
 
