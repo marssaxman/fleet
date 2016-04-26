@@ -4,13 +4,7 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _exception
-
-.set PIC1_CMD, 0x0020
-.set PIC1_DATA, 0x0021
-.set PIC2_CMD, 0x00a0
-.set PIC2_DATA, 0x00a1
-.set PIC_EOI, 0x0020
+.global _exception, _pic_eoi, _pic_mask
 
 .macro setgate vector, handler
 	mov $\handler, %eax
@@ -37,31 +31,6 @@
 _interrupt_init: .global _interrupt_init
 	# Install the IDT, which will dispatch exception and IRQ handlers.
 	lidtl (.L_idtr)
-	# By default the IRQs use gates 0x00-0x0F, which overlap with the gates
-	# used for CPU exceptions, which is inconvenient. Reconfigure the PICs
-	# to raise IRQ signals on gates 0x20-0x2F instead.
-	# Start PIC initialization and enable ICW4.
-	movb $0x11, %al
-	outb %al, $PIC1_CMD
-	outb %al, $PIC2_CMD
-	# Set up the IDT vector table offsets.
-	movb $0x20, %al
-	outb %al, $PIC1_DATA
-	movb $0x28, %al
-	outb %al, $PIC2_DATA
-	# Configure the master/slave wiring.
-	movb $0x04, %al
-	outb %al, $PIC1_DATA
-	movb $0x02, %al
-	outb %al, $PIC2_DATA
-	# Use 8086 mode and other typical settings.
-	movb $0x01, %al
-	outb %al, $PIC1_DATA
-	outb %al, $PIC2_DATA
-	# All IRQs should be disabled at first.
-	movb $0xFF, %al
-	outb %al, $PIC1_DATA
-	outb %al, $PIC2_DATA
 	# Populate the IDT's gates with pointers to our ISR entrypoints.
 	.irp index, 0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F
 		setgate 0x0\index, .L_entry_exception_0\index
@@ -95,9 +64,9 @@ _irq_attach: .global _irq_attach
 	andw .L_irq_mask, %ax
 	movw %ax, .L_irq_mask
 	# Update the PIC with the current inhibit mask.
-	outb %al, $PIC1_DATA
-	ror $8, %eax
-	outb %al, $PIC2_DATA
+	push %eax
+	call _pic_mask
+	add $4, %esp
 	# Clean up and return.
 	popf
 	ret
@@ -147,12 +116,7 @@ _irq_attach: .global _irq_attach
 	# If there is an action attached to this IRQ, go execute it.
 0:	test %eax, %eax
 	jnz 1f
-	# Send the PIC the EOI command and return.
-	movb $PIC_EOI, %al
-	.if 0x\vector > 7
-		outb %al, $PIC2_CMD
-	.endif
-	outb %al, $PIC1_CMD
+	call _pic_eoi
 	popal
 	iret
 	# Call the action's service function, passing in the action record.

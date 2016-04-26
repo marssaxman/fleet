@@ -8,12 +8,16 @@
 #include "debug.h"
 
 void _exception(unsigned code, struct cpu_state *state) {
-	_kprintf("Exception #%x (error %x):\n", code, state->error);
+	_kprintf("Exception #%d", code);
+	if (state->error) {
+		_kprintf("(error %x)", state->error);
+	}
+	_kprintf(":\n");
 	_kprintf("EAX:%x    EBX:%x    ECX:%x    EDX:%x\n",
 			state->eax, state->ebx, state->ecx, state->edx);
 	_kprintf("ESI:%x    EDI:%x    ESP:%x    EBP:%x\n",
 			state->esi, state->edi, state->esp, state->ebp);
-	_kprintf("EFLAGS:%x              CS:%x    EIP:%x\n",
+	_kprintf("             EFLAGS:%x     CS:%x    EIP:%x\n",
 			state->eflags, state->cs, state->eip);
 	__asm__("hlt");
 }

@@ -9,6 +9,7 @@
 #include "serial.h"
 #include "debug.h"
 #include "socket.h"
+#include "pic.h"
 
 static struct ring_list eventqueue;
 
@@ -41,6 +42,7 @@ void mic_check() {
 
 void _kernel(struct multiboot_info *multiboot) {
 	ring_init(&eventqueue);
+	_pic_init();
 	_interrupt_init();
 	_memory_init(multiboot);
 	_socket_init();
