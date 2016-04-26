@@ -4,24 +4,17 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _exception, _pic_eoi, _pic_mask
+.global _exception, _pic_eoi, _pic_mask, _idt_config
 
 .macro setgate vector, handler
-	mov $\handler, %eax
-	movw %ax, .L_idt+(\vector*8)+0
-	ror $16, %eax
-	movw %ax, .L_idt+(\vector*8)+6
+	pushl $\handler
+	pushl $\vector
+	call _idt_config
+	add $8, %esp
 .endm
 
 .section .data
 .align 8
-.L_idt:
-	.rept 48
-		.hword 0, 8, 0x8E00, 0
-	.endr
-.L_idtr:
-	.hword ((48 * 8) - 1)	# size of table - 1: why? who knows
-	.long .L_idt
 .L_irq_table:
 	.fill 16, 4, 0
 .L_irq_mask:
@@ -29,8 +22,6 @@
 
 .section .text
 _interrupt_init: .global _interrupt_init
-	# Install the IDT, which will dispatch exception and IRQ handlers.
-	lidtl (.L_idtr)
 	# Populate the IDT's gates with pointers to our ISR entrypoints.
 	.irp index, 0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F
 		setgate 0x0\index, .L_entry_exception_0\index
