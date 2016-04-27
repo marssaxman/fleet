@@ -4,7 +4,7 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.global _exception, _pic_eoi, _pic_mask, _idt_config
+.global _exception, _pic_eoi, _pic_mask
 
 .macro setgate vector, handler
 	pushl $\handler
@@ -21,21 +21,13 @@
 	.hword 0xFFFF
 
 .section .text
-_interrupt_init: .global _interrupt_init
+_irq_init: .global _irq_init
 	# Populate the IDT's gates with pointers to our ISR entrypoints.
 	.irp index, 0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F
 		setgate 0x0\index, .L_entry_exception_0\index
 		setgate 0x1\index, .L_entry_exception_1\index
 		setgate 0x2\index, .L_entry_irq_\index
 	.endr
-	ret
-
-_interrupt_enable: .global _interrupt_enable
-	sti
-	ret
-
-_interrupt_disable: .global _interrupt_disable
-	cli
 	ret
 
 _irq_attach: .global _irq_attach

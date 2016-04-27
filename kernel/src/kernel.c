@@ -4,13 +4,14 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#include "interrupt.h"
 #include "memory.h"
 #include "serial.h"
 #include "debug.h"
 #include "socket.h"
-#include "pic.h"
 #include "idt.h"
+#include "pic.h"
+#include "irq.h"
+#include "cpu.h"
 
 static struct ring_list eventqueue;
 
@@ -48,15 +49,16 @@ void _kernel(struct multiboot_info *multiboot) {
 	ring_init(&eventqueue);
 	_idt_init();
 	_pic_init();
-	_interrupt_init();
+	_irq_init();
 	_memory_init(multiboot);
 	_socket_init();
 	_serial_init();
-	_interrupt_enable();
+	_cpu_int_enable();
 	mic_check();
 	while (!done) {
 		yield();
 	}
+	_cpu_reset();
 }
 
 

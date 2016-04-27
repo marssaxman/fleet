@@ -42,14 +42,7 @@ _start:
 
 # The program is done. Halt, and halt in a loop in case an NMI wakes us up.
 .Lhang:
-	.set CONFIG_PORT_A, 0x0092
-	.set RESET_FLAG, 1
 	cli
-	inb $CONFIG_PORT_A, %al
-	andb $~RESET_FLAG, %al
-	outb %al, $CONFIG_PORT_A
-	orb $RESET_FLAG, %al
-	outb %al, $CONFIG_PORT_A
 	hlt
 	jmp .Lhang
 

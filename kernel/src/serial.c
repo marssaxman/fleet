@@ -7,7 +7,7 @@
 #include "uart.h"
 #include "debug.h"
 #include "serial.h"
-#include "interrupt.h"
+#include "irq.h"
 #include <stdint.h>
 #include <stdbool.h>
 
