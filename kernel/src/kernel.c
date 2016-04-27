@@ -29,8 +29,11 @@ void yield() {
 	}
 }
 
+static bool done = false;
+
 static void check_proc(struct event *e) {
 	_kprintf("mic check complete\n");
+	done = true;
 }
 
 void mic_check() {
@@ -49,11 +52,10 @@ void _kernel(struct multiboot_info *multiboot) {
 	_memory_init(multiboot);
 	_socket_init();
 	_serial_init();
+	_interrupt_enable();
 	mic_check();
-	for (;;) {
-		_interrupt_enable();
+	while (!done) {
 		yield();
-		__asm__("hlt");
 	}
 }
 
