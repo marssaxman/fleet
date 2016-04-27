@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <string.h>
 #include "args.h"
 
@@ -83,13 +85,18 @@ int main(int argc, char **argv) {
 	// Direct debug console output through stderr.
 	args_push2(&qemu, "-debugcon", "stdio");
 
-	// Route stdio through COM1 for the time being.
+	// Route stdio through COM1.
 	args_push2(&qemu, "-serial", "stdio");
 
-	execvp(*qemu.vec, qemu.vec);
-	return EXIT_FAILURE;
-
-	// args_exit(&qemu);
-	// free(cmdline);
+	pid_t pid = fork();
+	int status = EXIT_FAILURE;
+	if (0 == pid) {
+		execvp(*qemu.vec, qemu.vec);
+	} else if (pid > 0) {
+		args_exit(&qemu);
+		free(cmdline);
+		waitpid(pid, &status, 0);
+	}
+	return status;
 }
 
