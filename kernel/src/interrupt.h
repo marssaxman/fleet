@@ -4,11 +4,18 @@
 // this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 // IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-#ifndef IDT_H
-#define IDT_H
+#ifndef INTERRUPT_H
+#define INTERRUPT_H
 
-void _idt_init();
-void _idt_config(int gate, void (*proc)());
+#include <stdint.h>
 
-#endif //IDT_H
+void _interrupt_init();
+
+struct irq_action {
+	void (*isr)(struct irq_action*);
+	struct irq_action *next;
+};
+void _irq_attach(unsigned irq, struct irq_action*);
+
+#endif //INTERRUPT_H
 

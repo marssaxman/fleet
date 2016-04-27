@@ -7,6 +7,7 @@ SECTIONS {
 	.text BLOCK(4K) : ALIGN(4K) {
 		/* Multiboot header comes first since it must be within first 8K. */
 		*(.multiboot)
+		*(.interrupt)
 		*(.text)
 	}
 
@@ -19,6 +20,7 @@ SECTIONS {
 	}
 
 	.data BLOCK(4K) : ALIGN(4K) {
+		*(.descriptor)
 		*(.data)
 	}
 
