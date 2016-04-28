@@ -4,15 +4,6 @@
 # this paragraph and the above copyright notice. THIS SOFTWARE IS PROVIDED "AS
 # IS" WITH NO EXPRESS OR IMPLIED WARRANTY.
 
-.section .multiboot
-.align 4
-.set FLAGS, 0x00000003 # use page alignment and provide memory map
-.set MAGIC, 0x1BADB002 # bootloader looks for this magic number
-.set CHECKSUM, -(MAGIC + FLAGS) # no, the magic number was not accidental
-.long MAGIC, FLAGS, CHECKSUM
-.section .text
-_start: .global _start
-
 # Make sure EAX contains the multiboot magic code, because we depend on the
 # multiboot information record which should be in EBX.
 cmpl $0x2BADB002, %eax
