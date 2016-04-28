@@ -1,25 +1,8 @@
 # fleet
 
-I want to develop an exokernel style operating system where virtual machines
-take the place of processes, shared libraries, and even threads; a system where
-isolation is the default, security policy is implemented like a firewall and
-concurrency issues are managed through asynchronous communication.
-
-This is a tall order, of course, so the first goal of the fleet project is to
-build a simple foundation for the small, tweakable, unfussy experimental apps
-I'll need to build while figuring out what I'm really trying to do, how it
-might be done, and whether it is actually practical at all.
-
-In concrete terms, libfleet is an implementation of the C99 standard library,
-targeting a generic 32-bit i386 PC, which boots on bare metal and sets up a
-usable machine environment before invoking main().
-
-While C99 compliance is a goal, support for POSIX definitely is not, and it
-remains to be seen how useful C's synchronous IO model can be when the whole
-point of the IO architecture here is asynchrony. Nor do I plan to offer
-preemptive threading or a 64-bit build option in the near future, though they
-may come along after I've had more time to explore minimalism.
-
+Fleet is a C99 library OS for unikernel applications, targeting a virtualized
+32-bit i386 PC. It is a single-threaded architecture, based on asynchronous,
+non-blocking IO.
 
 # Building the library
 
